@@ -217,7 +217,7 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
 
     // Batch insert (chunks of 100)
     for (let i = 0; i < toInsert.length; i += 100) {
-      const chunk = toInsert.slice(i, i + 100);
+      const chunk = toInsert.slice(i, i + 100) as never[];
       const { data, error } = await sb.from("leads").insert(chunk).select("id");
       if (error) {
         failed += chunk.length;
@@ -228,7 +228,7 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
     }
 
     for (const u of toUpdate) {
-      const { error } = await sb.from("leads").update(u.patch).eq("id", u.id);
+      const { error } = await sb.from("leads").update(u.patch as never).eq("id", u.id);
       if (error) {
         failed++;
         errors.push(error.message);

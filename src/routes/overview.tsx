@@ -29,6 +29,7 @@ function OverviewPage() {
   const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
+  const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
 
   const activeLeads = leads.filter((l) => l.status === "active");
   const pipelineValue = activeLeads
@@ -39,6 +40,14 @@ function OverviewPage() {
   const recentLeads = activeLeads.slice(0, 7);
   const recentInteractions = interactions.slice(0, 5);
   const currency = activeLeads[0]?.currency ?? "QAR";
+
+  // Newest completed analysis per lead
+  const currentByLead = new Map<string, any>();
+  for (const a of completedAnalyses) if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
+  const currents = Array.from(currentByLead.values());
+  const hotCount = currents.filter((a) => a.output_json?.buyerStatus === "hot").length;
+  const highIntentCount = currents.filter((a) => (a.output_json?.intentScore ?? 0) >= 70).length;
+  const atRiskCount = currents.filter((a) => a.output_json?.buyerStatus === "at_risk").length;
 
   return (
     <AppShell>

@@ -19,6 +19,8 @@ import { useTasks, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads";
 import { usePipelineHistory } from "@/hooks/use-pipeline-history";
 import { fmtDate, fmtDateTime, fmtMoney, stageLabel } from "@/lib/db";
+import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
+import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),
@@ -27,18 +29,6 @@ export const Route = createFileRoute("/leads/$leadId")({
 
 const tabs = ["Overview", "Conversations", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
 
-const intelligenceSections = [
-  "AI Summary",
-  "Motivations",
-  "Objections",
-  "Urgency",
-  "Budget Signals",
-  "Decision Factors",
-  "Risks",
-  "Recommended Next Action",
-  "Suggested Follow-Up",
-  "Evidence",
-];
 
 function LeadProfilePage() {
   const { leadId } = Route.useParams();
@@ -53,6 +43,8 @@ function LeadProfilePage() {
   const { data: tasks = [] } = useTasks({ leadId });
   const { data: files = [] } = useUploads({ leadId });
   const { data: history = [] } = usePipelineHistory(leadId);
+  const { data: analyses = [] } = useLeadAnalyses(leadId);
+  const analyseMut = useAnalyseLead();
   const deleteInteraction = useDeleteInteraction();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
@@ -67,6 +59,17 @@ function LeadProfilePage() {
 
   const agent = team.find((t) => t.id === lead.assigned_agent_id);
   const initials = lead.full_name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+  const currentAnalysis = analyses.find((a) => a.status === "completed");
+  const processingAnalysis = analyses.find((a) => a.status === "processing");
+  const intentScore = (currentAnalysis?.output_json as any)?.intentScore ?? null;
+  const isAnalysing = analyseMut.isPending || !!processingAnalysis;
+  const handleAnalyse = async () => {
+    try {
+      const res = await analyseMut.mutateAsync(lead.id);
+      if (res.status === "completed") { toast.success("Analysis complete"); setTab("Buyer Intelligence"); }
+      else toast.error(res.error || "Analysis failed");
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   return (
     <AppShell>
@@ -84,7 +87,7 @@ function LeadProfilePage() {
               <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <PipelineStageBadge stage={stageLabel(lead.pipeline_stage)} />
-                <IntentScore score={null} />
+                <IntentScore score={intentScore} />
                 <span className="text-xs text-muted-foreground">{agent?.full_name ?? "Unassigned agent"}</span>
               </div>
             </div>
@@ -104,8 +107,8 @@ function LeadProfilePage() {
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>
-            <Button size="sm" disabled title="AI analysis required">
-              <Sparkles className="h-3.5 w-3.5" /> Analyse Lead
+            <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
+              <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing…" : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
             </Button>
           </div>
         </div>
@@ -201,16 +204,7 @@ function LeadProfilePage() {
         <EmptyState compact title="Property interests" description="Link properties to this lead from the Properties page." />
       )}
 
-      {tab === "Buyer Intelligence" && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {intelligenceSections.map((s) => (
-            <Card key={s}>
-              <h4 className="text-sm font-semibold text-foreground">{s}</h4>
-              <p className="mt-2 text-xs text-muted-foreground">Not analysed yet. AI analysis required.</p>
-            </Card>
-          ))}
-        </div>
-      )}
+      {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
 
       {tab === "Files" && (
         <div className="space-y-3">

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
 import { useLeads } from "@/hooks/use-leads";
 import { useInteractions } from "@/hooks/use-interactions";
+import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ function OverviewPage() {
   const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
+  const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
 
   const activeLeads = leads.filter((l) => l.status === "active");
   const pipelineValue = activeLeads
@@ -38,6 +40,14 @@ function OverviewPage() {
   const recentLeads = activeLeads.slice(0, 7);
   const recentInteractions = interactions.slice(0, 5);
   const currency = activeLeads[0]?.currency ?? "QAR";
+
+  // Newest completed analysis per lead
+  const currentByLead = new Map<string, any>();
+  for (const a of completedAnalyses) if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
+  const currents = Array.from(currentByLead.values());
+  const hotCount = currents.filter((a) => a.output_json?.buyerStatus === "hot").length;
+  const highIntentCount = currents.filter((a) => (a.output_json?.intentScore ?? 0) >= 70).length;
+  const atRiskCount = currents.filter((a) => a.output_json?.buyerStatus === "at_risk").length;
 
   return (
     <AppShell>
@@ -82,9 +92,9 @@ function OverviewPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <MetricCard label="Hot Leads" value="—" tone="purple" icon={<Flame className="h-4 w-4" />} />
-          <MetricCard label="High Intent" value="—" tone="green" icon={<Target className="h-4 w-4" />} />
-          <MetricCard label="At Risk" value="—" tone="cream" icon={<AlertTriangle className="h-4 w-4" />} />
+          <MetricCard label="Hot Leads" value={String(hotCount)} tone="purple" icon={<Flame className="h-4 w-4" />} />
+          <MetricCard label="High Intent" value={String(highIntentCount)} tone="green" icon={<Target className="h-4 w-4" />} />
+          <MetricCard label="At Risk" value={String(atRiskCount)} tone="cream" icon={<AlertTriangle className="h-4 w-4" />} />
           <MetricCard label="New Leads" value={String(newLeadsCount)} tone="blue" icon={<UserPlus className="h-4 w-4" />} />
         </div>
       </div>

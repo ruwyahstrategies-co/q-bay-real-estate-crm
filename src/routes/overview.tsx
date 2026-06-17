@@ -92,9 +92,9 @@ function OverviewPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <MetricCard label="Hot Leads" value="—" tone="purple" icon={<Flame className="h-4 w-4" />} />
-          <MetricCard label="High Intent" value="—" tone="green" icon={<Target className="h-4 w-4" />} />
-          <MetricCard label="At Risk" value="—" tone="cream" icon={<AlertTriangle className="h-4 w-4" />} />
+          <MetricCard label="Hot Leads" value={String(hotCount)} tone="purple" icon={<Flame className="h-4 w-4" />} />
+          <MetricCard label="High Intent" value={String(highIntentCount)} tone="green" icon={<Target className="h-4 w-4" />} />
+          <MetricCard label="At Risk" value={String(atRiskCount)} tone="cream" icon={<AlertTriangle className="h-4 w-4" />} />
           <MetricCard label="New Leads" value={String(newLeadsCount)} tone="blue" icon={<UserPlus className="h-4 w-4" />} />
         </div>
       </div>

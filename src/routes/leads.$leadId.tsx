@@ -59,6 +59,17 @@ function LeadProfilePage() {
 
   const agent = team.find((t) => t.id === lead.assigned_agent_id);
   const initials = lead.full_name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+  const currentAnalysis = analyses.find((a) => a.status === "completed");
+  const processingAnalysis = analyses.find((a) => a.status === "processing");
+  const intentScore = (currentAnalysis?.output_json as any)?.intentScore ?? null;
+  const isAnalysing = analyseMut.isPending || !!processingAnalysis;
+  const handleAnalyse = async () => {
+    try {
+      const res = await analyseMut.mutateAsync(lead.id);
+      if (res.status === "completed") { toast.success("Analysis complete"); setTab("Buyer Intelligence"); }
+      else toast.error(res.error || "Analysis failed");
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   return (
     <AppShell>

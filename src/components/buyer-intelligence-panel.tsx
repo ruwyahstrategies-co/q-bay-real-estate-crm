@@ -142,7 +142,7 @@ function AnalysisView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) 
     if (stageMatches) return;
     try {
       await changeStage.mutateAsync({
-        leadId: lead.id, newStage: out.recommendedPipelineStage as any, previousStage: lead.pipeline_stage,
+        id: lead.id, newStage: out.recommendedPipelineStage, previousStage: lead.pipeline_stage,
       });
       toast.success(`Moved to ${stageLabel(out.recommendedPipelineStage)}`);
     } catch (e) { toast.error((e as Error).message); }

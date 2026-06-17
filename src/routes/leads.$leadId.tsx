@@ -29,18 +29,6 @@ export const Route = createFileRoute("/leads/$leadId")({
 
 const tabs = ["Overview", "Conversations", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
 
-const intelligenceSections = [
-  "AI Summary",
-  "Motivations",
-  "Objections",
-  "Urgency",
-  "Budget Signals",
-  "Decision Factors",
-  "Risks",
-  "Recommended Next Action",
-  "Suggested Follow-Up",
-  "Evidence",
-];
 
 function LeadProfilePage() {
   const { leadId } = Route.useParams();

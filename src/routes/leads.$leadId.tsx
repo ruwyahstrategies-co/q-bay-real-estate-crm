@@ -87,7 +87,7 @@ function LeadProfilePage() {
               <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <PipelineStageBadge stage={stageLabel(lead.pipeline_stage)} />
-                <IntentScore score={null} />
+                <IntentScore score={intentScore} />
                 <span className="text-xs text-muted-foreground">{agent?.full_name ?? "Unassigned agent"}</span>
               </div>
             </div>

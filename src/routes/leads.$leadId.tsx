@@ -191,16 +191,7 @@ function LeadProfilePage() {
         <EmptyState compact title="Property interests" description="Link properties to this lead from the Properties page." />
       )}
 
-      {tab === "Buyer Intelligence" && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {intelligenceSections.map((s) => (
-            <Card key={s}>
-              <h4 className="text-sm font-semibold text-foreground">{s}</h4>
-              <p className="mt-2 text-xs text-muted-foreground">Not analysed yet. AI analysis required.</p>
-            </Card>
-          ))}
-        </div>
-      )}
+      {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
 
       {tab === "Files" && (
         <div className="space-y-3">

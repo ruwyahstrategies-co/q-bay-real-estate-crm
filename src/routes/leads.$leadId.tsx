@@ -43,6 +43,8 @@ function LeadProfilePage() {
   const { data: tasks = [] } = useTasks({ leadId });
   const { data: files = [] } = useUploads({ leadId });
   const { data: history = [] } = usePipelineHistory(leadId);
+  const { data: analyses = [] } = useLeadAnalyses(leadId);
+  const analyseMut = useAnalyseLead();
   const deleteInteraction = useDeleteInteraction();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();

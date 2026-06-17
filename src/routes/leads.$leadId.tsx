@@ -19,6 +19,8 @@ import { useTasks, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads";
 import { usePipelineHistory } from "@/hooks/use-pipeline-history";
 import { fmtDate, fmtDateTime, fmtMoney, stageLabel } from "@/lib/db";
+import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
+import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),

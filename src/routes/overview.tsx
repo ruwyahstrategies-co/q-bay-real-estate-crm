@@ -9,6 +9,7 @@ import { Button } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
 import { useLeads } from "@/hooks/use-leads";
 import { useInteractions } from "@/hooks/use-interactions";
+import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
 

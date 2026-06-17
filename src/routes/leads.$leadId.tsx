@@ -107,8 +107,8 @@ function LeadProfilePage() {
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>
-            <Button size="sm" disabled title="AI analysis required">
-              <Sparkles className="h-3.5 w-3.5" /> Analyse Lead
+            <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
+              <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing…" : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
             </Button>
           </div>
         </div>

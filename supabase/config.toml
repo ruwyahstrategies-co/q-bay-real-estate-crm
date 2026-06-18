@@ -2,3 +2,12 @@ project_id = "estwydlkunvasupmzaqt"
 
 [functions.analyze-lead]
 verify_jwt = false
+
+[functions.web-search]
+verify_jwt = false
+
+[functions.scan-property-mentions]
+verify_jwt = false
+
+[functions.market-intelligence]
+verify_jwt = false

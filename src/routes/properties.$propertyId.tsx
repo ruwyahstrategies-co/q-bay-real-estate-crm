@@ -12,6 +12,7 @@ import { sb, fmtMoney } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
 import { useDeleteUpload, getSignedPreviewUrl } from "@/hooks/use-uploads";
+import { useRecordPropertyEvent } from "@/hooks/use-property-events";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),
@@ -25,6 +26,18 @@ function PropertyDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const qc = useQueryClient();
   const deleteUpload = useDeleteUpload();
+  const recordEvent = useRecordPropertyEvent();
+
+  // Record a 'view' event once per session per day per property
+  useEffect(() => {
+    if (!propertyId || typeof window === "undefined") return;
+    const key = `prop-view:${propertyId}:${new Date().toDateString()}`;
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, "1");
+      recordEvent.mutate({ property_id: propertyId, event_type: "view", source: "web" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId]);
 
   async function handleMediaUploaded(uploadId: string) {
     const { error } = await sb.from("property_media").insert({

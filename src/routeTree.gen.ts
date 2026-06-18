@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadsRouteImport } from './routes/uploads'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PropertyDemandRouteImport } from './routes/property-demand'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-intelligence'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as AiReceptionistRouteImport } from './routes/ai-receptionist'
@@ -40,6 +42,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropertyDemandRoute = PropertyDemandRouteImport.update({
+  id: '/property-demand',
+  path: '/property-demand',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
@@ -53,6 +60,11 @@ const PipelineRoute = PipelineRouteImport.update({
 const OverviewRoute = OverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingIntelligenceRoute = MarketingIntelligenceRouteImport.update({
+  id: '/marketing-intelligence',
+  path: '/marketing-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -107,9 +119,11 @@ export interface FileRoutesByFullPath {
   '/ai-receptionist': typeof AiReceptionistRoute
   '/conversations': typeof ConversationsRoute
   '/leads': typeof LeadsRouteWithChildren
+  '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/overview': typeof OverviewRoute
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
+  '/property-demand': typeof PropertyDemandRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
   '/uploads': typeof UploadsRoute
@@ -123,8 +137,10 @@ export interface FileRoutesByTo {
   '/ai-insights': typeof AiInsightsRoute
   '/ai-receptionist': typeof AiReceptionistRoute
   '/conversations': typeof ConversationsRoute
+  '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/overview': typeof OverviewRoute
   '/pipeline': typeof PipelineRoute
+  '/property-demand': typeof PropertyDemandRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
   '/uploads': typeof UploadsRoute
@@ -140,9 +156,11 @@ export interface FileRoutesById {
   '/ai-receptionist': typeof AiReceptionistRoute
   '/conversations': typeof ConversationsRoute
   '/leads': typeof LeadsRouteWithChildren
+  '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/overview': typeof OverviewRoute
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
+  '/property-demand': typeof PropertyDemandRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
   '/uploads': typeof UploadsRoute
@@ -159,9 +177,11 @@ export interface FileRouteTypes {
     | '/ai-receptionist'
     | '/conversations'
     | '/leads'
+    | '/marketing-intelligence'
     | '/overview'
     | '/pipeline'
     | '/properties'
+    | '/property-demand'
     | '/settings'
     | '/team'
     | '/uploads'
@@ -175,8 +195,10 @@ export interface FileRouteTypes {
     | '/ai-insights'
     | '/ai-receptionist'
     | '/conversations'
+    | '/marketing-intelligence'
     | '/overview'
     | '/pipeline'
+    | '/property-demand'
     | '/settings'
     | '/team'
     | '/uploads'
@@ -191,9 +213,11 @@ export interface FileRouteTypes {
     | '/ai-receptionist'
     | '/conversations'
     | '/leads'
+    | '/marketing-intelligence'
     | '/overview'
     | '/pipeline'
     | '/properties'
+    | '/property-demand'
     | '/settings'
     | '/team'
     | '/uploads'
@@ -209,9 +233,11 @@ export interface RootRouteChildren {
   AiReceptionistRoute: typeof AiReceptionistRoute
   ConversationsRoute: typeof ConversationsRoute
   LeadsRoute: typeof LeadsRouteWithChildren
+  MarketingIntelligenceRoute: typeof MarketingIntelligenceRoute
   OverviewRoute: typeof OverviewRoute
   PipelineRoute: typeof PipelineRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
+  PropertyDemandRoute: typeof PropertyDemandRoute
   SettingsRoute: typeof SettingsRoute
   TeamRoute: typeof TeamRoute
   UploadsRoute: typeof UploadsRoute
@@ -240,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/property-demand': {
+      id: '/property-demand'
+      path: '/property-demand'
+      fullPath: '/property-demand'
+      preLoaderRoute: typeof PropertyDemandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/properties': {
       id: '/properties'
       path: '/properties'
@@ -259,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/overview'
       preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing-intelligence': {
+      id: '/marketing-intelligence'
+      path: '/marketing-intelligence'
+      fullPath: '/marketing-intelligence'
+      preLoaderRoute: typeof MarketingIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -359,9 +399,11 @@ const rootRouteChildren: RootRouteChildren = {
   AiReceptionistRoute: AiReceptionistRoute,
   ConversationsRoute: ConversationsRoute,
   LeadsRoute: LeadsRouteWithChildren,
+  MarketingIntelligenceRoute: MarketingIntelligenceRoute,
   OverviewRoute: OverviewRoute,
   PipelineRoute: PipelineRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
+  PropertyDemandRoute: PropertyDemandRoute,
   SettingsRoute: SettingsRoute,
   TeamRoute: TeamRoute,
   UploadsRoute: UploadsRoute,

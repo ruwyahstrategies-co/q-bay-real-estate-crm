@@ -115,6 +115,57 @@ export type Database = {
           },
         ]
       }
+      external_market_sources: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          price_info: Json | null
+          publisher: string | null
+          query: string | null
+          raw: Json | null
+          relevant_locations: string[]
+          relevant_property_types: string[]
+          retrieved_at: string
+          summary: string | null
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          price_info?: Json | null
+          publisher?: string | null
+          query?: string | null
+          raw?: Json | null
+          relevant_locations?: string[]
+          relevant_property_types?: string[]
+          retrieved_at?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          price_info?: Json | null
+          publisher?: string | null
+          query?: string | null
+          raw?: Json | null
+          relevant_locations?: string[]
+          relevant_property_types?: string[]
+          retrieved_at?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       interactions: {
         Row: {
           content: string | null
@@ -342,6 +393,51 @@ export type Database = {
           },
         ]
       }
+      market_intelligence_reports: {
+        Row: {
+          conversation_count: number
+          created_at: string
+          error_message: string | null
+          id: string
+          input_snapshot: Json | null
+          label: string
+          lead_count: number
+          model: string | null
+          output_json: Json | null
+          source_ids: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_count?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_snapshot?: Json | null
+          label?: string
+          lead_count?: number
+          model?: string | null
+          output_json?: Json | null
+          source_ids?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_count?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_snapshot?: Json | null
+          label?: string
+          lead_count?: number
+          model?: string | null
+          output_json?: Json | null
+          source_ids?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       organisations: {
         Row: {
           created_at: string
@@ -499,6 +595,60 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          occurred_at: string
+          property_id: string | null
+          source: string | null
+          source_ref: string | null
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          occurred_at?: string
+          property_id?: string | null
+          source?: string | null
+          source_ref?: string | null
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          occurred_at?: string
+          property_id?: string | null
+          source?: string | null
+          source_ref?: string | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]

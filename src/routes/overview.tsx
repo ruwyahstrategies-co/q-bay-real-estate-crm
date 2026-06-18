@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity, BarChart3, Megaphone } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui-primitives";
+import { Button, Card } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
 import { useLeads } from "@/hooks/use-leads";
 import { useInteractions } from "@/hooks/use-interactions";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
+import { usePropertyEvents } from "@/hooks/use-property-events";
+import { useProperties } from "@/hooks/use-properties";
+import { useMarketReports } from "@/hooks/use-market-intelligence";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +33,12 @@ function OverviewPage() {
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
+  const { data: properties = [] } = useProperties({ status: "all" });
+  const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(), []);
+  const { data: events = [] } = usePropertyEvents(sinceISO);
+  const { data: reports = [] } = useMarketReports();
+
+  const propertyById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
 
   const activeLeads = leads.filter((l) => l.status === "active");
   const pipelineValue = activeLeads
@@ -48,6 +57,41 @@ function OverviewPage() {
   const hotCount = currents.filter((a) => a.output_json?.buyerStatus === "hot").length;
   const highIntentCount = currents.filter((a) => (a.output_json?.intentScore ?? 0) >= 70).length;
   const atRiskCount = currents.filter((a) => a.output_json?.buyerStatus === "at_risk").length;
+
+  // Demand signals
+  const demandAgg = useMemo(() => {
+    const perProp = new Map<string, { views: number; mentions: number; loc: string | null; type: string | null; score: number }>();
+    const locCounts = new Map<string, number>();
+    const typeCounts = new Map<string, number>();
+    let topPriceOp: { pid: string; signal: number } | null = null;
+    for (const e of events) {
+      if (!e.property_id) continue;
+      const p = propertyById.get(e.property_id);
+      if (!p) continue;
+      const cur = perProp.get(e.property_id) ?? { views: 0, mentions: 0, loc: p.location, type: p.property_type, score: 0 };
+      cur.score += Number(e.weight ?? 1);
+      if (e.event_type === "view") cur.views++;
+      if (e.event_type === "mention") cur.mentions++;
+      perProp.set(e.property_id, cur);
+      if (p.location) locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
+      if (p.property_type) typeCounts.set(p.property_type, (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1));
+      const isStrong = ["enquiry","viewing_request","offer","shortlist"].includes(e.event_type);
+      if (isStrong) {
+        const cur2 = topPriceOp;
+        const sig = cur.score;
+        if (!cur2 || sig > cur2.signal) topPriceOp = { pid: e.property_id, signal: sig };
+      }
+    }
+    const arr = Array.from(perProp.entries());
+    const topViewed = arr.sort((a, b) => b[1].views - a[1].views)[0];
+    const topMentioned = arr.sort((a, b) => b[1].mentions - a[1].mentions)[0];
+    const topLoc = Array.from(locCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+    const topType = Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+    return { topViewed, topMentioned, topLoc, topType, topPriceOp };
+  }, [events, propertyById]);
+
+  const latestReport = reports.find((r) => r.status === "completed");
+  const reportOut = latestReport?.output_json;
 
   return (
     <AppShell>
@@ -164,6 +208,62 @@ function OverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* Demand & Marketing signals */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <h3 className="text-[15px] font-semibold">Demand Signals</h3>
+            </div>
+            <Link to="/property-demand"><Button variant="outline" size="sm">Open<ArrowRight className="h-3 w-3" /></Button></Link>
+          </div>
+          {events.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No property activity yet. Open property pages or import conversations to start tracking.</p>
+          ) : (
+            <ul className="space-y-1.5 text-xs">
+              <SignalRow label="Most viewed" value={demandAgg.topViewed ? propertyById.get(demandAgg.topViewed[0])?.title : null} extra={demandAgg.topViewed ? `${demandAgg.topViewed[1].views} views` : ""} />
+              <SignalRow label="Most mentioned" value={demandAgg.topMentioned ? propertyById.get(demandAgg.topMentioned[0])?.title : null} extra={demandAgg.topMentioned ? `${demandAgg.topMentioned[1].mentions} mentions` : ""} />
+              <SignalRow label="Top location" value={demandAgg.topLoc?.[0] ?? null} />
+              <SignalRow label="Top property type" value={demandAgg.topType?.[0] ?? null} />
+              <SignalRow label="Strongest pricing opportunity" value={demandAgg.topPriceOp ? propertyById.get(demandAgg.topPriceOp.pid)?.title : null} />
+            </ul>
+          )}
+        </Card>
+
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Megaphone className="h-4 w-4" />
+              <h3 className="text-[15px] font-semibold">Marketing Signals</h3>
+            </div>
+            <Link to="/marketing-intelligence"><Button variant="outline" size="sm">Open<ArrowRight className="h-3 w-3" /></Button></Link>
+          </div>
+          {!reportOut ? (
+            <p className="text-xs text-muted-foreground">No marketing intelligence report yet. Generate one to see patterns here.</p>
+          ) : (
+            <ul className="space-y-1.5 text-xs">
+              <SignalRow label="Top buyer concern" value={reportOut.commonObjections?.[0]?.objection ?? null} />
+              <SignalRow label="Emerging demand" value={reportOut.growingInterest?.[0]?.topic ?? null} />
+              <SignalRow label="Latest positioning" value={reportOut.positioningImprovements?.[0]?.finding ?? null} />
+              <SignalRow label="Latest campaign idea" value={reportOut.marketingIdeas?.[0]?.topic ?? null} />
+            </ul>
+          )}
+        </Card>
+      </div>
     </AppShell>
+  );
+}
+
+function SignalRow({ label, value, extra }: { label: string; value: string | null | undefined; extra?: string }) {
+  return (
+    <li className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="truncate text-right text-foreground/90">
+        {value ?? <span className="text-muted-foreground">—</span>}
+        {extra && <span className="ml-1 text-[10px] text-muted-foreground">({extra})</span>}
+      </span>
+    </li>
   );
 }

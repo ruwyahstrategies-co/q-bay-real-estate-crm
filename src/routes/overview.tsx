@@ -33,6 +33,12 @@ function OverviewPage() {
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
+  const { data: properties = [] } = useProperties({ status: "all" });
+  const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(), []);
+  const { data: events = [] } = usePropertyEvents(sinceISO);
+  const { data: reports = [] } = useMarketReports();
+
+  const propertyById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
 
   const activeLeads = leads.filter((l) => l.status === "active");
   const pipelineValue = activeLeads

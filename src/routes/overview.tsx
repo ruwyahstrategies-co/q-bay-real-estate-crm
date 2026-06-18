@@ -58,6 +58,41 @@ function OverviewPage() {
   const highIntentCount = currents.filter((a) => (a.output_json?.intentScore ?? 0) >= 70).length;
   const atRiskCount = currents.filter((a) => a.output_json?.buyerStatus === "at_risk").length;
 
+  // Demand signals
+  const demandAgg = useMemo(() => {
+    const perProp = new Map<string, { views: number; mentions: number; loc: string | null; type: string | null; score: number }>();
+    const locCounts = new Map<string, number>();
+    const typeCounts = new Map<string, number>();
+    let topPriceOp: { pid: string; signal: number } | null = null;
+    for (const e of events) {
+      if (!e.property_id) continue;
+      const p = propertyById.get(e.property_id);
+      if (!p) continue;
+      const cur = perProp.get(e.property_id) ?? { views: 0, mentions: 0, loc: p.location, type: p.property_type, score: 0 };
+      cur.score += Number(e.weight ?? 1);
+      if (e.event_type === "view") cur.views++;
+      if (e.event_type === "mention") cur.mentions++;
+      perProp.set(e.property_id, cur);
+      if (p.location) locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
+      if (p.property_type) typeCounts.set(p.property_type, (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1));
+      const isStrong = ["enquiry","viewing_request","offer","shortlist"].includes(e.event_type);
+      if (isStrong) {
+        const cur2 = topPriceOp;
+        const sig = cur.score;
+        if (!cur2 || sig > cur2.signal) topPriceOp = { pid: e.property_id, signal: sig };
+      }
+    }
+    const arr = Array.from(perProp.entries());
+    const topViewed = arr.sort((a, b) => b[1].views - a[1].views)[0];
+    const topMentioned = arr.sort((a, b) => b[1].mentions - a[1].mentions)[0];
+    const topLoc = Array.from(locCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+    const topType = Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+    return { topViewed, topMentioned, topLoc, topType, topPriceOp };
+  }, [events, propertyById]);
+
+  const latestReport = reports.find((r) => r.status === "completed");
+  const reportOut = latestReport?.output_json;
+
   return (
     <AppShell>
       <p className="mb-3 text-[13px] font-medium text-muted-foreground">Buyer Intelligence</p>

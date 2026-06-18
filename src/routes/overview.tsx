@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity, BarChart3, Megaphone } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui-primitives";
+import { Button, Card } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
 import { useLeads } from "@/hooks/use-leads";
 import { useInteractions } from "@/hooks/use-interactions";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
+import { usePropertyEvents } from "@/hooks/use-property-events";
+import { useProperties } from "@/hooks/use-properties";
+import { useMarketReports } from "@/hooks/use-market-intelligence";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
 

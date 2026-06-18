@@ -11,7 +11,8 @@ import {
   PhoneCall,
   Settings,
   LogOut,
-
+  BarChart3,
+  Megaphone,
 } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,8 @@ const navItems: NavItem[] = [
   { to: "/uploads", label: "Uploads", icon: Upload },
   { to: "/ai-insights", label: "AI Insights", icon: Sparkles },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+  { to: "/property-demand", label: "Property Demand", icon: BarChart3 },
+  { to: "/marketing-intelligence", label: "Marketing Intelligence", icon: Megaphone },
   { to: "/team", label: "Team", icon: UserCog },
   { to: "/ai-receptionist", label: "AI Receptionist", icon: PhoneCall },
   { to: "/settings", label: "Settings", icon: Settings },

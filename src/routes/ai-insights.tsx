@@ -28,27 +28,28 @@ function AIInsightsPage() {
   const totalAnalysed = currentByLead.length;
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
-  const hot = currentByLead.filter((a) => a.output_json?.buyerStatus === "hot");
-  const atRisk = currentByLead.filter((a) => a.output_json?.buyerStatus === "at_risk");
-  const highIntent = currentByLead.filter((a) => (a.output_json?.intentScore ?? 0) >= 70);
-  const highUrgency = currentByLead.filter((a) => a.output_json?.urgency?.level === "high");
+  const getStatus = (a: any) => a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
+  const getIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  const getUrgency = (a: any) => a.output_json?.deep_analysis?.urgency ?? a.output_json?.urgency?.level;
 
-  const objections = aggregateCounts(
-    currentByLead.flatMap((a) => (a.output_json?.objections ?? []).map((o: any) => o.label)),
-  );
-  const motivations = aggregateCounts(
-    currentByLead.flatMap((a) => (a.output_json?.motivations ?? []).map((m: any) => m.label)),
-  );
-  const locations = aggregateCounts(
-    currentByLead.flatMap((a) => a.output_json?.propertyMatchingCriteria?.locations ?? []),
-  );
-  const propertyTypes = aggregateCounts(
-    currentByLead.flatMap((a) => a.output_json?.propertyMatchingCriteria?.propertyTypes ?? []),
-  );
-  const recommendedStages = aggregateCounts(
-    currentByLead.map((a) => a.output_json?.recommendedPipelineStage).filter(Boolean),
-  );
-  const missingCritical = currentByLead.filter((a) => (a.output_json?.missingInformation?.length ?? 0) >= 2);
+  const hot = currentByLead.filter((a) => getStatus(a) === "hot");
+  const atRisk = currentByLead.filter((a) => getStatus(a) === "at_risk");
+  const highIntent = currentByLead.filter((a) => getIntent(a) >= 70);
+  const highUrgency = currentByLead.filter((a) => {
+    const u = getUrgency(a); return typeof u === "string" && /high|urgent|asap|immediate/i.test(u);
+  });
+
+  const painConcerns = (a: any) =>
+    (a.output_json?.pain_points ?? []).map((p: any) => p.concern).filter(Boolean);
+  const motiveLabels = (a: any) =>
+    (a.output_json?.deep_analysis?.motivations ?? a.output_json?.motivations ?? []).map((m: any) => m.label).filter(Boolean);
+
+  const objections = aggregateCounts(currentByLead.flatMap(painConcerns));
+  const motivations = aggregateCounts(currentByLead.flatMap(motiveLabels));
+  const locations = aggregateCounts(currentByLead.flatMap((a) => a.output_json?.buyer_summary?.preferred_locations ?? a.output_json?.propertyMatchingCriteria?.locations ?? []));
+  const propertyTypes = aggregateCounts(currentByLead.flatMap((a) => [a.output_json?.buyer_summary?.property_type].filter(Boolean)));
+  const recommendedStages = aggregateCounts(currentByLead.map((a) => a.output_json?.buyer_summary?.pipeline_stage ?? a.output_json?.recommendedPipelineStage).filter(Boolean));
+  const missingCritical = currentByLead.filter((a) => (a.output_json?.wants?.missing_info?.length ?? a.output_json?.missingInformation?.length ?? 0) >= 2);
 
   if (isLoading) {
     return <AppShell><EmptyState title="Loading insights…" /></AppShell>;
@@ -85,10 +86,10 @@ function AIInsightsPage() {
         <LeadGroupCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="At risk" rows={atRisk} leadById={leadById} emptyMsg="No at-risk leads." />
         <LeadGroupCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="High urgency" rows={highUrgency} leadById={leadById} emptyMsg="No high-urgency leads." />
 
-        <CountCard title="Common objections" entries={objections} threshold={3} />
-        <CountCard title="Common motivations" entries={motivations} threshold={3} />
-        <CountCard title="Preferred locations" entries={locations} threshold={3} />
-        <CountCard title="Property type demand" entries={propertyTypes} threshold={3} />
+        <CountCard title="Common pain points" entries={objections} threshold={1} />
+        <CountCard title="Common motivations" entries={motivations} threshold={1} />
+        <CountCard title="Preferred locations" entries={locations} threshold={1} />
+        <CountCard title="Property type demand" entries={propertyTypes} threshold={1} />
         <CountCard title="Recommended pipeline stages" entries={recommendedStages} threshold={0} labelMap={stageLabel} />
 
         <Card>
@@ -102,12 +103,13 @@ function AIInsightsPage() {
             <ul className="space-y-1 text-xs">
               {missingCritical.slice(0, 8).map((a) => {
                 const lead = leadById.get(a.lead_id);
+                const gaps = a.output_json?.wants?.missing_info?.length ?? a.output_json?.missingInformation?.length ?? 0;
                 return (
                   <li key={a.id}>
                     <Link to="/leads/$leadId" params={{ leadId: a.lead_id }} className="hover:underline">
                       {lead?.full_name ?? a.lead_id}
                     </Link>
-                    <span className="text-muted-foreground"> · {a.output_json?.missingInformation?.length} gaps</span>
+                    <span className="text-muted-foreground"> · {gaps} gaps</span>
                   </li>
                 );
               })}
@@ -153,7 +155,7 @@ function LeadGroupCard({
                   {lead?.full_name ?? a.lead_id}
                 </Link>
                 {showIntent && (
-                  <span className="text-muted-foreground">Intent {a.output_json?.intentScore}</span>
+                  <span className="text-muted-foreground">Intent {a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? "—"}</span>
                 )}
               </li>
             );

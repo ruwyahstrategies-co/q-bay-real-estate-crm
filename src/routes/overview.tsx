@@ -54,9 +54,11 @@ function OverviewPage() {
   const currentByLead = new Map<string, any>();
   for (const a of completedAnalyses) if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
   const currents = Array.from(currentByLead.values());
-  const hotCount = currents.filter((a) => a.output_json?.buyerStatus === "hot").length;
-  const highIntentCount = currents.filter((a) => (a.output_json?.intentScore ?? 0) >= 70).length;
-  const atRiskCount = currents.filter((a) => a.output_json?.buyerStatus === "at_risk").length;
+  const getStatus = (a: any) => a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
+  const getIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  const hotCount = currents.filter((a) => getStatus(a) === "hot").length;
+  const highIntentCount = currents.filter((a) => getIntent(a) >= 70).length;
+  const atRiskCount = currents.filter((a) => getStatus(a) === "at_risk").length;
 
   // Demand signals
   const demandAgg = useMemo(() => {
@@ -244,10 +246,10 @@ function OverviewPage() {
             <p className="text-xs text-muted-foreground">No marketing intelligence report yet. Generate one to see patterns here.</p>
           ) : (
             <ul className="space-y-1.5 text-xs">
-              <SignalRow label="Top buyer concern" value={reportOut.commonObjections?.[0]?.objection ?? null} />
-              <SignalRow label="Emerging demand" value={reportOut.growingInterest?.[0]?.topic ?? null} />
-              <SignalRow label="Latest positioning" value={reportOut.positioningImprovements?.[0]?.finding ?? null} />
-              <SignalRow label="Latest campaign idea" value={reportOut.marketingIdeas?.[0]?.topic ?? null} />
+              <SignalRow label="Top buyer signal" value={(reportOut as any).buyer_language?.[0]?.finding ?? null} />
+              <SignalRow label="Brand gap" value={(reportOut as any).brand_gaps?.[0]?.gap ?? null} />
+              <SignalRow label="Recommended direction" value={(reportOut as any).recommended_direction ?? null} />
+              <SignalRow label="Top campaign idea" value={(reportOut as any).campaign_ideas?.[0]?.angle ?? null} />
             </ul>
           )}
         </Card>

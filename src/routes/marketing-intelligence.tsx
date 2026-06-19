@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Megaphone, Sparkles, Globe, ExternalLink, ChevronDown, ChevronUp, Search, Save, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -187,7 +187,7 @@ function BrandProfileSection() {
     brand_name: "", website: "", social_handles: [], location: "", services: [], competitors: [],
   });
   // hydrate when existing loads
-  useMemo(() => { if (existing) setProfile(existing); }, [existing]);
+  useEffect(() => { if (existing) setProfile(existing); }, [existing]);
 
   const update = <K extends keyof BrandProfile>(k: K, v: BrandProfile[K]) => setProfile((p) => ({ ...p, [k]: v }));
 

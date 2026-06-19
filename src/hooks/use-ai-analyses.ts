@@ -4,39 +4,56 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type AIAnalysis = Database["public"]["Tables"]["ai_analyses"]["Row"];
 
-export type BuyerAnalysisOutput = {
-  summary: string;
-  intentScore: number;
-  confidenceScore: number;
-  recommendedPipelineStage: string;
-  buyerStatus: "cold" | "warm" | "hot" | "at_risk" | "unclear";
-  motivations: { label: string; explanation: string; confidence: number; evidenceReferences: string[] }[];
-  objections: { label: string; severity: "low"|"medium"|"high"; explanation: string; recommendedResponse: string; evidenceReferences: string[] }[];
-  urgency: { level: "low"|"medium"|"high"|"unknown"; explanation: string; evidenceReferences: string[] };
-  budgetSignals: { strength: "weak"|"moderate"|"strong"|"unknown"; explanation: string; evidenceReferences: string[] };
-  decisionFactors: { factor: string; importance: "low"|"medium"|"high"; evidenceReferences: string[] }[];
-  risks: { risk: string; severity: "low"|"medium"|"high"; explanation: string; recommendedAction: string; evidenceReferences: string[] }[];
-  propertyMatchingCriteria: {
-    locations: string[]; propertyTypes: string[]; bedrooms: number[];
-    budgetMinimum: number | null; budgetMaximum: number | null; currency: string | null;
-    completionStatus: string[]; mustHaveFeatures: string[]; preferredFeatures: string[]; avoidFeatures: string[];
+export type SalesIntelligenceOutput = {
+  buyer_summary: {
+    buyer_type: string;
+    budget: string;
+    preferred_locations: string[];
+    property_type: string;
+    timeline: string;
+    financing: string;
+    pipeline_stage: string;
+    main_motivation: string;
   };
-  nextBestActions: { priority: number; action: string; reason: string; recommendedTiming: string; relatedLeadId: string | null; relatedPropertyId: string | null }[];
-  followUpDraft: { channel: "whatsapp"|"email"|"phone"|"meeting"; message: string; objective: string; tone: string };
-  missingInformation: { field: string; reason: string; suggestedQuestion: string }[];
-  evidenceSummary: { claim: string; sourceReferences: string[] }[];
+  wants: {
+    explicit_requirements: string[];
+    must_haves: string[];
+    preferences: string[];
+    mentioned_properties: { property_id: string | null; label: string; status: "viewed"|"mentioned"|"shortlisted"|"rejected" }[];
+    rejected: string[];
+    missing_info: string[];
+  };
+  sales_playbook: {
+    next_action: string;
+    call_strategy: string;
+    questions: string[];
+    whatsapp_draft: string;
+    email_draft: string;
+    objection_response: string;
+  };
+  pain_points: { concern: string; evidence: string[]; how_to_address: string; what_to_avoid: string }[];
+  property_matches: { property_id: string; match_percent: number; reasons: string[]; conflicts: string[]; price: string; availability: string }[];
+  deep_analysis: {
+    motivations: { label: string; explanation: string; evidence: string[] }[];
+    risks: { label: string; explanation: string; evidence: string[] }[];
+    urgency: string;
+    confidence: number;
+    intent_score: number;
+    buyer_status: "cold"|"warm"|"hot"|"at_risk"|"unclear";
+    summary: string;
+  };
 };
+
+export function isSalesIntelligence(o: any): o is SalesIntelligenceOutput {
+  return !!o && typeof o === "object" && !!o.buyer_summary && !!o.sales_playbook && Array.isArray(o.pain_points);
+}
 
 export function useLeadAnalyses(leadId: string | undefined) {
   return useQuery({
     queryKey: ["ai_analyses", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("ai_analyses")
-        .select("*")
-        .eq("lead_id", leadId!)
-        .order("created_at", { ascending: false });
+      const { data, error } = await sb.from("ai_analyses").select("*").eq("lead_id", leadId!).order("created_at",{ascending:false});
       if (error) throw error;
       return data as AIAnalysis[];
     },
@@ -47,11 +64,7 @@ export function useAllCompletedAnalyses() {
   return useQuery({
     queryKey: ["ai_analyses", "all_completed"],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("ai_analyses")
-        .select("*")
-        .eq("status", "completed")
-        .order("created_at", { ascending: false });
+      const { data, error } = await sb.from("ai_analyses").select("*").eq("status","completed").order("created_at",{ascending:false});
       if (error) throw error;
       return data as AIAnalysis[];
     },
@@ -62,23 +75,17 @@ export function useAnalyseLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (leadId: string) => {
-      const { data, error } = await sb.functions.invoke("analyze-lead", {
-        body: { lead_id: leadId },
-      });
+      const { data, error } = await sb.functions.invoke("analyze-lead", { body: { lead_id: leadId } });
       if (error) {
-        // Try to surface server-provided message
         const ctx: any = (error as any).context;
         let msg = error.message;
         try {
           const txt = ctx && typeof ctx.text === "function" ? await ctx.text() : null;
-          if (txt) {
-            const parsed = JSON.parse(txt);
-            if (parsed?.error) msg = parsed.error;
-          }
+          if (txt) { const p = JSON.parse(txt); if (p?.error) msg = p.error; }
         } catch { /* ignore */ }
         throw new Error(msg);
       }
-      return data as { id: string; status: string; output?: BuyerAnalysisOutput; error?: string };
+      return data as { id: string; status: string; output?: SalesIntelligenceOutput; error?: string };
     },
     onSuccess: (_d, leadId) => {
       qc.invalidateQueries({ queryKey: ["ai_analyses", leadId] });

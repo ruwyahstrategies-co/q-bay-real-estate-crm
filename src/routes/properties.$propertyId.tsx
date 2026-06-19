@@ -13,6 +13,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
 import { useDeleteUpload, getSignedPreviewUrl } from "@/hooks/use-uploads";
 import { useRecordPropertyEvent } from "@/hooks/use-property-events";
+import { usePropertyReferences } from "@/hooks/use-references";
+import { fmtDate } from "@/lib/db";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),
@@ -147,8 +149,57 @@ function PropertyDetailPage() {
         />
       </div>
 
+      <PropertyReferences propertyId={propertyId} />
+
       <PropertyDrawer open={editOpen} onOpenChange={setEditOpen} property={property} />
     </AppShell>
+  );
+}
+
+function PropertyReferences({ propertyId }: { propertyId: string }) {
+  const { data } = usePropertyReferences(propertyId);
+  const interests = (data?.interests ?? []) as any[];
+  const interactions = (data?.interactions ?? []) as any[];
+  if (interests.length === 0 && interactions.length === 0) return null;
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <Card>
+        <h4 className="text-sm font-semibold">Interested leads</h4>
+        {interests.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">No leads linked yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {interests.map((it) => {
+              const lead = it.leads;
+              if (!lead) return null;
+              return (
+                <li key={it.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
+                  <Link to="/leads/$leadId" params={{ leadId: lead.id }} className="hover:underline">{lead.full_name}</Link>
+                  <span className="text-muted-foreground capitalize">{it.interest_level ?? it.status ?? "interested"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+      <Card>
+        <h4 className="text-sm font-semibold">Supporting conversations</h4>
+        {interactions.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">Not mentioned in any conversation yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {interactions.slice(0, 15).map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
+                <Link to="/leads/$leadId" params={{ leadId: i.lead_id }} className="hover:underline">
+                  {i.interaction_type.replace(/_/g," ")} with {i.leads?.full_name ?? "lead"}
+                </Link>
+                <span className="text-muted-foreground">{fmtDate(i.interaction_date)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }
 

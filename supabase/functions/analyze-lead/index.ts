@@ -1,6 +1,5 @@
-// Anonymous Buyer Intelligence analysis via OpenRouter.
-// verify_jwt = false (see supabase/config.toml).
-// Uses service-role only inside this function. Never returns the API key.
+// Lead Sales Intelligence via OpenRouter.
+// verify_jwt = false (see supabase/config.toml). Anonymous CRUD model.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -12,12 +11,9 @@ const CORS = {
 };
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL =
-  Deno.env.get("OPENROUTER_MODEL") || "anthropic/claude-sonnet-4.6";
-const SITE_URL =
-  Deno.env.get("OPENROUTER_SITE_URL") || "https://lovable.app";
-const APP_NAME =
-  Deno.env.get("OPENROUTER_APP_NAME") || "Buyer Intelligence";
+const MODEL = Deno.env.get("OPENROUTER_MODEL") || "anthropic/claude-sonnet-4.6";
+const SITE_URL = Deno.env.get("OPENROUTER_SITE_URL") || "https://lovable.app";
+const APP_NAME = "Real Estate Sales Intelligence";
 const MAX_INPUT_CHARS = 60_000;
 const MAX_OUTPUT_TOKENS = 4096;
 const REQUEST_TIMEOUT_MS = 90_000;
@@ -32,211 +28,174 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// --- minimal schema validation ---
 const STAGES = [
-  "new_lead", "contacted", "qualified", "property_matching",
-  "viewing_scheduled", "negotiation", "documentation", "won", "lost",
+  "new_lead","contacted","qualified","property_matching",
+  "viewing_scheduled","negotiation","documentation","won","lost",
 ];
-const STATUSES = ["cold", "warm", "hot", "at_risk", "unclear"];
-const SEVERITIES = ["low", "medium", "high"];
-const URGENCY_LEVELS = ["low", "medium", "high", "unknown"];
-const BUDGET_STRENGTHS = ["weak", "moderate", "strong", "unknown"];
-const IMPORTANCE = ["low", "medium", "high"];
-const CHANNELS = ["whatsapp", "email", "phone", "meeting"];
 
-function isStr(v: unknown): v is string { return typeof v === "string"; }
-function isNum(v: unknown): v is number { return typeof v === "number" && !isNaN(v); }
-function arr(v: unknown): unknown[] { return Array.isArray(v) ? v : []; }
-function inRange(v: unknown, lo: number, hi: number) { return isNum(v) && v >= lo && v <= hi; }
-
-function validate(o: any): { ok: true } | { ok: false; errors: string[] } {
-  const errs: string[] = [];
-  if (!o || typeof o !== "object") return { ok: false, errors: ["root must be object"] };
-  if (!isStr(o.summary)) errs.push("summary must be string");
-  if (!inRange(o.intentScore, 0, 100)) errs.push("intentScore must be 0-100");
-  if (!inRange(o.confidenceScore, 0, 100)) errs.push("confidenceScore must be 0-100");
-  if (!STAGES.includes(o.recommendedPipelineStage)) errs.push("recommendedPipelineStage invalid");
-  if (!STATUSES.includes(o.buyerStatus)) errs.push("buyerStatus invalid");
-  for (const m of arr(o.motivations)) {
-    const mm = m as any;
-    if (!isStr(mm?.label)) errs.push("motivation.label");
-    if (!inRange(mm?.confidence, 0, 100)) errs.push("motivation.confidence 0-100");
-  }
-  for (const x of arr(o.objections)) {
-    if (!SEVERITIES.includes((x as any)?.severity)) errs.push("objection.severity");
-  }
-  if (o.urgency && !URGENCY_LEVELS.includes(o.urgency.level)) errs.push("urgency.level");
-  if (o.budgetSignals && !BUDGET_STRENGTHS.includes(o.budgetSignals.strength)) errs.push("budgetSignals.strength");
-  for (const x of arr(o.decisionFactors)) {
-    if (!IMPORTANCE.includes((x as any)?.importance)) errs.push("decisionFactors.importance");
-  }
-  for (const x of arr(o.risks)) {
-    if (!SEVERITIES.includes((x as any)?.severity)) errs.push("risks.severity");
-  }
-  for (const x of arr(o.nextBestActions)) {
-    const xx = x as any;
-    if (!Number.isInteger(xx?.priority) || xx.priority < 1) errs.push("nextBestActions.priority");
-    if (!isStr(xx?.action)) errs.push("nextBestActions.action");
-  }
-  if (o.followUpDraft && !CHANNELS.includes(o.followUpDraft.channel)) errs.push("followUpDraft.channel");
-  return errs.length ? { ok: false, errors: errs } : { ok: true };
-}
-
-// --- input preparation ---
 function clip(s: string | null | undefined, n: number): string {
   if (!s) return "";
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
 
 async function buildInput(supabase: any, leadId: string) {
-  const sourceIds: string[] = [];
-  const excluded: string[] = [];
-
   const { data: lead, error: leadErr } = await supabase
     .from("leads").select("*").eq("id", leadId).maybeSingle();
   if (leadErr) throw new Error("lead fetch failed");
   if (!lead) throw new Error("lead not found");
-  sourceIds.push("lead_profile");
-  if (lead.notes) sourceIds.push("lead_notes");
 
-  const { data: interactions = [] } = await supabase
-    .from("interactions").select("*").eq("lead_id", leadId)
-    .order("interaction_date", { ascending: false }).limit(40);
-
-  const { data: uploads = [] } = await supabase
-    .from("uploads").select("id,filename,category,processing_status,extracted_text,created_at")
-    .eq("lead_id", leadId).order("created_at", { ascending: false }).limit(20);
-
-  const { data: interests = [] } = await supabase
-    .from("lead_property_interests").select("*, properties(*)").eq("lead_id", leadId);
-
-  const { data: prevAnalyses = [] } = await supabase
-    .from("ai_analyses").select("id,status,output_json,created_at")
-    .eq("lead_id", leadId).eq("status", "completed")
-    .order("created_at", { ascending: false }).limit(1);
+  const [{ data: interactions = [] }, { data: uploads = [] }, { data: interests = [] }, { data: activeProps = [] }] = await Promise.all([
+    supabase.from("interactions").select("id, interaction_type, direction, content, subject, interaction_date").eq("lead_id", leadId).order("interaction_date", { ascending: false }).limit(40),
+    supabase.from("uploads").select("id, filename, category, processing_status, extracted_text").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("lead_property_interests").select("id, interest_level, notes, properties(id, title, reference_code, location, property_type, price, currency, bedrooms, availability, amenities, completion_status)").eq("lead_id", leadId),
+    supabase.from("properties").select("id, title, reference_code, location, property_type, price, currency, bedrooms, bathrooms, size, availability, amenities, completion_status, developer").eq("status","active").limit(120),
+  ]);
 
   const profile = {
-    full_name: lead.full_name,
-    email: lead.email, phone: lead.phone, nationality: lead.nationality,
-    preferred_language: lead.preferred_language,
-    lead_source: lead.lead_source, pipeline_stage: lead.pipeline_stage,
+    full_name: lead.full_name, nationality: lead.nationality,
+    preferred_language: lead.preferred_language, lead_source: lead.lead_source,
+    pipeline_stage: lead.pipeline_stage,
     budget_min: lead.budget_min, budget_max: lead.budget_max, currency: lead.currency,
     preferred_locations: lead.preferred_locations,
     preferred_property_types: lead.preferred_property_types,
     bedrooms: lead.bedrooms, purchase_purpose: lead.purchase_purpose,
     buying_timeline: lead.buying_timeline, financing_status: lead.financing_status,
-    notes: clip(lead.notes, 4000),
+    notes: clip(lead.notes, 3000),
   };
 
-  const intArr = interactions.map((i: any) => {
-    sourceIds.push(`interaction:${i.id}`);
-    return {
-      ref: `interaction:${i.id}`, type: i.interaction_type, direction: i.direction,
-      date: i.interaction_date, subject: i.subject, content: clip(i.content, 3000),
-    };
-  });
+  const intArr = (interactions as any[]).map((i) => ({
+    ref: `interaction:${i.id}`, type: i.interaction_type, direction: i.direction,
+    date: i.interaction_date, subject: i.subject, content: clip(i.content, 2500),
+  }));
 
   const upArr: any[] = [];
-  for (const u of uploads) {
-    if (u.processing_status !== "completed" || !u.extracted_text) {
-      excluded.push(`upload:${u.id}`); continue;
+  for (const u of uploads as any[]) {
+    if (u.processing_status === "completed" && u.extracted_text) {
+      upArr.push({ ref: `upload:${u.id}`, filename: u.filename, category: u.category, text: clip(u.extracted_text, 5000) });
     }
-    sourceIds.push(`upload:${u.id}`);
-    upArr.push({
-      ref: `upload:${u.id}`, filename: u.filename, category: u.category,
-      text: clip(u.extracted_text, 6000),
-    });
   }
 
-  const intsArr = interests.map((it: any) => {
-    sourceIds.push(`property_interest:${it.id}`);
-    return {
-      ref: `property_interest:${it.id}`, status: it.interest_level ?? it.status,
-      notes: clip(it.notes, 600), property: it.properties ? {
-        id: it.properties.id, title: it.properties.title,
-        location: it.properties.location, type: it.properties.property_type,
-        price: it.properties.price, bedrooms: it.properties.bedrooms,
-      } : null,
-    };
-  });
+  const intsArr = (interests as any[]).map((it) => ({
+    ref: `property_interest:${it.id}`, status: it.interest_level,
+    notes: clip(it.notes, 400),
+    property: it.properties ? {
+      id: it.properties.id, code: it.properties.reference_code, title: it.properties.title,
+      location: it.properties.location, type: it.properties.property_type,
+      price: it.properties.price, currency: it.properties.currency, bedrooms: it.properties.bedrooms,
+    } : null,
+  }));
 
-  let previous: any = null;
-  if (prevAnalyses.length) {
-    const p = prevAnalyses[0];
-    sourceIds.push(`previous_analysis:${p.id}`);
-    previous = { ref: `previous_analysis:${p.id}`, date: p.created_at, summary: p.output_json?.summary, intentScore: p.output_json?.intentScore };
-  }
+  const inventory = (activeProps as any[]).map((p) => ({
+    id: p.id, code: p.reference_code, title: p.title, location: p.location,
+    type: p.property_type, price: p.price, currency: p.currency,
+    bedrooms: p.bedrooms, bathrooms: p.bathrooms, size: p.size,
+    availability: p.availability, amenities: p.amenities,
+    completion_status: p.completion_status, developer: p.developer,
+  }));
 
-  let body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, previousAnalysis: previous });
-  let truncated = false;
+  let body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, activeInventory: inventory });
   while (body.length > MAX_INPUT_CHARS && intArr.length > 5) {
-    const removed = intArr.pop();
-    if (removed) excluded.push(removed.ref);
-    truncated = true;
-    body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, previousAnalysis: previous });
+    intArr.pop();
+    body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, activeInventory: inventory });
   }
-  while (body.length > MAX_INPUT_CHARS && upArr.length) {
-    const removed = upArr.pop();
-    if (removed) excluded.push(removed.ref);
-    truncated = true;
-    body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, previousAnalysis: previous });
+  while (body.length > MAX_INPUT_CHARS && inventory.length > 20) {
+    inventory.pop();
+    body = JSON.stringify({ profile, interactions: intArr, uploads: upArr, propertyInterests: intsArr, activeInventory: inventory });
   }
 
-  const hasUsefulSignal =
-    !!lead.notes ||
-    intArr.length > 0 ||
-    upArr.length > 0 ||
-    intsArr.length > 0 ||
-    !!lead.budget_max || !!lead.budget_min ||
-    (lead.preferred_locations?.length ?? 0) > 0 ||
-    (lead.preferred_property_types?.length ?? 0) > 0;
+  const hasSignal = !!lead.notes || intArr.length > 0 || upArr.length > 0 || intsArr.length > 0
+    || !!lead.budget_max || (lead.preferred_locations?.length ?? 0) > 0;
 
-  const snapshot = {
-    lead_id: leadId,
-    body,
-    metadata: {
-      sourceCount: sourceIds.length,
-      characterCount: body.length,
-      truncated,
-      includedSourceIds: sourceIds,
-      excludedSourceIds: excluded,
-    },
-    hasUsefulSignal,
-    leadUpdatedAt: lead.updated_at,
-  };
-  return snapshot;
+  return { body, hasSignal, leadUpdatedAt: lead.updated_at, meta: { interactions: intArr.length, uploads: upArr.length, interests: intsArr.length, inventory: inventory.length } };
 }
 
-const SYSTEM_PROMPT = `You are a real estate buyer-intelligence analyst.
-Analyse the supplied buyer information and help the sales team decide the next best action.
+const SYSTEM_PROMPT = `You are a real estate sales coach. From the supplied buyer data, produce concise, operational sales guidance.
 
 Rules:
-- Use ONLY the supplied information. Do not invent facts, budgets, preferences, timelines, properties, interactions or buyer statements.
-- Separate explicit facts from inferred signals. Reference supporting evidence via the "ref" strings shown in the input (e.g. "interaction:abc", "upload:abc", "lead_profile", "lead_notes", "property_interest:abc", "previous_analysis:abc").
-- Never use religion, race, ethnicity, health, disability, political beliefs, sexual orientation, gender, family status or nationality as positive or negative purchasing signals.
-- Do not interpret missing information as negative evidence; instead, list it under missingInformation.
-- Return STRICTLY a single JSON object that matches the requested schema. No prose, no markdown, no code fences, no commentary.`;
+- Use ONLY the supplied information. Do not invent facts, budgets, preferences or quotes. If unknown, leave the field empty and add it to wants.missing_info.
+- Reference evidence via the "ref" strings in the input (e.g. "interaction:abc", "upload:abc", "property_interest:abc", "lead_profile", "lead_notes").
+- For property_matches, ONLY pick properties from activeInventory and return their real id.
+- Forbidden: manipulative or pressuring tactics, false urgency, scarcity fabrication, discriminatory signals (religion, race, ethnicity, health, political beliefs, gender, family status, nationality used as a buying signal).
+- The purpose of pain_points is to resolve genuine concerns, not to overcome them with pressure.
+- Keep drafts short and professional. WhatsApp: 1-3 sentences. Email: 4-7 sentences. Objection response: 2-4 sentences.
+- Return STRICTLY a single JSON object that matches the schema. No markdown, no prose, no code fences.`;
 
 function buildUserPrompt(snapshot: string) {
-  return `Buyer data (JSON):\n${snapshot}\n\nReturn a JSON object with this exact shape (use null/empty arrays where unknown):
+  return `Buyer data (JSON):
+${snapshot}
+
+Return a JSON object exactly matching this schema (use empty arrays/null where unknown):
 {
- "summary": string,
- "intentScore": 0-100,
- "confidenceScore": 0-100,
- "recommendedPipelineStage": one of ${STAGES.join("|")},
- "buyerStatus": one of ${STATUSES.join("|")},
- "motivations": [{"label":string,"explanation":string,"confidence":0-100,"evidenceReferences":[string]}],
- "objections": [{"label":string,"severity":"low|medium|high","explanation":string,"recommendedResponse":string,"evidenceReferences":[string]}],
- "urgency": {"level":"low|medium|high|unknown","explanation":string,"evidenceReferences":[string]},
- "budgetSignals": {"strength":"weak|moderate|strong|unknown","explanation":string,"evidenceReferences":[string]},
- "decisionFactors": [{"factor":string,"importance":"low|medium|high","evidenceReferences":[string]}],
- "risks": [{"risk":string,"severity":"low|medium|high","explanation":string,"recommendedAction":string,"evidenceReferences":[string]}],
- "propertyMatchingCriteria": {"locations":[string],"propertyTypes":[string],"bedrooms":[number],"budgetMinimum":number|null,"budgetMaximum":number|null,"currency":string|null,"completionStatus":[string],"mustHaveFeatures":[string],"preferredFeatures":[string],"avoidFeatures":[string]},
- "nextBestActions": [{"priority":1,"action":string,"reason":string,"recommendedTiming":string,"relatedLeadId":string|null,"relatedPropertyId":string|null}],
- "followUpDraft": {"channel":"whatsapp|email|phone|meeting","message":string,"objective":string,"tone":string},
- "missingInformation": [{"field":string,"reason":string,"suggestedQuestion":string}],
- "evidenceSummary": [{"claim":string,"sourceReferences":[string]}]
-}`;
+  "buyer_summary": {
+    "buyer_type": string,
+    "budget": string,
+    "preferred_locations": [string],
+    "property_type": string,
+    "timeline": string,
+    "financing": string,
+    "pipeline_stage": one of ${STAGES.join("|")},
+    "main_motivation": string
+  },
+  "wants": {
+    "explicit_requirements": [string],
+    "must_haves": [string],
+    "preferences": [string],
+    "mentioned_properties": [{"property_id": string|null, "label": string, "status": "viewed"|"mentioned"|"shortlisted"|"rejected"}],
+    "rejected": [string],
+    "missing_info": [string]
+  },
+  "sales_playbook": {
+    "next_action": string,
+    "call_strategy": string,
+    "questions": [string],
+    "whatsapp_draft": string,
+    "email_draft": string,
+    "objection_response": string
+  },
+  "pain_points": [{
+    "concern": string,
+    "evidence": [string],
+    "how_to_address": string,
+    "what_to_avoid": string
+  }],
+  "property_matches": [{
+    "property_id": string,
+    "match_percent": 0-100,
+    "reasons": [string],
+    "conflicts": [string],
+    "price": string,
+    "availability": string
+  }],
+  "deep_analysis": {
+    "motivations": [{"label": string, "explanation": string, "evidence": [string]}],
+    "risks": [{"label": string, "explanation": string, "evidence": [string]}],
+    "urgency": string,
+    "confidence": 0-100,
+    "intent_score": 0-100,
+    "buyer_status": "cold"|"warm"|"hot"|"at_risk"|"unclear",
+    "summary": string
+  }
+}
+
+Constraints:
+- questions array: 1-3 items, the most useful next questions to ask.
+- pain_points: at most 5, only those with real evidence in the data.
+- property_matches: at most 3, pick highest-fit from activeInventory only. Each property_id MUST be one of the ids in activeInventory.
+- mentioned_properties property_id MUST come from propertyInterests, activeInventory, or be null when only a name is mentioned.`;
+}
+
+function validate(o: any): { ok: true } | { ok: false; errors: string[] } {
+  const errs: string[] = [];
+  if (!o || typeof o !== "object") return { ok: false, errors: ["root must be object"] };
+  if (!o.buyer_summary || typeof o.buyer_summary !== "object") errs.push("buyer_summary missing");
+  if (o.buyer_summary && !STAGES.includes(o.buyer_summary.pipeline_stage)) errs.push("buyer_summary.pipeline_stage invalid");
+  if (!o.wants || typeof o.wants !== "object") errs.push("wants missing");
+  if (!o.sales_playbook || typeof o.sales_playbook !== "object") errs.push("sales_playbook missing");
+  if (o.sales_playbook && !Array.isArray(o.sales_playbook.questions)) errs.push("sales_playbook.questions must be array");
+  if (!Array.isArray(o.pain_points)) errs.push("pain_points must be array");
+  if (!Array.isArray(o.property_matches)) errs.push("property_matches must be array");
+  if (!o.deep_analysis || typeof o.deep_analysis !== "object") errs.push("deep_analysis missing");
+  return errs.length ? { ok: false, errors: errs } : { ok: true };
 }
 
 async function callOpenRouter(messages: any[], apiKey: string) {
@@ -252,20 +211,17 @@ async function callOpenRouter(messages: any[], apiKey: string) {
         "X-Title": APP_NAME,
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        temperature: 0.3,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        response_format: { type: "json_object" },
-        messages,
+        model: MODEL, temperature: 0.3, max_tokens: MAX_OUTPUT_TOKENS,
+        response_format: { type: "json_object" }, messages,
       }),
       signal: ctrl.signal,
     });
     const text = await res.text();
     if (!res.ok) {
-      console.error("OpenRouter error", res.status, text.slice(0, 500));
+      console.error("OpenRouter error", res.status, text.slice(0, 400));
       const safe = res.status === 401 ? "AI provider authentication failed"
         : res.status === 402 ? "AI provider credits exhausted"
-        : res.status === 429 ? "AI provider rate limit reached, try again shortly"
+        : res.status === 429 ? "AI provider rate limit reached"
         : res.status >= 500 ? "AI provider temporarily unavailable"
         : "AI provider request failed";
       throw new Error(safe);
@@ -274,9 +230,7 @@ async function callOpenRouter(messages: any[], apiKey: string) {
     const content = data?.choices?.[0]?.message?.content;
     if (!content || typeof content !== "string") throw new Error("Empty AI response");
     return content;
-  } finally {
-    clearTimeout(t);
-  }
+  } finally { clearTimeout(t); }
 }
 
 function extractJson(s: string): any {
@@ -297,46 +251,31 @@ Deno.serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
   const leadId: string | undefined = body?.lead_id;
-  if (!leadId || typeof leadId !== "string") return json({ error: "lead_id required" }, 400);
+  if (!leadId) return json({ error: "lead_id required" }, 400);
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // Per-lead lock: refuse if a processing record exists < 5 min old.
   const { data: pending } = await supabase
     .from("ai_analyses").select("id,created_at").eq("lead_id", leadId)
-    .eq("status", "processing")
-    .gte("created_at", new Date(Date.now() - 5 * 60_000).toISOString())
-    .limit(1);
-  if (pending && pending.length) {
-    return json({ error: "Analysis already running for this lead" }, 409);
-  }
+    .eq("status", "processing").gte("created_at", new Date(Date.now() - 5 * 60_000).toISOString()).limit(1);
+  if (pending && pending.length) return json({ error: "Analysis already running for this lead" }, 409);
 
   let snapshot;
-  try {
-    snapshot = await buildInput(supabase, leadId);
-  } catch (e) {
-    return json({ error: (e as Error).message }, 400);
-  }
+  try { snapshot = await buildInput(supabase, leadId); }
+  catch (e) { return json({ error: (e as Error).message }, 400); }
 
-  if (!snapshot.hasUsefulSignal) {
+  if (!snapshot.hasSignal) {
     return json({
-      error: "Not enough buyer information is available. Add at least one meaningful interaction, note or imported conversation before running analysis.",
+      error: "Not enough buyer information. Add at least one meaningful interaction, note or imported conversation before running analysis.",
       code: "insufficient_data",
     }, 422);
   }
 
-  const { data: created, error: createErr } = await supabase
-    .from("ai_analyses").insert({
-      lead_id: leadId,
-      analysis_type: "buyer_intelligence",
-      status: "processing",
-      model: DEFAULT_MODEL,
-      generated_by: "anonymous",
-      input_snapshot: snapshot.metadata,
-      source_updated_at: snapshot.leadUpdatedAt,
-    }).select().single();
+  const { data: created, error: createErr } = await supabase.from("ai_analyses").insert({
+    lead_id: leadId, analysis_type: "sales_intelligence", status: "processing",
+    model: MODEL, generated_by: "anonymous", input_snapshot: snapshot.meta,
+    source_updated_at: snapshot.leadUpdatedAt,
+  }).select().single();
   if (createErr || !created) return json({ error: "Failed to start analysis" }, 500);
 
   try {
@@ -345,31 +284,23 @@ Deno.serve(async (req) => {
       { role: "user", content: buildUserPrompt(snapshot.body) },
     ];
     const raw = await callOpenRouter(messages, apiKey);
-    let parsed: any;
-    let validation: any;
-    try {
-      parsed = extractJson(raw);
-      validation = validate(parsed);
-    } catch (e) {
-      validation = { ok: false, errors: [(e as Error).message] };
-    }
+    let parsed: any, validation: any;
+    try { parsed = extractJson(raw); validation = validate(parsed); }
+    catch (e) { validation = { ok: false, errors: [(e as Error).message] }; }
 
     if (!validation.ok) {
-      // one repair attempt
       const repair = await callOpenRouter([
         ...messages,
         { role: "assistant", content: raw },
         { role: "user", content: `Your previous response failed validation: ${validation.errors.join("; ")}. Return ONLY a corrected JSON object matching the schema. No prose.` },
       ], apiKey);
-      parsed = extractJson(repair);
-      validation = validate(parsed);
+      parsed = extractJson(repair); validation = validate(parsed);
       if (!validation.ok) throw new Error("AI output failed schema validation");
     }
 
+    const conf = typeof parsed?.deep_analysis?.confidence === "number" ? parsed.deep_analysis.confidence : null;
     const { error: upErr } = await supabase.from("ai_analyses").update({
-      status: "completed",
-      output_json: parsed,
-      confidence: typeof parsed.confidenceScore === "number" ? parsed.confidenceScore : null,
+      status: "completed", output_json: parsed, confidence: conf,
       updated_at: new Date().toISOString(),
     }).eq("id", created.id);
     if (upErr) throw new Error("Database save failed");
@@ -378,9 +309,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = (e as Error).message || "Analysis failed";
     await supabase.from("ai_analyses").update({
-      status: "failed",
-      error_message: msg.slice(0, 500),
-      updated_at: new Date().toISOString(),
+      status: "failed", error_message: msg.slice(0, 500), updated_at: new Date().toISOString(),
     }).eq("id", created.id);
     return json({ id: created.id, status: "failed", error: msg }, 502);
   }

@@ -200,9 +200,7 @@ function LeadProfilePage() {
         </div>
       )}
 
-      {tab === "Property Interests" && (
-        <EmptyState compact title="Property interests" description="Link properties to this lead from the Properties page." />
-      )}
+      {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
 
       {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
 

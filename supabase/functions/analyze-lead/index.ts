@@ -274,10 +274,22 @@ Deno.serve(async (req) => {
     }, 422);
   }
 
+  // Source signature: stable fingerprint of inputs used for this run
+  const sigSource = JSON.stringify({ meta: snapshot.meta, leadUpdatedAt: snapshot.leadUpdatedAt });
+  const sigBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sigSource));
+  const sourceSignature = Array.from(new Uint8Array(sigBuf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+
+  // Mark previous completed analyses for this lead as superseded
+  await supabase.from("ai_analyses").update({
+    is_outdated: true,
+    outdated_reason: "superseded",
+  }).eq("lead_id", leadId).eq("status", "completed").eq("is_outdated", false);
+
   const { data: created, error: createErr } = await supabase.from("ai_analyses").insert({
     lead_id: leadId, analysis_type: "sales_intelligence", status: "processing",
     model: MODEL, generated_by: "anonymous", input_snapshot: snapshot.meta,
-    source_updated_at: snapshot.leadUpdatedAt,
+    source_updated_at: snapshot.leadUpdatedAt, source_signature: sourceSignature,
+    is_outdated: false,
   }).select().single();
   if (createErr || !created) return json({ error: "Failed to start analysis" }, 500);
 

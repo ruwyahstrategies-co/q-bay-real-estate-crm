@@ -184,6 +184,8 @@ function PropertyDemandPage() {
         />
       ) : (
         <>
+          <DemandRankingSection propertyById={propertyById} />
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <PropertyListCard title="Most viewed" rows={topViewed} eventKey="view" />
             <PropertyListCard title="Most mentioned" rows={topMentioned} eventKey="mention" />

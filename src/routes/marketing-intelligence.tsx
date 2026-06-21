@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Megaphone, Sparkles, Globe, ExternalLink, ChevronDown, ChevronUp, Search, Save, AlertCircle, Loader2 } from "lucide-react";
+import { Megaphone, Sparkles, Globe, ExternalLink, ChevronDown, ChevronUp, Search, Save, AlertCircle, Loader2, ListTodo, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -12,7 +12,8 @@ import {
 } from "@/hooks/use-market-intelligence";
 import { useMarketSources } from "@/hooks/use-market-sources";
 import { useBrandProfile, useSaveBrandProfile, useBrandSearch, type BrandProfile } from "@/hooks/use-brand-profile";
-import { fmtDate } from "@/lib/db";
+import { useCreateTask, useTasks, useUpdateTask } from "@/hooks/use-tasks";
+import { fmtDate, type Task } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/marketing-intelligence")({

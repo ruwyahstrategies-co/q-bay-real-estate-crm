@@ -164,10 +164,11 @@ function LeadProfilePage() {
       )}
 
       {tab === "Conversations" && (
-        <div>
-          <div className="mb-3 flex justify-end">
+        <div className="space-y-3">
+          <div className="flex justify-end">
             <Button size="sm" onClick={() => setInteractionOpen(true)}><Plus className="h-3.5 w-3.5" /> Add interaction</Button>
           </div>
+          <CallTranscriptCard lead={lead} />
           {interactions.length === 0 ? (
             <EmptyState compact title="No interactions yet" description="Log a call, WhatsApp message, meeting or note." />
           ) : (
@@ -180,6 +181,7 @@ function LeadProfilePage() {
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{i.interaction_type.replace(/_/g, " ")}</span>
                         {i.direction && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{i.direction}</span>}
                         <span className="text-xs text-muted-foreground">{fmtDateTime(i.interaction_date)}</span>
+                        {(i as any).transcript && <span className="rounded-full bg-pastel-green px-2 py-0.5 text-[10px]">transcript</span>}
                       </div>
                       {i.subject && <p className="mt-2 text-sm font-medium">{i.subject}</p>}
                       {i.content && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{i.content}</p>}

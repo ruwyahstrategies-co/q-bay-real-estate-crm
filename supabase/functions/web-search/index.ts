@@ -120,6 +120,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  if (!await checkRateLimit(req, "web-search", 6)) return tooManyRequests(CORS);
+
+
   const tavily = Deno.env.get("TAVILY_API_KEY");
   const serper = Deno.env.get("SERPER_API_KEY");
   const provider = tavily ? "tavily" : serper ? "serper" : null;

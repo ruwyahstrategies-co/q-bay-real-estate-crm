@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { BarChart3, RefreshCw, Globe, Plus, X, ExternalLink, TrendingUp, AlertCircle, Inbox } from "lucide-react";
+import { BarChart3, RefreshCw, Globe, Plus, X, ExternalLink, TrendingUp, AlertCircle, Inbox, ChevronDown, ChevronUp, Users, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +19,8 @@ import {
   useDeleteSource,
   useSetSourceActive,
 } from "@/hooks/use-market-sources";
-import { fmtMoney, fmtDate } from "@/lib/db";
+import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/hooks/use-property-demand";
+import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/property-demand")({

@@ -34,6 +34,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  if (!await checkRateLimit(req, "brand-search", 3)) return tooManyRequests(CORS);
+
+
   const apiKey = Deno.env.get("TAVILY_API_KEY");
   if (!apiKey) return json({ error: "Web search provider is not configured. Add TAVILY_API_KEY." }, 503);
 

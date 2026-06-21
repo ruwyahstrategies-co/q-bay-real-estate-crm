@@ -320,7 +320,17 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {o.campaign_ideas.slice(0,5).map((c, i) => (
               <Card key={i}>
-                <p className="text-sm font-semibold">{c.angle}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold">{c.angle}</p>
+                  <AddToTasksButton
+                    reportId={report.id}
+                    sourceRef={`campaign:${i}`}
+                    title={`Campaign: ${c.angle}`}
+                    description={`Audience: ${c.audience}\nProblem: ${c.problem}\nChannel: ${c.channel} — ${c.channel_reason}`}
+                    refs={c.refs ?? []}
+                    propertyRefs={c.related_property_refs ?? []}
+                  />
+                </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">For {c.audience}</p>
                 <p className="mt-2 text-xs"><span className="font-medium">Problem: </span>{c.problem}</p>
                 <p className="mt-1 text-xs"><span className="font-medium">Channel: </span>{c.channel} <span className="text-muted-foreground">— {c.channel_reason}</span></p>
@@ -340,7 +350,18 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           <ul className="space-y-2">
             {o.actions_this_week.slice(0,5).map((a, i) => (
               <li key={i} className="rounded-md border border-border bg-canvas p-3 text-xs">
-                <p className="text-sm font-medium">{a.action}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium">{a.action}</p>
+                  <AddToTasksButton
+                    reportId={report.id}
+                    sourceRef={`action:${i}`}
+                    title={a.action}
+                    description={a.why}
+                    refs={a.refs ?? []}
+                    propertyRefs={[]}
+                    source="weekly_action"
+                  />
+                </div>
                 <p className="mt-1 text-muted-foreground">{a.why}</p>
                 <EvidenceRefs refs={a.refs} tags={a.evidence_tags} sourceById={sourceById} />
               </li>
@@ -348,6 +369,8 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           </ul>
         )}
       </div>
+
+      <ExecutionTasksPanel reportId={report.id} />
     </>
   );
 }

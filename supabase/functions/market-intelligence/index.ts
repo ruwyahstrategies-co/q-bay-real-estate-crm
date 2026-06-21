@@ -45,6 +45,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  if (!await checkRateLimit(req, "market-intelligence", 4)) return tooManyRequests(CORS);
+
+
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return json({ error: "AI provider not configured" }, 500);
 

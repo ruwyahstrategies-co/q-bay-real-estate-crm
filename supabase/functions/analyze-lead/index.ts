@@ -316,6 +316,7 @@ Deno.serve(async (req) => {
     const conf = typeof parsed?.deep_analysis?.confidence === "number" ? parsed.deep_analysis.confidence : null;
     const { error: upErr } = await supabase.from("ai_analyses").update({
       status: "completed", output_json: parsed, confidence: conf,
+      is_outdated: false, outdated_reason: null,
       updated_at: new Date().toISOString(),
     }).eq("id", created.id);
     if (upErr) throw new Error("Database save failed");

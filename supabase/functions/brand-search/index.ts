@@ -2,6 +2,7 @@
 // Uses Tavily (TAVILY_API_KEY) when present. Caches results in external_market_sources.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +33,9 @@ async function tavily(query: string, key: string, maxResults = 6): Promise<any[]
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  if (!await checkRateLimit(req, "brand-search", 3)) return tooManyRequests(CORS);
+
 
   const apiKey = Deno.env.get("TAVILY_API_KEY");
   if (!apiKey) return json({ error: "Web search provider is not configured. Add TAVILY_API_KEY." }, 503);

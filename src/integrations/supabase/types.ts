@@ -23,10 +23,13 @@ export type Database = {
           generated_by: string | null
           id: string
           input_snapshot: Json | null
+          is_outdated: boolean
           lead_id: string
           model: string | null
           organisation_id: string | null
+          outdated_reason: string | null
           output_json: Json | null
+          source_signature: string | null
           source_updated_at: string | null
           status: string
           updated_at: string
@@ -39,10 +42,13 @@ export type Database = {
           generated_by?: string | null
           id?: string
           input_snapshot?: Json | null
+          is_outdated?: boolean
           lead_id: string
           model?: string | null
           organisation_id?: string | null
+          outdated_reason?: string | null
           output_json?: Json | null
+          source_signature?: string | null
           source_updated_at?: string | null
           status?: string
           updated_at?: string
@@ -55,10 +61,13 @@ export type Database = {
           generated_by?: string | null
           id?: string
           input_snapshot?: Json | null
+          is_outdated?: boolean
           lead_id?: string
           model?: string | null
           organisation_id?: string | null
+          outdated_reason?: string | null
           output_json?: Json | null
+          source_signature?: string | null
           source_updated_at?: string | null
           status?: string
           updated_at?: string
@@ -115,6 +124,24 @@ export type Database = {
           },
         ]
       }
+      edge_rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       external_market_sources: {
         Row: {
           active: boolean
@@ -168,6 +195,7 @@ export type Database = {
       }
       interactions: {
         Row: {
+          ai_processed_at: string | null
           content: string | null
           created_at: string
           created_by: string | null
@@ -177,12 +205,16 @@ export type Database = {
           interaction_date: string
           interaction_type: string
           lead_id: string | null
+          metadata: Json
           organisation_id: string | null
           property_id: string | null
           subject: string | null
+          transcript: string | null
           updated_at: string
+          upload_id: string | null
         }
         Insert: {
+          ai_processed_at?: string | null
           content?: string | null
           created_at?: string
           created_by?: string | null
@@ -192,12 +224,16 @@ export type Database = {
           interaction_date?: string
           interaction_type: string
           lead_id?: string | null
+          metadata?: Json
           organisation_id?: string | null
           property_id?: string | null
           subject?: string | null
+          transcript?: string | null
           updated_at?: string
+          upload_id?: string | null
         }
         Update: {
+          ai_processed_at?: string | null
           content?: string | null
           created_at?: string
           created_by?: string | null
@@ -207,10 +243,13 @@ export type Database = {
           interaction_date?: string
           interaction_type?: string
           lead_id?: string | null
+          metadata?: Json
           organisation_id?: string | null
           property_id?: string | null
           subject?: string | null
+          transcript?: string | null
           updated_at?: string
+          upload_id?: string | null
         }
         Relationships: [
           {
@@ -232,6 +271,20 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "interactions_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
             referencedColumns: ["id"]
           },
         ]
@@ -291,6 +344,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_property_interests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
           },
         ]
       }
@@ -651,6 +711,13 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "property_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
         ]
       }
       property_media: {
@@ -697,6 +764,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "property_media_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
             foreignKeyName: "property_media_upload_id_fkey"
             columns: ["upload_id"]
             isOneToOne: false
@@ -715,9 +789,13 @@ export type Database = {
           due_at: string | null
           id: string
           lead_id: string | null
+          marketing_report_id: string | null
           organisation_id: string | null
           priority: string
           property_id: string | null
+          refs: Json
+          source: string | null
+          source_ref: string | null
           status: string
           task_type: string | null
           title: string
@@ -732,9 +810,13 @@ export type Database = {
           due_at?: string | null
           id?: string
           lead_id?: string | null
+          marketing_report_id?: string | null
           organisation_id?: string | null
           priority?: string
           property_id?: string | null
+          refs?: Json
+          source?: string | null
+          source_ref?: string | null
           status?: string
           task_type?: string | null
           title: string
@@ -749,9 +831,13 @@ export type Database = {
           due_at?: string | null
           id?: string
           lead_id?: string | null
+          marketing_report_id?: string | null
           organisation_id?: string | null
           priority?: string
           property_id?: string | null
+          refs?: Json
+          source?: string | null
+          source_ref?: string | null
           status?: string
           task_type?: string | null
           title?: string
@@ -773,6 +859,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_marketing_report_id_fkey"
+            columns: ["marketing_report_id"]
+            isOneToOne: false
+            referencedRelation: "market_intelligence_reports"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
@@ -785,6 +878,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
           },
         ]
       }
@@ -921,14 +1021,42 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "uploads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      property_demand_scores: {
+        Row: {
+          brochure_downloads: number | null
+          closed_deals: number | null
+          demand_score: number | null
+          enquiries: number | null
+          interested_leads: number | null
+          last_event_at: string | null
+          mentions: number | null
+          offers: number | null
+          property_id: string | null
+          rejections: number | null
+          shortlists: number | null
+          unique_event_leads: number | null
+          viewing_requests: number | null
+          views: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      check_rate_limit: {
+        Args: { _key: string; _max_per_minute: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

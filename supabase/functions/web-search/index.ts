@@ -3,6 +3,7 @@
 // Never returns the raw API key. Stores results in external_market_sources.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -118,6 +119,9 @@ function matchAny(text: string, terms: string[]): string[] {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  if (!await checkRateLimit(req, "web-search", 6)) return tooManyRequests(CORS);
+
 
   const tavily = Deno.env.get("TAVILY_API_KEY");
   const serper = Deno.env.get("SERPER_API_KEY");

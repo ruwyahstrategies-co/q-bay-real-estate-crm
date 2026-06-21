@@ -43,9 +43,15 @@ export function BuyerIntelligencePanel({ lead }: Props) {
     return times.length ? Math.max(...times) : 0;
   }, [lead.updated_at, interactions, uploads]);
 
-  const outdated = current && current.source_updated_at
-    ? new Date(current.source_updated_at).getTime() < latestSource - 1000
-    : false;
+  // Outdated is the DB flag (set by triggers when any related data changes)
+  // OR a heuristic fallback comparing source_updated_at to latest activity.
+  const outdated = !!current && (
+    (current as any).is_outdated === true
+    || (current.source_updated_at
+      ? new Date(current.source_updated_at).getTime() < latestSource - 1000
+      : false)
+  );
+  const outdatedReason = (current as any)?.outdated_reason ?? null;
 
   const isProcessing = analyseMut.isPending || !!processing;
 
@@ -90,7 +96,7 @@ export function BuyerIntelligencePanel({ lead }: Props) {
                 {isProcessing ? "Analysing…" : outdated ? "Sales intelligence outdated" : "Sales intelligence ready"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "—"}{outdated && " · New activity since this analysis"}</>}
+                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "—"}{outdated && ` · ${outdatedReason ? `Changed: ${outdatedReason.replace(/_/g, " ")}` : "New activity since this analysis"}. Regenerate to refresh.`}</>}
                 {!current && failed && <>Last attempt failed: {failed.error_message}</>}
               </p>
             </div>

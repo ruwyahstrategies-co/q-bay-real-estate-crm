@@ -2,6 +2,7 @@
 // verify_jwt = false (see supabase/config.toml). Anonymous CRUD model.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -245,6 +246,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  if (!await checkRateLimit(req, "analyze-lead", 6)) return tooManyRequests(CORS);
+
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return json({ error: "AI provider not configured" }, 500);
 
@@ -271,10 +274,22 @@ Deno.serve(async (req) => {
     }, 422);
   }
 
+  // Source signature: stable fingerprint of inputs used for this run
+  const sigSource = JSON.stringify({ meta: snapshot.meta, leadUpdatedAt: snapshot.leadUpdatedAt });
+  const sigBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sigSource));
+  const sourceSignature = Array.from(new Uint8Array(sigBuf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+
+  // Mark previous completed analyses for this lead as superseded
+  await supabase.from("ai_analyses").update({
+    is_outdated: true,
+    outdated_reason: "superseded",
+  }).eq("lead_id", leadId).eq("status", "completed").eq("is_outdated", false);
+
   const { data: created, error: createErr } = await supabase.from("ai_analyses").insert({
     lead_id: leadId, analysis_type: "sales_intelligence", status: "processing",
     model: MODEL, generated_by: "anonymous", input_snapshot: snapshot.meta,
-    source_updated_at: snapshot.leadUpdatedAt,
+    source_updated_at: snapshot.leadUpdatedAt, source_signature: sourceSignature,
+    is_outdated: false,
   }).select().single();
   if (createErr || !created) return json({ error: "Failed to start analysis" }, 500);
 
@@ -301,6 +316,7 @@ Deno.serve(async (req) => {
     const conf = typeof parsed?.deep_analysis?.confidence === "number" ? parsed.deep_analysis.confidence : null;
     const { error: upErr } = await supabase.from("ai_analyses").update({
       status: "completed", output_json: parsed, confidence: conf,
+      is_outdated: false, outdated_reason: null,
       updated_at: new Date().toISOString(),
     }).eq("id", created.id);
     if (upErr) throw new Error("Database save failed");

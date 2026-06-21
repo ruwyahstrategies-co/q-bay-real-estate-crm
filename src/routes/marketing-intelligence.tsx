@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Megaphone, Sparkles, Globe, ExternalLink, ChevronDown, ChevronUp, Search, Save, AlertCircle, Loader2 } from "lucide-react";
+import { Megaphone, Sparkles, Globe, ExternalLink, ChevronDown, ChevronUp, Search, Save, AlertCircle, Loader2, ListTodo, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -12,7 +12,8 @@ import {
 } from "@/hooks/use-market-intelligence";
 import { useMarketSources } from "@/hooks/use-market-sources";
 import { useBrandProfile, useSaveBrandProfile, useBrandSearch, type BrandProfile } from "@/hooks/use-brand-profile";
-import { fmtDate } from "@/lib/db";
+import { useCreateTask, useTasks, useUpdateTask } from "@/hooks/use-tasks";
+import { fmtDate, type Task } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/marketing-intelligence")({
@@ -319,7 +320,17 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {o.campaign_ideas.slice(0,5).map((c, i) => (
               <Card key={i}>
-                <p className="text-sm font-semibold">{c.angle}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold">{c.angle}</p>
+                  <AddToTasksButton
+                    reportId={report.id}
+                    sourceRef={`campaign:${i}`}
+                    title={`Campaign: ${c.angle}`}
+                    description={`Audience: ${c.audience}\nProblem: ${c.problem}\nChannel: ${c.channel} — ${c.channel_reason}`}
+                    refs={c.refs ?? []}
+                    propertyRefs={c.related_property_refs ?? []}
+                  />
+                </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">For {c.audience}</p>
                 <p className="mt-2 text-xs"><span className="font-medium">Problem: </span>{c.problem}</p>
                 <p className="mt-1 text-xs"><span className="font-medium">Channel: </span>{c.channel} <span className="text-muted-foreground">— {c.channel_reason}</span></p>
@@ -339,7 +350,18 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           <ul className="space-y-2">
             {o.actions_this_week.slice(0,5).map((a, i) => (
               <li key={i} className="rounded-md border border-border bg-canvas p-3 text-xs">
-                <p className="text-sm font-medium">{a.action}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium">{a.action}</p>
+                  <AddToTasksButton
+                    reportId={report.id}
+                    sourceRef={`action:${i}`}
+                    title={a.action}
+                    description={a.why}
+                    refs={a.refs ?? []}
+                    propertyRefs={[]}
+                    source="weekly_action"
+                  />
+                </div>
                 <p className="mt-1 text-muted-foreground">{a.why}</p>
                 <EvidenceRefs refs={a.refs} tags={a.evidence_tags} sourceById={sourceById} />
               </li>
@@ -347,6 +369,8 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
           </ul>
         )}
       </div>
+
+      <ExecutionTasksPanel reportId={report.id} />
     </>
   );
 }
@@ -470,3 +494,128 @@ function EvidenceRefs({ refs = [], tags = [], sourceById }: { refs?: string[]; t
     </div>
   );
 }
+
+/* --- Marketing → Execution bridge --- */
+
+const MARKETING_STATUSES = ["proposed", "approved", "in_progress", "completed"] as const;
+type MarketingStatus = (typeof MARKETING_STATUSES)[number];
+
+const STATUS_TONE: Record<MarketingStatus, string> = {
+  proposed: "bg-muted text-foreground",
+  approved: "bg-pastel-blue text-foreground",
+  in_progress: "bg-pastel-purple text-foreground",
+  completed: "bg-pastel-green text-foreground",
+};
+
+function AddToTasksButton({
+  reportId, sourceRef, title, description, refs, propertyRefs, source = "campaign_idea",
+}: {
+  reportId: string;
+  sourceRef: string;
+  title: string;
+  description: string;
+  refs: string[];
+  propertyRefs: string[];
+  source?: "campaign_idea" | "weekly_action";
+}) {
+  const { data: existingTasks = [] } = useTasks();
+  const create = useCreateTask();
+  const already = existingTasks.find((t: any) => t.marketing_report_id === reportId && t.source_ref === sourceRef);
+
+  const onClick = async () => {
+    if (already) { toast.info("Already added"); return; }
+    try {
+      const leadIds = refs.filter((r) => r.startsWith("lead:")).map((r) => r.replace("lead:", ""));
+      const propIds = [...propertyRefs, ...refs.filter((r) => r.startsWith("property:"))]
+        .map((r) => r.replace("property:", "")).filter(Boolean);
+      const sourceIds = refs.filter((r) => r.startsWith("source:")).map((r) => r.replace("source:", ""));
+      const interactionIds = refs.filter((r) => r.startsWith("interaction:")).map((r) => r.replace("interaction:", ""));
+      await create.mutateAsync({
+        title,
+        description,
+        priority: "medium",
+        status: "pending",
+        task_type: "marketing",
+        source,
+        source_ref: sourceRef,
+        marketing_report_id: reportId,
+        lead_id: leadIds[0] ?? null,
+        property_id: propIds[0] ?? null,
+        refs: { lead_ids: leadIds, property_ids: propIds, source_ids: sourceIds, interaction_ids: interactionIds, marketing_status: "proposed" },
+      } as any);
+      toast.success("Added to tasks");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  return (
+    <Button size="sm" variant={already ? "outline" : "primary"} onClick={onClick} disabled={create.isPending}>
+      {already ? <><CheckCircle2 className="h-3.5 w-3.5" /> Added</> : <><ListTodo className="h-3.5 w-3.5" /> Add as task</>}
+    </Button>
+  );
+}
+
+function ExecutionTasksPanel({ reportId }: { reportId: string }) {
+  const { data: allTasks = [] } = useTasks();
+  const update = useUpdateTask();
+  const tasks = (allTasks as any[]).filter((t) => t.marketing_report_id === reportId);
+  if (tasks.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <h3 className="mb-3 text-[16px] font-semibold">Execution — tasks from this report</h3>
+      <ul className="space-y-2">
+        {tasks.map((t) => {
+          const status: MarketingStatus = (t.refs?.marketing_status as MarketingStatus) ?? "proposed";
+          const setStatus = async (s: MarketingStatus) => {
+            try {
+              await update.mutateAsync({
+                id: t.id,
+                patch: {
+                  status: s === "completed" ? "completed" : s === "in_progress" ? "in_progress" : "pending",
+                  completed_at: s === "completed" ? new Date().toISOString() : null,
+                  refs: { ...(t.refs ?? {}), marketing_status: s },
+                } as Partial<Task>,
+              });
+            } catch (e) { toast.error((e as Error).message); }
+          };
+          const refs = t.refs ?? {};
+          return (
+            <li key={t.id} className="rounded-md border border-border bg-canvas p-3 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{t.title}</p>
+                  {t.description && <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{t.description}</p>}
+                </div>
+                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize", STATUS_TONE[status])}>{status.replace("_", " ")}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <select
+                  className="h-7 rounded-md border border-border bg-background px-2 text-[11px]"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as MarketingStatus)}
+                >
+                  {MARKETING_STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+                </select>
+                {refs?.lead_ids?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {refs.lead_ids.slice(0, 3).map((id: string) => (
+                      <Link key={id} to="/leads/$leadId" params={{ leadId: id }} className="rounded-md bg-pastel-blue px-1.5 py-0.5 text-[10px] hover:underline">lead</Link>
+                    ))}
+                  </div>
+                )}
+                {refs?.property_ids?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {refs.property_ids.slice(0, 3).map((id: string) => (
+                      <Link key={id} to="/properties/$propertyId" params={{ propertyId: id }} className="rounded-md bg-pastel-purple px-1.5 py-0.5 text-[10px] hover:underline">property</Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+

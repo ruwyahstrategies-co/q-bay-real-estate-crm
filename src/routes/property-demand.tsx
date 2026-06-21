@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { BarChart3, RefreshCw, Globe, Plus, X, ExternalLink, TrendingUp, AlertCircle, Inbox } from "lucide-react";
+import { BarChart3, RefreshCw, Globe, Plus, X, ExternalLink, TrendingUp, AlertCircle, Inbox, ChevronDown, ChevronUp, Users, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +19,8 @@ import {
   useDeleteSource,
   useSetSourceActive,
 } from "@/hooks/use-market-sources";
-import { fmtMoney, fmtDate } from "@/lib/db";
+import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/hooks/use-property-demand";
+import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/property-demand")({
@@ -183,6 +184,8 @@ function PropertyDemandPage() {
         />
       ) : (
         <>
+          <DemandRankingSection propertyById={propertyById} />
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <PropertyListCard title="Most viewed" rows={topViewed} eventKey="view" />
             <PropertyListCard title="Most mentioned" rows={topMentioned} eventKey="mention" />
@@ -545,3 +548,155 @@ function MarketSourcesPanel() {
     </div>
   );
 }
+
+/* --- Demand ranking: server-side weighted score (internal behaviour prioritised) --- */
+
+function DemandRankingSection({ propertyById }: { propertyById: Map<string, any> }) {
+  const { data: rows = [], isLoading } = usePropertyDemandScores();
+  const [internalOnly, setInternalOnly] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const ranked = useMemo(() => {
+    const scored = rows.map((r) => {
+      const internal = r.interested_leads * 4
+        + r.shortlists * 3
+        + r.viewing_requests * 5
+        + r.enquiries * 3
+        + r.offers * 8
+        + r.brochure_downloads * 2
+        + r.views * 1
+        - r.rejections * 2;
+      const score = internalOnly ? internal : internal + r.mentions * 1;
+      return { row: r, internal, score };
+    }).filter((x) => x.score > 0 && propertyById.get(x.row.property_id));
+    return scored.sort((a, b) => b.score - a.score).slice(0, 10);
+  }, [rows, internalOnly, propertyById]);
+
+  if (isLoading) return null;
+  if (ranked.length === 0) return null;
+
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[16px] font-semibold flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" /> Demand ranking
+        </h3>
+        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={internalOnly}
+            onChange={(e) => setInternalOnly(e.target.checked)}
+            className="h-3 w-3"
+          />
+          Internal buyer signals only (ignore online mentions)
+        </label>
+      </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Transparent weighted score: interested leads ×4, shortlists ×3, enquiries ×3, viewing requests ×5,
+        offers ×8, brochures ×2, views ×1, rejections −2{internalOnly ? "" : ", online mentions ×1"}.
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {ranked.map(({ row, score, internal }) => {
+          const p = propertyById.get(row.property_id);
+          const open = expanded === row.property_id;
+          return (
+            <li key={row.property_id} className="rounded-md border border-border p-2 text-xs">
+              <button
+                onClick={() => setExpanded(open ? null : row.property_id)}
+                className="flex w-full items-start justify-between gap-3 text-left"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    <Link to="/properties/$propertyId" params={{ propertyId: row.property_id }} className="hover:underline">
+                      {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
+                    </Link>
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {p.location ?? "—"} · {fmtMoney(p.price, p.currency)} · {p.availability ?? "—"}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                    <Chip label="leads" v={row.interested_leads} />
+                    <Chip label="enquiries" v={row.enquiries} />
+                    <Chip label="shortlists" v={row.shortlists} />
+                    <Chip label="viewings" v={row.viewing_requests} />
+                    <Chip label="offers" v={row.offers} />
+                    <Chip label="views" v={row.views} />
+                    <Chip label="brochures" v={row.brochure_downloads} />
+                    <Chip label="mentions" v={row.mentions} />
+                    <Chip label="rejections" v={row.rejections} />
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-base font-semibold">{score}</p>
+                  <p className="text-[10px] text-muted-foreground">internal {internal}</p>
+                  {open ? <ChevronUp className="ml-auto h-3.5 w-3.5" /> : <ChevronDown className="ml-auto h-3.5 w-3.5" />}
+                </div>
+              </button>
+              {open && <SupportingDetails propertyId={row.property_id} />}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+function Chip({ label, v }: { label: string; v: number }) {
+  if (!v) return null;
+  return <span className="rounded-md bg-muted px-1.5 py-0.5">{label} {v}</span>;
+}
+
+function SupportingDetails({ propertyId }: { propertyId: string }) {
+  const { data, isLoading } = usePropertySupport(propertyId);
+  if (isLoading || !data) return <p className="mt-2 text-[11px] text-muted-foreground">Loading…</p>;
+  const { interests, events, interactions } = data;
+  const leadsMap = new Map<string, { id: string; full_name: string; stage?: string }>();
+  for (const i of interests) {
+    if (i.leads) leadsMap.set(i.leads.id, { id: i.leads.id, full_name: i.leads.full_name, stage: i.leads.pipeline_stage });
+  }
+  for (const e of events) {
+    if (e.leads) leadsMap.set(e.leads.id, { id: e.leads.id, full_name: e.leads.full_name });
+  }
+  const leadsArr = Array.from(leadsMap.values());
+
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-3 border-t border-border pt-3 md:grid-cols-2">
+      <div>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+          <Users className="h-3 w-3" /> Supporting leads ({leadsArr.length})
+        </p>
+        {leadsArr.length === 0 ? <p className="mt-1 text-[11px] text-muted-foreground">No linked leads.</p> : (
+          <ul className="mt-1 space-y-0.5 text-[11px]">
+            {leadsArr.slice(0, 8).map((l) => (
+              <li key={l.id}>
+                <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">
+                  {l.full_name}{l.stage ? <span className="text-muted-foreground"> · {l.stage}</span> : null}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+          <MessageCircle className="h-3 w-3" /> Supporting conversations ({interactions.length})
+        </p>
+        {interactions.length === 0 ? <p className="mt-1 text-[11px] text-muted-foreground">No conversations linked.</p> : (
+          <ul className="mt-1 space-y-0.5 text-[11px]">
+            {interactions.slice(0, 8).map((i) => (
+              <li key={i.id} className="truncate">
+                {i.lead_id ? (
+                  <Link to="/leads/$leadId" params={{ leadId: i.lead_id }} className="hover:underline">
+                    {i.leads?.full_name ?? "Lead"}
+                  </Link>
+                ) : <span>Interaction</span>}
+                <span className="text-muted-foreground"> · {i.interaction_type.replace(/_/g, " ")} · {fmtDateTime(i.interaction_date)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+

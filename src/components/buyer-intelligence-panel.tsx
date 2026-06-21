@@ -43,9 +43,15 @@ export function BuyerIntelligencePanel({ lead }: Props) {
     return times.length ? Math.max(...times) : 0;
   }, [lead.updated_at, interactions, uploads]);
 
-  const outdated = current && current.source_updated_at
-    ? new Date(current.source_updated_at).getTime() < latestSource - 1000
-    : false;
+  // Outdated is the DB flag (set by triggers when any related data changes)
+  // OR a heuristic fallback comparing source_updated_at to latest activity.
+  const outdated = !!current && (
+    (current as any).is_outdated === true
+    || (current.source_updated_at
+      ? new Date(current.source_updated_at).getTime() < latestSource - 1000
+      : false)
+  );
+  const outdatedReason = (current as any)?.outdated_reason ?? null;
 
   const isProcessing = analyseMut.isPending || !!processing;
 

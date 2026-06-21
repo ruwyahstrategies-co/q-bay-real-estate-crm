@@ -96,7 +96,7 @@ export function BuyerIntelligencePanel({ lead }: Props) {
                 {isProcessing ? "Analysing…" : outdated ? "Sales intelligence outdated" : "Sales intelligence ready"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "—"}{outdated && " · New activity since this analysis"}</>}
+                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "—"}{outdated && ` · ${outdatedReason ? `Changed: ${outdatedReason.replace(/_/g, " ")}` : "New activity since this analysis"}. Regenerate to refresh.`}</>}
                 {!current && failed && <>Last attempt failed: {failed.error_message}</>}
               </p>
             </div>

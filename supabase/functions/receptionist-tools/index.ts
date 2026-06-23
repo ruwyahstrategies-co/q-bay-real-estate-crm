@@ -3,9 +3,6 @@
 //
 // Expected request body:
 //   { tool: string, conversation_id?: string, params: Record<string, unknown> }
-//
-// To wire up in ElevenLabs: configure each tool as a Webhook tool pointing at
-// this function with header `x-tool: <tool_name>` OR pass `tool` in the body.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
@@ -68,48 +65,42 @@ async function findLeadByPhone(params: { phone?: string }) {
 
   const { data: leads } = await supabase
     .from("leads")
-    .select("id, first_name, last_name, pipeline_stage, budget_min, budget_max, currency, preferred_locations, property_type_preferences, bedrooms_min, last_contacted_at")
+    .select("id, full_name, pipeline_stage, budget_min, budget_max, currency, preferred_locations, preferred_property_types, preferred_bedrooms")
     .ilike("phone", `%${norm.slice(-8)}%`)
     .limit(1);
 
   const lead = leads?.[0];
   if (!lead) return { found: false };
 
-  // Fetch latest interaction summary
   const { data: lastInter } = await supabase
     .from("interactions")
-    .select("summary, occurred_at")
+    .select("content, subject, interaction_date")
     .eq("lead_id", lead.id)
-    .order("occurred_at", { ascending: false })
+    .order("interaction_date", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const { data: interests } = await supabase
     .from("lead_property_interests")
-    .select("property_id, properties(name, location)")
+    .select("property_id, properties(title, location)")
     .eq("lead_id", lead.id)
     .limit(3);
 
   return {
     found: true,
     lead_id: lead.id,
-    first_name: lead.first_name,
+    name: lead.full_name,
     pipeline_stage: lead.pipeline_stage,
-    budget: {
-      min: lead.budget_min,
-      max: lead.budget_max,
-      currency: lead.currency,
-    },
+    budget: { min: lead.budget_min, max: lead.budget_max, currency: lead.currency },
     preferred_locations: lead.preferred_locations ?? [],
-    property_types: lead.property_type_preferences ?? [],
-    bedrooms_min: lead.bedrooms_min,
-    last_contacted_at: lead.last_contacted_at,
-    last_summary: lastInter?.summary ?? null,
+    property_types: lead.preferred_property_types ?? [],
+    preferred_bedrooms: lead.preferred_bedrooms ?? [],
+    last_summary: lastInter?.subject ?? lastInter?.content ?? null,
     interested_properties:
       interests?.map((i) => ({
         property_id: i.property_id,
         // deno-lint-ignore no-explicit-any
-        name: (i as any).properties?.name,
+        title: (i as any).properties?.title,
         // deno-lint-ignore no-explicit-any
         location: (i as any).properties?.location,
       })) ?? [],
@@ -123,68 +114,46 @@ async function createOrUpdateLead(params: Record<string, unknown>) {
   const search = phone
     ? await supabase.from("leads").select("id").ilike("phone", `%${phone.slice(-8)}%`).limit(1)
     : await supabase.from("leads").select("id").eq("email", params.email as string).limit(1);
-
   const existing = search.data?.[0];
 
-  // Only overwrite fields the agent reports as confirmed (truthy values)
   const patch: Record<string, unknown> = {};
-  const map: Record<string, string> = {
-    first_name: "first_name",
-    last_name: "last_name",
-    email: "email",
-    preferred_language: "preferred_language",
-    buyer_type: "buyer_type",
-    budget_min: "budget_min",
-    budget_max: "budget_max",
-    currency: "currency",
-    preferred_locations: "preferred_locations",
-    property_type_preferences: "property_type_preferences",
-    bedrooms_min: "bedrooms_min",
-    purchase_purpose: "purchase_purpose",
-    buying_timeline: "buying_timeline",
-    financing_status: "financing_status",
-    must_have_features: "must_have_features",
-    notes: "notes",
-  };
-  for (const [k, v] of Object.entries(params)) {
-    if (map[k] && v !== null && v !== undefined && v !== "") patch[map[k]] = v;
+  const directFields = [
+    "email", "preferred_language", "budget_min", "budget_max", "currency",
+    "preferred_locations", "preferred_property_types", "preferred_bedrooms",
+    "purchase_purpose", "buying_timeline", "financing_status", "nationality", "notes",
+  ];
+  for (const k of directFields) {
+    const v = params[k];
+    if (v !== null && v !== undefined && v !== "") patch[k] = v;
   }
+  if (params.full_name) patch.full_name = params.full_name;
+  else if (params.first_name || params.last_name)
+    patch.full_name = [params.first_name, params.last_name].filter(Boolean).join(" ");
   if (phone) patch.phone = phone;
-  if (!existing) patch.source = patch.source ?? "ai_receptionist";
+  if (!existing) patch.lead_source = patch.lead_source ?? "ai_receptionist";
 
   if (existing) {
     const { data, error } = await supabase
-      .from("leads")
-      .update(patch)
-      .eq("id", existing.id)
-      .select("id")
-      .single();
+      .from("leads").update(patch).eq("id", existing.id).select("id").single();
     if (error) return { ok: false, error: error.message };
     return { ok: true, lead_id: data.id, created: false };
   }
-
+  if (!patch.full_name) patch.full_name = "Caller";
   const { data, error } = await supabase
-    .from("leads")
-    .insert({ ...patch, pipeline_stage: "new_lead" } as never)
-    .select("id")
-    .single();
+    .from("leads").insert({ ...patch, pipeline_stage: "new_lead" } as never)
+    .select("id").single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, lead_id: data.id, created: true };
 }
 
 async function searchProperties(params: {
-  budget_max?: number;
-  budget_min?: number;
-  location?: string;
-  property_type?: string;
-  bedrooms_min?: number;
-  features?: string[];
+  budget_max?: number; budget_min?: number; location?: string;
+  property_type?: string; bedrooms_min?: number;
 }) {
   let q = supabase
     .from("properties")
-    .select("id, name, location, price, currency, bedrooms, property_type, availability_status, completion_status, key_features")
+    .select("id, title, location, price, currency, bedrooms, property_type, availability, completion_status, amenities")
     .limit(3);
-
   if (params.budget_max) q = q.lte("price", params.budget_max);
   if (params.budget_min) q = q.gte("price", params.budget_min);
   if (params.location) q = q.ilike("location", `%${params.location}%`);
@@ -200,75 +169,62 @@ async function getPropertyDetails(params: { property_id?: string }) {
   if (!params.property_id) return { ok: false, reason: "property_id_required" };
   const { data, error } = await supabase
     .from("properties")
-    .select("id, name, location, price, currency, bedrooms, availability_status, key_features, viewing_availability")
-    .eq("id", params.property_id)
-    .maybeSingle();
+    .select("id, title, location, price, currency, bedrooms, availability, amenities")
+    .eq("id", params.property_id).maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "not_found" };
   return { ok: true, property: data };
 }
 
 async function createCallbackTask(params: {
-  lead_id?: string;
-  callback_time?: string;
-  notes?: string;
-  conversation_id?: string;
+  lead_id?: string; callback_time?: string; notes?: string; conversation_id?: string;
 }) {
   if (!params.lead_id) return { ok: false, reason: "lead_id_required" };
   const { data, error } = await supabase
-    .from("tasks")
-    .insert({
+    .from("tasks").insert({
       lead_id: params.lead_id,
       title: "Receptionist callback request",
       description: params.notes ?? null,
       due_at: params.callback_time ?? null,
       status: "pending",
       priority: "high",
-      refs: { source: "ai_receptionist", conversation_id: params.conversation_id } as never,
-    } as never)
-    .select("id")
-    .single();
+      task_type: "callback",
+      source: "ai_receptionist",
+      refs: { conversation_id: params.conversation_id } as never,
+    } as never).select("id").single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, task_id: data.id };
 }
 
 async function requestViewing(params: {
-  lead_id?: string;
-  property_id?: string;
-  preferred_time?: string;
-  conversation_id?: string;
+  lead_id?: string; property_id?: string; preferred_time?: string; conversation_id?: string;
 }) {
   if (!params.lead_id || !params.property_id) return { ok: false, reason: "lead_id_and_property_id_required" };
   const { data, error } = await supabase
-    .from("tasks")
-    .insert({
+    .from("tasks").insert({
       lead_id: params.lead_id,
       property_id: params.property_id,
       title: "Viewing request (unconfirmed)",
       description: `Caller requested a viewing. Preferred time: ${params.preferred_time ?? "not specified"}. Confirm availability before responding.`,
       status: "pending",
       priority: "high",
-      refs: { source: "ai_receptionist", conversation_id: params.conversation_id, confirmed: false } as never,
-    } as never)
-    .select("id")
-    .single();
+      task_type: "viewing",
+      source: "ai_receptionist",
+      refs: { conversation_id: params.conversation_id, confirmed: false } as never,
+    } as never).select("id").single();
   if (error) return { ok: false, error: error.message };
 
-  // Record interest
   await supabase.from("lead_property_interests").upsert(
     { lead_id: params.lead_id, property_id: params.property_id, interest_level: "high" } as never,
     { onConflict: "lead_id,property_id" },
   );
-
   return { ok: true, task_id: data.id, confirmed: false };
 }
 
 async function transferToHuman(params: { reason?: string; conversation_id?: string }) {
   const target = Deno.env.get("RECEPTIONIST_TRANSFER_NUMBER");
   if (!target) return { ok: false, reason: "transfer_number_not_configured" };
-  // Update call row if exists
   if (params.conversation_id) {
-    await supabase
-      .from("receptionist_calls")
+    await supabase.from("receptionist_calls")
       .update({ transfer_status: "requested", transfer_target: target })
       .eq("elevenlabs_conversation_id", params.conversation_id);
   }
@@ -289,8 +245,7 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {
     return new Response(JSON.stringify({ ok: false, error: "invalid_json" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 

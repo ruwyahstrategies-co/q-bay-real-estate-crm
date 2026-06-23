@@ -155,14 +155,13 @@ Deno.serve(async (req) => {
     if (existingLead) {
       leadId = existingLead.id;
     } else {
-      // deno-lint-ignore no-explicit-any
       const ex = extracted as any;
       const { data: newLead } = await supabase
         .from("leads")
         .insert({
-          first_name: ex.first_name?.value ?? ex.name?.value ?? "Caller",
+          full_name: ex.full_name?.value ?? ex.name?.value ?? [ex.first_name?.value, ex.last_name?.value].filter(Boolean).join(" ") ?? "Caller",
           phone: callerNumber,
-          source: "ai_receptionist",
+          lead_source: "ai_receptionist",
           pipeline_stage: "new_lead",
           notes: summary,
         } as never)
@@ -226,22 +225,22 @@ Deno.serve(async (req) => {
   if (leadId) {
     await supabase.from("interactions").insert({
       lead_id: leadId,
-      type: "phone_call",
+      interaction_type: "phone_call",
       direction: "inbound",
-      summary,
+      subject: summary,
+      content: summary,
       transcript: typeof transcript === "string" ? transcript : JSON.stringify(transcript),
-      occurred_at: startedAt ?? new Date().toISOString(),
+      interaction_date: startedAt ?? new Date().toISOString(),
       duration_seconds: duration,
-      refs: { source: "ai_receptionist", conversation_id: conversationId, call_id: callId } as never,
+      metadata: { source: "ai_receptionist", conversation_id: conversationId, call_id: callId } as never,
     } as never);
 
     // Property mention events for demand analytics
     for (const propRef of propertiesMentioned) {
-      // Try resolve by id or name
       const { data: prop } = await supabase
         .from("properties")
         .select("id")
-        .or(`id.eq.${propRef},name.ilike.%${propRef}%`)
+        .or(`id.eq.${propRef},title.ilike.%${propRef}%`)
         .limit(1)
         .maybeSingle();
       if (prop) {
@@ -250,12 +249,12 @@ Deno.serve(async (req) => {
           lead_id: leadId,
           event_type: "mentioned_in_call",
           source: "ai_receptionist",
-          payload: { conversation_id: conversationId } as never,
+          metadata: { conversation_id: conversationId } as never,
         } as never);
       }
     }
 
-    // Mark previous analyses outdated (trigger will already fire, but be explicit)
+    // Mark previous analyses outdated
     await supabase
       .from("ai_analyses")
       .update({ is_outdated: true, outdated_reason: "receptionist_call" })
@@ -266,4 +265,5 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ ok: true, call_id: callId, verified, lead_id: leadId }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+});
 });

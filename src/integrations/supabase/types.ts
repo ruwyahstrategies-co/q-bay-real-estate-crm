@@ -779,6 +779,196 @@ export type Database = {
           },
         ]
       }
+      receptionist_calls: {
+        Row: {
+          called_number: string | null
+          caller_number: string | null
+          created_at: string
+          created_task_ids: Json | null
+          duration_seconds: number | null
+          elevenlabs_conversation_id: string | null
+          ended_at: string | null
+          extracted_data: Json | null
+          id: string
+          intent_level: string | null
+          is_new_lead: boolean | null
+          lead_id: string | null
+          outcome: string | null
+          properties_mentioned: Json | null
+          raw_webhook: Json | null
+          recording_url: string | null
+          started_at: string | null
+          status: string | null
+          summary: string | null
+          transcript: Json | null
+          transfer_status: string | null
+          transfer_target: string | null
+          updated_at: string
+        }
+        Insert: {
+          called_number?: string | null
+          caller_number?: string | null
+          created_at?: string
+          created_task_ids?: Json | null
+          duration_seconds?: number | null
+          elevenlabs_conversation_id?: string | null
+          ended_at?: string | null
+          extracted_data?: Json | null
+          id?: string
+          intent_level?: string | null
+          is_new_lead?: boolean | null
+          lead_id?: string | null
+          outcome?: string | null
+          properties_mentioned?: Json | null
+          raw_webhook?: Json | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          transcript?: Json | null
+          transfer_status?: string | null
+          transfer_target?: string | null
+          updated_at?: string
+        }
+        Update: {
+          called_number?: string | null
+          caller_number?: string | null
+          created_at?: string
+          created_task_ids?: Json | null
+          duration_seconds?: number | null
+          elevenlabs_conversation_id?: string | null
+          ended_at?: string | null
+          extracted_data?: Json | null
+          id?: string
+          intent_level?: string | null
+          is_new_lead?: boolean | null
+          lead_id?: string | null
+          outcome?: string | null
+          properties_mentioned?: Json | null
+          raw_webhook?: Json | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          transcript?: Json | null
+          transfer_status?: string | null
+          transfer_target?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receptionist_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receptionist_settings: {
+        Row: {
+          after_hours_behaviour: string | null
+          agent_display_name: string | null
+          allowed_property_info: Json | null
+          business_hours: Json | null
+          callback_rules: Json | null
+          created_at: string
+          enabled: boolean | null
+          greeting: string | null
+          human_transfer_number: string | null
+          id: string
+          languages: Json | null
+          max_call_duration_seconds: number | null
+          outbound_test_allowlist: Json | null
+          qualification_questions: Json | null
+          required_lead_fields: Json | null
+          updated_at: string
+          viewing_request_rules: Json | null
+        }
+        Insert: {
+          after_hours_behaviour?: string | null
+          agent_display_name?: string | null
+          allowed_property_info?: Json | null
+          business_hours?: Json | null
+          callback_rules?: Json | null
+          created_at?: string
+          enabled?: boolean | null
+          greeting?: string | null
+          human_transfer_number?: string | null
+          id?: string
+          languages?: Json | null
+          max_call_duration_seconds?: number | null
+          outbound_test_allowlist?: Json | null
+          qualification_questions?: Json | null
+          required_lead_fields?: Json | null
+          updated_at?: string
+          viewing_request_rules?: Json | null
+        }
+        Update: {
+          after_hours_behaviour?: string | null
+          agent_display_name?: string | null
+          allowed_property_info?: Json | null
+          business_hours?: Json | null
+          callback_rules?: Json | null
+          created_at?: string
+          enabled?: boolean | null
+          greeting?: string | null
+          human_transfer_number?: string | null
+          id?: string
+          languages?: Json | null
+          max_call_duration_seconds?: number | null
+          outbound_test_allowlist?: Json | null
+          qualification_questions?: Json | null
+          required_lead_fields?: Json | null
+          updated_at?: string
+          viewing_request_rules?: Json | null
+        }
+        Relationships: []
+      }
+      receptionist_tool_events: {
+        Row: {
+          call_id: string | null
+          created_at: string
+          elevenlabs_conversation_id: string | null
+          error: string | null
+          id: string
+          request_summary: Json | null
+          result_summary: Json | null
+          success: boolean | null
+          tool_name: string
+        }
+        Insert: {
+          call_id?: string | null
+          created_at?: string
+          elevenlabs_conversation_id?: string | null
+          error?: string | null
+          id?: string
+          request_summary?: Json | null
+          result_summary?: Json | null
+          success?: boolean | null
+          tool_name: string
+        }
+        Update: {
+          call_id?: string | null
+          created_at?: string
+          elevenlabs_conversation_id?: string | null
+          error?: string | null
+          id?: string
+          request_summary?: Json | null
+          result_summary?: Json | null
+          success?: boolean | null
+          tool_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receptionist_tool_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "receptionist_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null

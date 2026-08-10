@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/overview")({
   head: () => ({
     meta: [
-      { title: "Overview — Buyer Intelligence" },
+      { title: "Overview — Real Estate CRM" },
       { name: "description", content: "Real-time view of buyer pipeline activity, intent and follow-ups." },
     ],
   }),

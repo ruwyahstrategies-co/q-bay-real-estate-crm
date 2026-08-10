@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/property-demand")({
   head: () => ({
     meta: [
-      { title: "Property Demand — Buyer Intelligence" },
+      { title: "Property Demand — Real Estate CRM" },
       { name: "description", content: "Real-time view of buyer attention across properties, areas and types." },
     ],
   }),

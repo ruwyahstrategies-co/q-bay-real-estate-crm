@@ -1,4 +1,4 @@
 export const APP_CONFIG = {
-  productName: "Estora",
-  shortName: "E",
+  productName: "Real Estate CRM",
+  shortName: "R",
 } as const;

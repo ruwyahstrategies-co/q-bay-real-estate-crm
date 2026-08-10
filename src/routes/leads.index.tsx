@@ -20,7 +20,7 @@ import { fmtMoney, fmtDate, stageLabel, PIPELINE_STAGES, type Lead } from "@/lib
 export const Route = createFileRoute("/leads/")({
   head: () => ({
     meta: [
-      { title: "Leads — Buyer Intelligence" },
+      { title: "Leads — Real Estate CRM" },
       { name: "description", content: "Manage buyer leads, intent and pipeline stages." },
     ],
   }),

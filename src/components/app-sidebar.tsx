@@ -49,11 +49,7 @@ export function AppSidebar() {
         className="flex h-11 w-11 items-center justify-center"
         aria-label={APP_CONFIG.productName}
       >
-        <img
-          src={logoAsset.url}
-          alt={APP_CONFIG.productName}
-          className="h-9 w-9 object-contain"
-        />
+        <BrandMark className="h-8 w-8 text-white" />
       </Link>
 
       <nav className="mt-8 flex flex-1 flex-col items-center gap-1.5">

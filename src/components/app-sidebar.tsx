@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import logoAsset from "@/assets/logo.png.asset.json";
+import { BrandMark } from "./brand-mark";
 
 type NavItem = {
   to: string;

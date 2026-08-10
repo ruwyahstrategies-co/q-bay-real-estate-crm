@@ -46,7 +46,7 @@ function UploadsPage() {
       <PageHeader
         eyebrow="Data"
         title="Upload Centre"
-        description="Files are uploaded directly and stored in Lovable Cloud."
+        description="Files are uploaded directly and stored securely in the cloud."
         actions={
           <Button size="sm" onClick={() => setImporterOpen(true)}>
             <UploadIcon className="h-3.5 w-3.5" /> Import leads

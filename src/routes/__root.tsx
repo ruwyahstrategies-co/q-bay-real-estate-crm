@@ -78,11 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Buyer Intelligence" },
-      { name: "description", content: "Premium real estate buyer intelligence platform." },
-      { property: "og:title", content: "Buyer Intelligence" },
-      { property: "og:description", content: "Premium real estate buyer intelligence platform." },
+      { title: "Real Estate CRM" },
+      { name: "description", content: "Real estate CRM for leads, properties, pipeline and buyer intelligence." },
+      { property: "og:title", content: "Real Estate CRM" },
+      {
+        property: "og:description",
+        content: "Real estate CRM for leads, properties, pipeline and buyer intelligence.",
+      },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Real Estate CRM" },
       { name: "twitter:card", content: "summary" },
     ],
     links: [
@@ -92,6 +96,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
       },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
       {
         rel: "stylesheet",
         href: appCss,

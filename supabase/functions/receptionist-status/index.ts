@@ -2,6 +2,7 @@
 // Never returns raw secret values — only presence flags and masked identifiers.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,19 @@ function maskPhone(value: string | undefined): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const supabaseAuthCheck = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+  const auth = await authorizeCaller(req, supabaseAuthCheck, [{ module: "ai_receptionist", action: "view" }]);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const elevenKey = Deno.env.get("ELEVENLABS_API_KEY");
   const agentId = Deno.env.get("ELEVENLABS_AGENT_ID");
   const webhookSecret = Deno.env.get("ELEVENLABS_WEBHOOK_SECRET");
@@ -36,11 +50,7 @@ Deno.serve(async (req) => {
   // Last successful webhook delivery
   let lastWebhookAt: string | null = null;
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } },
-    );
+    const supabase = supabaseAuthCheck;
     const { data } = await supabase
       .from("receptionist_calls")
       .select("created_at")

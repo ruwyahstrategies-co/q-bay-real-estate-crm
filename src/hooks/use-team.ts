@@ -1,26 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sb, type TeamMember, type TeamMemberInsert } from "@/lib/db";
 import type { PermissionSet } from "@/lib/permissions";
-import { isMissingSchemaError, type StaffTeamMember } from "@/lib/db-extensions";
-
-/**
- * team_members.user_id and .permissions are new columns (see
- * BACKEND_REQUIREMENTS.md) that may not exist on the live schema yet. Insert
- * with them optimistically; if PostgREST rejects the unknown column, retry
- * without it so basic profile fields keep working either way.
- */
-async function writeTeamMember<T>(
-  fn: (payload: Record<string, unknown>) => PromiseLike<{ data: T | null; error: unknown }>,
-  payload: Record<string, unknown>,
-): Promise<T> {
-  const first = await fn(payload);
-  if (!first.error) return first.data as T;
-  if (!isMissingSchemaError(first.error)) throw first.error;
-  const { permissions: _permissions, user_id: _userId, ...rest } = payload;
-  const retry = await fn(rest);
-  if (retry.error) throw retry.error;
-  return retry.data as T;
-}
+import type { StaffTeamMember } from "@/lib/db-extensions";
 
 export const teamKeys = {
   all: ["team_members"] as const,
@@ -52,7 +33,7 @@ export function useTeamMembers() {
     queryFn: async (): Promise<StaffTeamMember[]> => {
       const { data, error } = await sb.from("team_members").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as StaffTeamMember[];
+      return (data ?? []) as unknown as StaffTeamMember[];
     },
   });
 }
@@ -60,11 +41,11 @@ export function useTeamMembers() {
 export function useCreateTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: TeamMemberInsert & { permissions?: PermissionSet | null }) =>
-      writeTeamMember(
-        (payload) => sb.from("team_members").insert(payload as never).select().single(),
-        input,
-      ),
+    mutationFn: async (input: TeamMemberInsert & { permissions?: PermissionSet | null }) => {
+      const { data, error } = await sb.from("team_members").insert(input as never).select().single();
+      if (error) throw error;
+      return data;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: teamKeys.all }),
   });
 }
@@ -72,11 +53,11 @@ export function useCreateTeamMember() {
 export function useUpdateTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<TeamMember> & { permissions?: PermissionSet | null } }) =>
-      writeTeamMember(
-        (payload) => sb.from("team_members").update(payload as never).eq("id", id).select().single(),
-        patch,
-      ),
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<TeamMember> & { permissions?: PermissionSet | null } }) => {
+      const { data, error } = await sb.from("team_members").update(patch as never).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: teamKeys.all }),
   });
 }

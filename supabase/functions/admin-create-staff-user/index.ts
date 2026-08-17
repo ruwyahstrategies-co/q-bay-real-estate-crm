@@ -27,18 +27,6 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function isMissingColumn(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  const code = e?.code;
-  const msg = String(e?.message ?? "").toLowerCase();
-  return (
-    code === "42703" ||
-    code === "PGRST204" ||
-    msg.includes("does not exist") ||
-    msg.includes("schema cache")
-  );
-}
-
 type CreateStaffBody = {
   full_name?: string;
   email?: string;
@@ -92,6 +80,7 @@ Deno.serve(async (req) => {
   });
 
   let authUserId: string;
+  let linkWarning: string | null = null;
   if (createErr) {
     const alreadyExists = /already.*registered|already exists/i.test(createErr.message);
     if (!alreadyExists) return json({ error: createErr.message }, 400);
@@ -101,6 +90,7 @@ Deno.serve(async (req) => {
     const existing = list.users.find((u) => u.email?.toLowerCase() === email);
     if (!existing) return json({ error: createErr.message }, 400);
     authUserId = existing.id;
+    linkWarning = "A Supabase Auth account with this email already existed and was linked instead of creating a new one. The temporary password was NOT applied to that existing account.";
   } else {
     authUserId = created.user.id;
   }
@@ -112,46 +102,19 @@ Deno.serve(async (req) => {
     .ilike("email", email)
     .maybeSingle();
 
-  const basePayload: Record<string, unknown> = {
+  const payload: Record<string, unknown> = {
     full_name,
     email,
     phone,
     role,
     is_active,
+    user_id: authUserId,
+    permissions,
   };
 
-  let linkWarning: string | null = null;
-
-  async function upsertWithUserId(payload: Record<string, unknown>) {
-    const withLink = { ...payload, user_id: authUserId, permissions };
-    if (existingMember) {
-      return service
-        .from("team_members")
-        .update(withLink)
-        .eq("id", existingMember.id)
-        .select()
-        .single();
-    }
-    return service.from("team_members").insert(withLink).select().single();
-  }
-
-  let { data, error } = await upsertWithUserId(basePayload);
-  if (error && isMissingColumn(error)) {
-    // team_members.user_id / .permissions not migrated yet — fall back so
-    // staff creation still works today, minus the auth link.
-    linkWarning =
-      "team_members.user_id/.permissions column not found — staff row was saved without the auth link. Apply the migration in BACKEND_REQUIREMENTS.md.";
-    const fallback = existingMember
-      ? await service
-          .from("team_members")
-          .update(basePayload)
-          .eq("id", existingMember.id)
-          .select()
-          .single()
-      : await service.from("team_members").insert(basePayload).select().single();
-    data = fallback.data;
-    error = fallback.error;
-  }
+  const { data, error } = existingMember
+    ? await service.from("team_members").update(payload).eq("id", existingMember.id).select().single()
+    : await service.from("team_members").insert(payload).select().single();
 
   if (error || !data) {
     return json({ error: error?.message ?? "Failed to save team member" }, 500);

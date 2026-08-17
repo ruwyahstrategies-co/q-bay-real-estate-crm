@@ -1,25 +1,34 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { isMissingSchemaError, type StaffTeamMember } from "@/lib/db-extensions";
-import {
-  can as canCheck,
-  defaultPermissionsForRole,
-  fullAccessPermissions,
-  mergePermissions,
-  type ActionKey,
-  type ModuleKey,
-  type PermissionSet,
-} from "@/lib/permissions";
+import type { StaffTeamMember } from "@/lib/db-extensions";
+import { can as canCheck, type ActionKey, type ModuleKey, type PermissionSet } from "@/lib/permissions";
+
+/**
+ * - "loading": initial Supabase session lookup in flight.
+ * - "unauthenticated": no session — render <Navigate to="/login" />.
+ * - "resolving": session present, staff row lookup in flight. Permissions
+ *   must be treated as NONE during this state — never briefly show admin
+ *   nav/actions while we don't yet know who this is.
+ * - "unprovisioned": authenticated, but no team_members row is linked to
+ *   this login. This is a real state a real user can land in (e.g. their
+ *   Supabase Auth account exists but an admin hasn't created their staff
+ *   record yet, or it was unlinked) — show a clear message, not a crash.
+ * - "inactive": linked staff row exists but is_active = false.
+ * - "authorized": linked, active staff row resolved — `permissions` reflects
+ *   exactly what's stored in team_members.permissions (the same value RLS
+ *   reads via current_team_permissions()), no client-side role fallback.
+ */
+export type AuthStatus = "loading" | "unauthenticated" | "resolving" | "unprovisioned" | "inactive" | "authorized";
 
 type AuthState = {
+  status: AuthStatus;
+  /** True while status is "loading" or "resolving" — session/profile not yet settled. */
   loading: boolean;
   session: Session | null;
   authUser: User | null;
-  /** The linked team_members row for this login, if one could be resolved. */
+  /** The linked team_members row for this login, once resolved. */
   teamMember: StaffTeamMember | null;
-  /** True if we couldn't find a team_members row and are treating this login as a bootstrap admin. */
-  isBootstrapAdmin: boolean;
   permissions: PermissionSet;
   displayName: string;
   roleLabel: string;
@@ -27,41 +36,28 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+/**
+ * Strictly resolves the caller's staff row by team_members.user_id = auth.uid().
+ * No email-based fallback — an Auth email happening to match a CRM row is not
+ * sufficient to authorize someone. If a controlled recovery/migration path is
+ * ever needed, it should be an explicit, separately-audited mechanism, not
+ * part of normal runtime authorization.
+ */
 async function resolveTeamMember(user: User): Promise<StaffTeamMember | null> {
-  // Preferred: a real backend link (team_members.user_id -> auth.users.id).
-  // Falls back to matching by email so staff login works today, before that
-  // column exists. See BACKEND_REQUIREMENTS.md.
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- team_members.user_id is transitional, see db-extensions.ts
-    const { data, error } = await (supabase as any)
-      .from("team_members")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!error && data) return data as StaffTeamMember;
-    if (error && !isMissingSchemaError(error)) throw error;
-  } catch {
-    /* fall through to email match */
-  }
-
-  if (!user.email) return null;
-  try {
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("*")
-      .ilike("email", user.email)
-      .maybeSingle();
-    if (error) return null;
-    return (data as StaffTeamMember) ?? null;
-  } catch {
-    return null;
-  }
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as StaffTeamMember) ?? null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [teamMember, setTeamMember] = useState<StaffTeamMember | null>(null);
+  const [profileState, setProfileState] = useState<"idle" | "resolving" | "resolved" | "error">("idle");
   const [resolvedFor, setResolvedFor] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,13 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
-      setLoading(false);
+      setSessionLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
+      setSessionLoading(false);
       if (!next) {
         setTeamMember(null);
         setResolvedFor(null);
+        setProfileState("idle");
       }
     });
     return () => {
@@ -89,11 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     if (resolvedFor === user.id) return;
     let active = true;
-    resolveTeamMember(user).then((member) => {
-      if (!active) return;
-      setTeamMember(member);
-      setResolvedFor(user.id);
-    });
+    setProfileState("resolving");
+    resolveTeamMember(user)
+      .then((member) => {
+        if (!active) return;
+        setTeamMember(member);
+        setResolvedFor(user.id);
+        setProfileState("resolved");
+      })
+      .catch(() => {
+        if (!active) return;
+        setProfileState("error");
+        setResolvedFor(user.id);
+      });
     return () => {
       active = false;
     };
@@ -103,30 +109,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user?.id, resolvedFor]);
 
   const authUser = session?.user ?? null;
-  const isBootstrapAdmin = !!authUser && !teamMember;
 
-  let permissions: PermissionSet;
-  if (!authUser || !teamMember) {
-    // No team_members row is linked to this login yet. Rather than locking
-    // the account out (only an admin can create Supabase Auth logins in the
-    // first place), treat it as a full-access bootstrap administrator.
-    permissions = authUser ? fullAccessPermissions() : {};
-  } else if (teamMember.is_active === false) {
-    permissions = {};
-  } else {
-    const base = defaultPermissionsForRole(teamMember.role);
-    permissions = teamMember.permissions ? mergePermissions(base, teamMember.permissions) : base;
-  }
+  let status: AuthStatus;
+  if (sessionLoading) status = "loading";
+  else if (!authUser) status = "unauthenticated";
+  else if (profileState === "idle" || profileState === "resolving") status = "resolving";
+  else if (profileState === "error" || !teamMember) status = "unprovisioned";
+  else if (teamMember.is_active === false) status = "inactive";
+  else status = "authorized";
+
+  // Stored permissions are authoritative — this must match exactly what
+  // public.current_team_permissions() returns in the database, since that's
+  // what RLS actually enforces. No role-preset fallback merge here: role
+  // presets are a UI convenience for populating permissions when a staff
+  // member is created/edited, never a runtime authorization source.
+  const permissions: PermissionSet = status === "authorized" ? (teamMember!.permissions ?? {}) : {};
 
   const displayName = teamMember?.full_name ?? authUser?.email ?? "Guest";
-  const roleLabel = isBootstrapAdmin ? "Administrator" : (teamMember?.role ?? "—");
+  const roleLabel = teamMember?.role ?? "—";
 
   const value: AuthState = {
-    loading,
+    status,
+    loading: status === "loading" || status === "resolving",
     session,
     authUser,
     teamMember,
-    isBootstrapAdmin,
     permissions,
     displayName,
     roleLabel,

@@ -21,6 +21,9 @@ export type UploadInsert = Tables["uploads"]["Insert"];
 export type PipelineHistory = Tables["pipeline_history"]["Row"];
 export type LeadPropertyInterest = Tables["lead_property_interests"]["Row"];
 export type PropertyMedia = Tables["property_media"]["Row"];
+export type PipelineStageRow = Tables["pipeline_stages"]["Row"];
+export type PipelineStageInsert = Tables["pipeline_stages"]["Insert"];
+export type PipelineStageUpdate = Tables["pipeline_stages"]["Update"];
 
 export const PIPELINE_STAGES = [
   { key: "new_lead", label: "New Lead" },

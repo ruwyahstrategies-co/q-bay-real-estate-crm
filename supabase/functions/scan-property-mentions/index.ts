@@ -4,6 +4,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -29,10 +30,12 @@ Deno.serve(async (req) => {
 
   if (!await checkRateLimit(req, "scan-property-mentions", 4)) return tooManyRequests(CORS);
 
-
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  const auth = await authorizeCaller(req, supabase, [{ module: "property_demand", action: "view" }]);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
 
   const { data: properties = [] } = await supabase
     .from("properties")

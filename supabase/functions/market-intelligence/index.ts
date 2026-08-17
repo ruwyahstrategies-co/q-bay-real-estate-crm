@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -47,9 +48,13 @@ Deno.serve(async (req) => {
 
   if (!await checkRateLimit(req, "market-intelligence", 4)) return tooManyRequests(CORS);
 
-
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return json({ error: "AI provider not configured" }, 500);
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  const auth = await authorizeCaller(req, supabase, [{ module: "marketing_intelligence", action: "view" }]);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
 
   let body: any = {};
   try { body = await req.json(); } catch {}
@@ -60,8 +65,6 @@ Deno.serve(async (req) => {
   const period = body?.period || { kind: "month" };
 
   const periodStart = computePeriodStart(period);
-
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const sinceIso = periodStart.toISOString();
   const [iRes, uRes, aRes, eRes, pRes, sRes, lRes, bRes] = await Promise.all([

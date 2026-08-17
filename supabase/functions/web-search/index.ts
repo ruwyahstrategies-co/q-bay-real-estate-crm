@@ -4,6 +4,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -122,7 +123,6 @@ Deno.serve(async (req) => {
 
   if (!await checkRateLimit(req, "web-search", 6)) return tooManyRequests(CORS);
 
-
   const tavily = Deno.env.get("TAVILY_API_KEY");
   const serper = Deno.env.get("SERPER_API_KEY");
   const provider = tavily ? "tavily" : serper ? "serper" : null;
@@ -133,12 +133,15 @@ Deno.serve(async (req) => {
     }, 503);
   }
 
-  let body: any;
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  const auth = await authorizeCaller(req, supabase, [{ module: "property_demand", action: "view" }]);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
+
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
   // Mode A: ingest a specific URL
   if (body?.url && typeof body.url === "string") {

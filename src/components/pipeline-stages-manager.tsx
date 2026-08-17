@@ -25,7 +25,7 @@ import {
   useReorderStages,
   useDeleteStage,
 } from "@/hooks/use-pipeline-stages";
-import type { PipelineStageRow } from "@/lib/db-extensions";
+import type { PipelineStageRow } from "@/lib/db";
 
 function slugify(name: string): string {
   return (

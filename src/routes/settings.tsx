@@ -36,7 +36,7 @@ function SettingsPage() {
   const [orgName, setOrgName] = useState<string>(APP_CONFIG.companyName);
   const [saving, setSaving] = useState(false);
   const { can } = usePermissions();
-  const { roleLabel, isBootstrapAdmin, teamMember } = useCurrentUser();
+  const { roleLabel, teamMember } = useCurrentUser();
   const canManage = can("settings", "manage");
 
   useEffect(() => {
@@ -134,7 +134,6 @@ function SettingsPage() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     You're signed in as <strong>{teamMember?.email ?? "—"}</strong> with the{" "}
                     <strong className="capitalize">{roleLabel.replace(/_/g, " ")}</strong> role.
-                    {isBootstrapAdmin && " No staff record is linked to this login yet, so it has full administrator access by default."}
                   </p>
                 </div>
               </div>

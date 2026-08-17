@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -149,14 +150,17 @@ Deno.serve(async (req) => {
 
   if (!await checkRateLimit(req, "transcribe-call", 6)) return tooManyRequests(CORS);
 
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  const auth = await authorizeCaller(req, supabase, [{ module: "conversations", action: "create" }]);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
+
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
   const uploadId: string | undefined = body?.upload_id;
   const leadId: string | undefined = body?.lead_id || undefined;
   const direction: string = body?.direction || "inbound";
   if (!uploadId) return json({ error: "upload_id required" }, 400);
-
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
   // 1. fetch upload
   const { data: upload, error: upErr } = await supabase

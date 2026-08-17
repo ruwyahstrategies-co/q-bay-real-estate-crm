@@ -1,251 +1,161 @@
 # Backend Requirements — Q-Bay Real Estate CRM
 
-This document is the exact contract the frontend now expects from Lovable Cloud
-(Supabase). It was written during a frontend/application pass that turned the
-prototype into an interactive, permission-aware CRM. The live database has
-**not** been changed by this pass — everything below is a specification plus
-ready-to-review migration files for Lovable to apply.
+**Status: the backend is LIVE.** Lovable Cloud has applied the schema,
+enabled RLS, deployed the staff-administration edge functions, and linked a
+real administrator account. This document now describes the current
+contract plus the one new migration from this pass that Lovable still needs
+to apply.
 
-**Read this first if you're setting up a demo:** until step 1 (below) is done,
-nobody can log in. That is the single blocking step.
+## 0. Current live state (as of this pass)
 
----
+- All schema migrations from the first frontend pass are applied:
+  `team_members.user_id`, `team_members.permissions`, `pipeline_stages`
+  (seeded), RLS via `public.has_permission()` across business tables,
+  private/permission-gated storage buckets, `public.check_rate_limit()`
+  locked to service-role-only, `property_demand_scores` set to
+  `security_invoker`.
+- `admin-create-staff-user` and `admin-manage-staff` are deployed with
+  `SUPABASE_SERVICE_ROLE_KEY` configured.
+- Administrator `omar@ruwyahstrategies.com` exists, is confirmed, linked to
+  `team_members`, active, with full permissions — **first-login bootstrap is
+  no longer needed and has been removed** (see §1).
+- Demo data exists: 3 staff, 5 properties, 8 leads, property interests,
+  pipeline history, 8 interactions, 5 tasks.
 
-## 0. Current state (what's already true today)
+## 1. Bootstrap-admin removal (this pass)
 
-- The app runs on an **anonymous/public-CRUD model**: the browser talks to
-  Supabase directly with the publishable (anon) key, and business tables have
-  no meaningful RLS. This was fine for a prototype; it is not fine once real
-  staff logins exist.
-- `supabase/functions/analyze-lead` and friends run with `verify_jwt = false`
-  and use `SUPABASE_SERVICE_ROLE_KEY` — unaffected by anything below.
-- No table currently links a `team_members` row to a Supabase Auth user.
+The original `public.current_team_permissions()` treated any authenticated
+user with **no** linked `team_members` row as a full-access administrator —
+that was only ever needed to create the first admin login. Now that a real
+linked administrator exists, this fallback is a standing privilege-escalation
+risk (any new Supabase Auth user, linked or not, would otherwise get full
+access) and has been removed on both sides:
 
-## 1. Required first step: enable Supabase Auth logins (BLOCKING)
+- **Database**: new migration
+  `supabase/migrations/20260817130000_remove_bootstrap_admin_permissions.sql`
+  replaces `current_team_permissions()` (via `CREATE OR REPLACE`, not by
+  editing the original applied migration) so that:
+  - no `auth.uid()` → `{}`
+  - no linked `team_members` row → `{}` (was: full access)
+  - `is_active = false` → `{}`
+  - linked + active → `coalesce(tm.permissions, '{}')`, unchanged.
+  **Lovable must apply this migration.**
+- **Frontend** (`src/hooks/use-auth.tsx`): an authenticated user now resolves
+  to one of `unauthenticated | resolving | unprovisioned | inactive |
+  authorized`. Only `authorized` grants any permissions; `unprovisioned`
+  (no linked row) and `inactive` render a dedicated access screen with a
+  sign-out button instead of the app shell. No email-based fallback lookup
+  either — resolution is strictly `team_members.user_id = auth.uid()`.
+- **Edge functions** (`supabase/functions/_shared/admin-auth.ts` and the new
+  `_shared/user-auth.ts`): the same strict resolution — unlinked or inactive
+  callers get `403`, never elevated access. See §3.
 
-The frontend now requires a real Supabase Auth session to reach any page
-(`/login` → session → `AppShell`, see `src/hooks/use-auth.tsx`). Nothing else
-in this document matters until this works:
+## 2. Schema (unchanged from the live state, documented for reference)
 
-1. In the Supabase project, confirm **Email/Password** auth is enabled
-   (Authentication → Providers). It is Supabase's default, so this is likely
-   already on.
-2. Deploy the two new edge functions below (section 4) with
-   `SUPABASE_SERVICE_ROLE_KEY` configured as a function secret.
-3. Apply the migration in section 2.
-4. Create the **first administrator login** — either:
-   - Manually in Supabase Studio (Authentication → Users → Add user), with
-     any email/password, **or**
-   - Call `admin-create-staff-user` once directly (e.g. via `curl` with a
-     `service_role`-signed request, or temporarily relax its authorization
-     check) to create the first account.
+`team_members.user_id uuid references auth.users(id)`,
+`team_members.permissions jsonb` (fully-resolved `PermissionSet`, module →
+allowed actions — see `src/lib/permissions.ts`), and `pipeline_stages`
+(`stage_key`, `name`, `position`, `is_active`, `is_won`, `is_lost`) are all
+live and reflected in the generated `src/integrations/supabase/types.ts`.
+The frontend now uses those generated types directly (`src/lib/db.ts`
+exports `PipelineStageRow/Insert/Update` derived from them); the transitional
+hand-written duplicates and the `UntypedSupabase` escape hatch have been
+removed from `src/lib/db-extensions.ts`, which now only contains a thin
+`StaffTeamMember` type (narrowing `permissions` from generic `Json` to the
+real `PermissionSet` shape) and a `isMissingSchemaError()` helper kept solely
+as a resilience fallback in `usePipelineStages()`.
 
-   The frontend treats **any authenticated user with no linked
-   `team_members` row as a full-access bootstrap administrator**
-   (see `isBootstrapAdmin` in `src/hooks/use-auth.tsx` and
-   `authorizeAdminCaller` in `supabase/functions/_shared/admin-auth.ts`). So
-   the very first login — before any `team_members.user_id` link exists —
-   already has full access. Once logged in, that person should immediately
-   use the Team page to create proper staff accounts (which *are* linked),
-   at which point the bootstrap fallback stops applying to them specifically.
+## 3. Edge Functions
 
-   This is intentionally a demo-friendly bootstrap, not a production auth
-   model — see the Security Notes at the end of this document.
+### Staff administration (unchanged contract, hardened authorization)
 
-## 2. Required schema changes
+- `admin-create-staff-user`, `admin-manage-staff` — both still gated by
+  `authorizeAdminCaller()`, which now requires a **linked, active** caller
+  with `role in (administrator, owner)` or `permissions.team` including
+  `manage`. The bootstrap "no team member = admin" rule is gone. The
+  transitional missing-column fallback in `admin-create-staff-user` was
+  removed (the columns are guaranteed to exist now); it always writes
+  `user_id` + `permissions` directly.
 
-File: `supabase/migrations/20260817120000_staff_auth_permissions_pipeline_stages.sql`
-(already written, ready to apply as-is or adapt).
+### CRM-user functions (newly hardened this pass)
 
-### 2.1 `team_members` — two new columns
+All of the following now require a valid bearer token resolving to an
+**active, linked** `team_members` row with the listed permission, via the
+new `supabase/functions/_shared/user-auth.ts` (`authorizeCaller`). Previously
+these were fully anonymous-callable while using the service role — that is
+what got hardened:
 
-| Column | Type | Notes |
+| Function | Required permission | Why |
 |---|---|---|
-| `user_id` | `uuid references auth.users(id) on delete set null` | Links a staff row to a real login. Nullable — a team member can be a contact-only record with no login. Unique when not null. |
-| `permissions` | `jsonb` | The **fully-resolved** permission set for that member (not a sparse diff) — see shape below. The frontend always writes the complete resolved object, so RLS policies can read it directly without needing to know role-preset defaults. |
+| `analyze-lead` | `ai_insights.run` **and** `leads.view` | Reads full lead detail + calls paid OpenRouter AI |
+| `market-intelligence` | `marketing_intelligence.view` | Aggregates CRM-wide data + paid AI |
+| `brand-search` | `marketing_intelligence.view` | Paid Tavily search, writes `external_market_sources` |
+| `web-search` | `property_demand.view` | Paid Tavily/Serper search, writes `external_market_sources` |
+| `transcribe-call` | `conversations.create` | Paid STT + AI, writes `interactions` |
+| `scan-property-mentions` | `property_demand.view` | Bulk-reads/writes CRM data |
+| `receptionist-status` | `ai_receptionist.view` | Reads receptionist config presence (masked, but still gated for consistency) |
 
-### 2.2 New table: `pipeline_stages`
+`analyze-lead` also now sets `ai_analyses.generated_by` to the caller's email
+(previously hard-coded `"anonymous"`).
 
-```
-id               uuid primary key default gen_random_uuid()
-organisation_id  uuid references organisations(id) on delete cascade   -- nullable, unused today (single-tenant)
-stage_key        text not null unique      -- stable identifier; never changes on rename
-name             text not null             -- display label; editable
-position         integer not null default 0
-is_active        boolean not null default true
-is_won            boolean not null default false
-is_lost           boolean not null default false
-created_at       timestamptz not null default now()
-updated_at       timestamptz not null default now()
-```
+`supabase/functions/_shared/auth.ts` is the shared primitive both
+`admin-auth.ts` and `user-auth.ts` build on (`resolveActiveCaller`,
+`hasPermission`, `isAdminTeamMember`) — bearer token → `auth.getUser()` →
+`team_members` lookup by `user_id` → active check. No function trusts
+role/permission data from the request body; it's always read fresh from the
+database per request.
 
-Seed exactly once (only if the table is empty) with the current hard-coded
-stages, in order: New Lead, Contacted, Qualified, Property Matching, Viewing
-Scheduled, Negotiation, Documentation, Won (`is_won=true`), Lost
-(`is_lost=true`). The migration file does this automatically.
+### Intentionally left externally callable (do not "fix" these)
 
-The frontend (`src/hooks/use-pipeline-stages.ts`) already queries this table
-and **falls back to the hard-coded list** if the table doesn't exist yet
-(detected via Postgres error codes `42P01`/`PGRST205`), so applying this
-migration is safe to do at any time without a frontend deploy coordination
-window.
+- **`receptionist-webhook`** — real external webhook from ElevenLabs. Already
+  verifies an HMAC signature (`ELEVENLABS-Signature` header) against
+  `ELEVENLABS_WEBHOOK_SECRET` when that secret is configured, with a
+  timing-safe comparison and a 30-minute replay window. This is the correct
+  security mechanism for a webhook and should not be changed to require a
+  Supabase user session (ElevenLabs is not a logged-in CRM user).
+- **`receptionist-tools`** — called server-to-server by the ElevenLabs agent
+  during a live call (tool-calling), not by a browser. It has rate limiting
+  but **no signature/secret verification today** — this is a known gap, not
+  something this pass fixed, because ElevenLabs' tool-calling webhook
+  mechanism needs to be confirmed to support a shared-secret header before
+  changing this safely (getting it wrong would silently break live call
+  handling). If ElevenLabs supports a custom header or bearer token on tool
+  calls, configure one and verify it here in a follow-up pass.
 
-### 2.3 Permission-set JSON shape
+## 4. Frontend/backend permission consistency
 
-Written by the frontend (`src/lib/permissions.ts`) as:
+`team_members.permissions` is the **single source of truth**, read
+identically by:
+- the database (`public.current_team_permissions()` / `has_permission()`,
+  enforced by RLS),
+- edge functions (`_shared/auth.ts`), and
+- the frontend (`src/hooks/use-auth.tsx` — `permissions =
+  status === "authorized" ? (teamMember.permissions ?? {}) : {}`, with **no**
+  role-preset merge/fallback at read time).
 
-```json
-{
-  "overview": ["view"],
-  "leads": ["view", "create", "edit", "delete", "assign"],
-  "properties": ["view", "create", "edit", "delete"],
-  "pipeline": ["view", "move"],
-  "conversations": ["view", "create", "edit", "delete"],
-  "uploads": ["view", "upload", "delete"],
-  "tasks": ["view", "create", "edit", "complete"],
-  "ai_insights": ["view", "run"],
-  "property_demand": ["view"],
-  "marketing_intelligence": ["view"],
-  "team": ["view", "manage"],
-  "settings": ["view", "manage"],
-  "ai_receptionist": ["view", "manage"]
-}
-```
+Role presets (`src/lib/permissions.ts` `ROLE_PRESETS`) are only ever used to
+**populate** the permissions object in the Team → staff drawer when an admin
+picks a preset or overrides an individual module/action — the drawer always
+saves the fully-resolved object, never a sparse diff, so what's stored is
+exactly what's enforced everywhere else.
 
-A module key absent from the object (or an action absent from its array)
-means "not granted". Role presets (`administrator`, `sales_manager`,
-`sales_agent`, `marketing`, `accounting`, `coordinator`, `viewer`, `custom`)
-are frontend-only defaults used to populate this JSON when an admin picks a
-preset in the Team UI — the database only ever sees the resolved result.
+## 5. Deployment steps remaining for Lovable
 
-## 3. Row-level security
+1. Apply `supabase/migrations/20260817130000_remove_bootstrap_admin_permissions.sql`.
+2. Redeploy edge functions: `analyze-lead`, `market-intelligence`,
+   `brand-search`, `web-search`, `transcribe-call`,
+   `scan-property-mentions`, `receptionist-status`, `admin-auth` (shared,
+   redeployed automatically with any function that imports it),
+   `admin-create-staff-user`, `admin-manage-staff`.
+3. No new secrets or storage/bucket changes are required for this pass.
 
-File: `supabase/migrations/20260817120000_staff_auth_permissions_pipeline_stages.sql`
-also creates:
+## 6. Security notes
 
-- `public.current_team_permissions()` — resolves the caller's permission set
-  from `auth.uid()`, with the bootstrap-admin fallback described in section 1.
-- `public.has_permission(_module text, _action text)` — the policy predicate
-  used everywhere below.
-- RLS policies on: `leads`, `properties`, `interactions`, `uploads`, `tasks`,
-  `lead_property_interests`, `property_media`, `pipeline_history`,
-  `ai_analyses` (read-only; writes are service-role via the edge function),
-  `market_intelligence_reports`, `property_events`,
-  `external_market_sources`, `app_settings`, `organisations`, `team_members`,
-  `pipeline_stages`, and the `receptionist_*` tables.
-- All policies require the `authenticated` role — **the anon/publishable key
-  can no longer read or write these tables directly.** Every browser request
-  must carry a Supabase Auth session (the frontend already does this via
-  `supabase-js`'s built-in session handling).
-- `edge_rate_limits` intentionally gets **no** authenticated policy — it's
-  only ever touched by edge functions via the service role.
-
-Storage: `supabase/migrations/20260817120100_storage_policies.sql` applies
-the equivalent authenticated + `has_permission('uploads', ...)` policies to
-the six existing buckets (`lead-imports`, `conversation-files`,
-`property-documents`, `property-media`, `call-recordings`,
-`general-documents`).
-
-**Apply order matters**: the staff/permissions/pipeline-stages migration
-must run before the storage-policies migration (the latter calls
-`public.has_permission`).
-
-## 4. Required Edge Functions
-
-Both are already written and checked into `supabase/functions/` — they need
-deployment plus the `SUPABASE_SERVICE_ROLE_KEY` secret (standard for this
-project; already required by `analyze-lead` etc.).
-
-### 4.1 `admin-create-staff-user`
-
-- **Called by:** `useCreateStaffUser()` in `src/hooks/use-team.ts`, from the
-  Team → Add Member drawer.
-- **Auth:** requires a valid bearer token; caller must be an admin (bootstrap
-  admin, `role: administrator`/`owner`, or `permissions.team` includes
-  `manage`) — see `supabase/functions/_shared/admin-auth.ts`.
-- **Body:** `{ full_name, email, phone?, role, permissions, temporary_password, is_active }`
-- **Behavior:** creates (or reuses, if already registered) a Supabase Auth
-  user via `auth.admin.createUser`, then upserts the matching `team_members`
-  row (matched by email) with `user_id` and `permissions` set. If the
-  `user_id`/`permissions` columns don't exist yet, it degrades gracefully —
-  saves the profile fields anyway and returns a `warning` string.
-- **Response:** `{ team_member, auth_user_id, warning: string | null }`
-
-### 4.2 `admin-manage-staff`
-
-- **Called by:** `useResetStaffPassword()` and `useSetStaffActive()` in
-  `src/hooks/use-team.ts`.
-- **Auth:** same admin check as above.
-- **Body:** `{ action: "reset_password", team_member_id, new_password }` or
-  `{ action: "set_active", team_member_id, is_active }`.
-- **Behavior:** `reset_password` calls `auth.admin.updateUserById` with a new
-  password. `set_active` bans/unbans the Supabase Auth user
-  (`ban_duration`) **and** updates `team_members.is_active`, so deactivating
-  someone actually revokes their session, not just a cosmetic flag.
-- Requires the target `team_members` row to already have `user_id` set (i.e.
-  a login must exist first — created via 4.1).
-
-## 5. Frontend expectations summary (exact names)
-
-| What | Name | Where |
-|---|---|---|
-| Edge function | `admin-create-staff-user` | `supabase/functions/admin-create-staff-user/index.ts` |
-| Edge function | `admin-manage-staff` | `supabase/functions/admin-manage-staff/index.ts` |
-| Table column | `team_members.user_id` | uuid, references `auth.users(id)` |
-| Table column | `team_members.permissions` | jsonb |
-| Table | `pipeline_stages` | see 2.2 |
-| SQL function | `public.has_permission(text, text)` | used by RLS |
-| SQL function | `public.current_team_permissions()` | used by RLS and available for future use |
-
-Existing tables/functions the frontend continues to use **unchanged** — do
-not rename or restructure: `leads`, `properties`, `interactions`, `uploads`,
-`tasks`, `team_members` (existing columns), `lead_property_interests`,
-`property_media`, `pipeline_history`, `ai_analyses`, `organisations`,
-`app_settings`, `property_events`, `property_demand_scores` (view),
-`market_intelligence_reports`, `external_market_sources`,
-`receptionist_settings`/`receptionist_calls`/`receptionist_tool_events`,
-`edge_rate_limits`, and edge functions `analyze-lead`, `market-intelligence`,
-`brand-search`, `receptionist-status`, `receptionist-tools`,
-`receptionist-webhook`, `scan-property-mentions`, `transcribe-call`,
-`web-search`.
-
-## 6. Seed data (optional)
-
-File: `supabase/migrations/20260817120200_demo_seed_data.sql` — 3 staff
-(contact-only, no login), 5 properties, 8 leads, matching pipeline history,
-lead↔property interests, interactions, and follow-up tasks. All fictional
-Qatar data, fixed UUIDs, idempotent (`on conflict (id) do nothing`). **Not**
-auto-applied — run it deliberately when you want a populated demo. It does
-not create any Supabase Auth logins; create those via the Team page after
-seeding, for whichever seeded staff member should be able to log in during
-the demo.
-
-## 7. Type generation
-
-Once the migration is applied, regenerate
-`src/integrations/supabase/types.ts` from the live schema (this file is
-marked auto-generated and was intentionally left untouched by this pass).
-Until then, the frontend uses `src/lib/db-extensions.ts` as an isolated,
-clearly-labeled set of transitional types (`StaffTeamMember`,
-`PipelineStageRow`, etc.) so the rest of the codebase stays fully typed
-without a blanket `any`. After regeneration, fold those fields into the
-generated types and trim `db-extensions.ts` down.
-
-## 8. Security notes / what's still frontend-only
-
-- Permission checks in `src/lib/permissions.ts` /
-  `src/components/permission-gate.tsx` control what the UI **shows** —
-  navigation, buttons, page access. They are not a substitute for the RLS in
-  section 3, which is the actual enforcement layer once applied.
-- The **bootstrap-admin fallback** (any authenticated-but-unlinked user gets
-  full access) is intentional for a smooth first login, but means: don't
-  leave stray unlinked Supabase Auth users around in a real deployment.
-  Everyone should end up with a `team_members.user_id` link and an
-  intentional role/permission set.
-- Deactivating a staff member now also revokes their Supabase Auth session
-  (via `admin-manage-staff`'s `set_active` action, not just an `is_active`
-  flag), so historical records they created remain intact but they can no
-  longer sign in.
+- Frontend permission checks (`src/lib/permissions.ts`,
+  `src/components/permission-gate.tsx`) control what the UI renders — RLS
+  and the edge-function authorization above are the actual enforcement
+  layer, and are now consistent with each other.
 - `.env` in this repo contains only the Supabase **publishable** key and
-  project URL — safe to commit, matches Lovable convention. Never add the
-  service-role key to any file under `src/` or any `VITE_`-prefixed env var.
+  project URL — safe to commit. The service-role key lives only in edge
+  function server-side secrets, never in `src/` or any `VITE_`-prefixed
+  variable.

@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -36,9 +37,13 @@ Deno.serve(async (req) => {
 
   if (!await checkRateLimit(req, "brand-search", 3)) return tooManyRequests(CORS);
 
-
   const apiKey = Deno.env.get("TAVILY_API_KEY");
   if (!apiKey) return json({ error: "Web search provider is not configured. Add TAVILY_API_KEY." }, 503);
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  const auth = await authorizeCaller(req, supabase, [{ module: "marketing_intelligence", action: "view" }]);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
@@ -50,8 +55,6 @@ Deno.serve(async (req) => {
   const location: string = (body?.location ?? "").trim();
   const services: string[] = Array.isArray(body?.services) ? body.services.filter(Boolean) : [];
   const competitors: string[] = Array.isArray(body?.competitors) ? body.competitors.filter(Boolean) : [];
-
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   const queries: { tag: string; q: string }[] = [];

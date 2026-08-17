@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
+import { DrawerShell } from "./overlay";
 import { cn } from "@/lib/utils";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useLeads } from "@/hooks/use-leads";
@@ -22,6 +23,20 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
+function initialForm(task: Task | null | undefined, defaultLeadId: string | null | undefined): Partial<Task> {
+  return {
+    title: task?.title ?? "",
+    description: task?.description ?? "",
+    task_type: task?.task_type ?? "",
+    due_at: task?.due_at ?? null,
+    priority: task?.priority ?? "medium",
+    status: task?.status ?? "pending",
+    lead_id: task?.lead_id ?? defaultLeadId ?? null,
+    property_id: task?.property_id ?? null,
+    assigned_to: task?.assigned_to ?? null,
+  };
+}
+
 export function TaskDrawer({
   open,
   onOpenChange,
@@ -40,26 +55,22 @@ export function TaskDrawer({
   const { data: team = [] } = useTeamMembers();
   const isEdit = !!task?.id;
 
-  const [form, setForm] = useState<Partial<Task>>(() => ({
-    title: task?.title ?? "",
-    description: task?.description ?? "",
-    task_type: task?.task_type ?? "",
-    due_at: task?.due_at ?? null,
-    priority: task?.priority ?? "medium",
-    status: task?.status ?? "pending",
-    lead_id: task?.lead_id ?? defaultLeadId ?? null,
-    property_id: task?.property_id ?? null,
-    assigned_to: task?.assigned_to ?? null,
-  }));
+  const [form, setForm] = useState<Partial<Task>>(() => initialForm(task, defaultLeadId));
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) setForm(initialForm(task, defaultLeadId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, task?.id, defaultLeadId]);
 
   function set<K extends keyof Task>(k: K, v: Task[K]) {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
+  const pending = create.isPending || update.isPending;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (pending) return;
     const title = (form.title ?? "").trim();
     if (!title) return toast.error("Title is required");
     const payload = {
@@ -87,72 +98,69 @@ export function TaskDrawer({
     }
   }
 
-  const pending = create.isPending || update.isPending;
   const dueValue = form.due_at ? new Date(form.due_at).toISOString().slice(0, 16) : "";
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/30">
-      <div className="flex w-full max-w-md flex-col bg-canvas shadow-2xl" role="dialog">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="text-base font-semibold">{isEdit ? "Edit Task" : "Add Task"}</h3>
-          <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2" onSubmit={handleSubmit}>
-          <Field label="Title *" full>
-            <input className={inputCls} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} required />
-          </Field>
-          <Field label="Due date">
-            <input className={inputCls} type="datetime-local" value={dueValue} onChange={(e) => set("due_at", e.target.value || null)} />
-          </Field>
-          <Field label="Priority">
-            <select className={inputCls} value={form.priority ?? "medium"} onChange={(e) => set("priority", e.target.value)}>
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Status">
-            <select className={inputCls} value={form.status ?? "pending"} onChange={(e) => set("status", e.target.value)}>
-              {TASK_STATUSES.map((s) => (
-                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Assigned to">
-            <select className={inputCls} value={form.assigned_to ?? ""} onChange={(e) => set("assigned_to", e.target.value || null)}>
-              <option value="">Unassigned</option>
-              {team.map((m) => (
-                <option key={m.id} value={m.id}>{m.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Lead">
-            <select className={inputCls} value={form.lead_id ?? ""} onChange={(e) => set("lead_id", e.target.value || null)}>
-              <option value="">— None —</option>
-              {leads.map((l) => (
-                <option key={l.id} value={l.id}>{l.full_name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Property">
-            <select className={inputCls} value={form.property_id ?? ""} onChange={(e) => set("property_id", e.target.value || null)}>
-              <option value="">— None —</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Description" full>
-            <textarea className={cn(inputCls, "h-24 py-2")} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
-          </Field>
-          <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
-          </div>
-        </form>
+    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit task" : "Add task"}>
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold">{isEdit ? "Edit Task" : "Add Task"}</h3>
+        <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
+          <X className="h-4 w-4" />
+        </button>
       </div>
-    </div>
+      <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
+        <Field label="Title *" full>
+          <input className={inputCls} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} required />
+        </Field>
+        <Field label="Due date">
+          <input className={inputCls} type="datetime-local" value={dueValue} onChange={(e) => set("due_at", e.target.value || null)} />
+        </Field>
+        <Field label="Priority">
+          <select className={inputCls} value={form.priority ?? "medium"} onChange={(e) => set("priority", e.target.value)}>
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Assigned to">
+          <select className={inputCls} value={form.assigned_to ?? ""} onChange={(e) => set("assigned_to", e.target.value || null)}>
+            <option value="">Unassigned</option>
+            {team.map((m) => (
+              <option key={m.id} value={m.id}>{m.full_name}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Lead">
+          <select className={inputCls} value={form.lead_id ?? ""} onChange={(e) => set("lead_id", e.target.value || null)}>
+            <option value="">— None —</option>
+            {leads.map((l) => (
+              <option key={l.id} value={l.id}>{l.full_name}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Property">
+          <select className={inputCls} value={form.property_id ?? ""} onChange={(e) => set("property_id", e.target.value || null)}>
+            <option value="">— None —</option>
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Status">
+          <select className={inputCls} value={form.status ?? "pending"} onChange={(e) => set("status", e.target.value)}>
+            {TASK_STATUSES.map((s) => (
+              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Description" full>
+          <textarea className={cn(inputCls, "h-24 py-2")} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+        </Field>
+        <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+        </div>
+      </form>
+    </DrawerShell>
   );
 }

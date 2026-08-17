@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
+import { DialogShell } from "./overlay";
 import { cn } from "@/lib/utils";
 import { sb, PIPELINE_STAGES } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
@@ -78,6 +79,18 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
     setRows([]);
     setMapping({} as Record<FieldKey, string>);
     setSummary(null);
+  }
+
+  // The dialog shell stays mounted through its close animation, so reset the
+  // wizard whenever it's reopened rather than showing wherever it was left off.
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
+
+  function handleClose() {
+    if (busy) return;
+    reset();
+    onOpenChange(false);
   }
 
   async function handleFileSelected(f: File) {
@@ -252,19 +265,15 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
     qc.invalidateQueries({ queryKey: leadsKeys.all });
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
-      <div className="flex w-full max-w-3xl flex-col rounded-2xl bg-canvas shadow-2xl max-h-[90vh]">
+    <DialogShell open={open} onOpenChange={(v) => { if (!v) handleClose(); }} widthClassName="max-w-3xl" ariaLabel="Import leads">
+      <div className="flex max-h-[90vh] w-full flex-col">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="text-base font-semibold">Import Leads</h3>
           <button
-            onClick={() => {
-              reset();
-              onOpenChange(false);
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+            onClick={handleClose}
+            disabled={busy}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-50"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -379,13 +388,13 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
               )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={reset}>Import another</Button>
-                <Button size="sm" onClick={() => { reset(); onOpenChange(false); }}>Done</Button>
+                <Button size="sm" onClick={handleClose}>Done</Button>
               </div>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </DialogShell>
   );
 }
 

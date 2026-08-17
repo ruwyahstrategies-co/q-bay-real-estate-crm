@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import {
   DndContext,
@@ -9,7 +9,7 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
-import { Plus, LayoutGrid, Rows3 } from "lucide-react";
+import { Plus, LayoutGrid, Rows3, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -62,7 +62,6 @@ function PipelinePage() {
     setLocalStage((m) => ({ ...m, [leadId]: targetStage }));
     try {
       await changeStage.mutateAsync({ id: leadId, newStage: targetStage, previousStage: prev });
-      toast.success("Stage updated");
     } catch (err) {
       setLocalStage((m) => {
         const c = { ...m };
@@ -128,8 +127,10 @@ function PipelinePage() {
         >
           {merged.length > 0
             ? merged.map((l) => (
-                <tr key={l.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-sm">{l.full_name}</td>
+                <tr key={l.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                  <td className="px-4 py-3 text-sm font-medium">
+                    <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
+                  </td>
                   <td className="px-4 py-3 text-xs">{pipelineStages.find((s) => s.stage_key === l.pipeline_stage)?.name ?? l.pipeline_stage.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
                   <td className="px-4 py-3 text-xs">{team.find((t) => t.id === l.assigned_agent_id)?.full_name ?? "—"}</td>
@@ -152,8 +153,8 @@ function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: s
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-[260px] flex-shrink-0 flex-col rounded-xl border bg-background p-3 transition-colors",
-        isOver ? "border-foreground bg-muted" : "border-border",
+        "flex w-[260px] flex-shrink-0 flex-col rounded-xl border bg-background p-3 transition-colors duration-150",
+        isOver ? "border-foreground bg-muted ring-2 ring-foreground/15" : "border-border",
       )}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -162,8 +163,13 @@ function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: s
       </div>
       <div className="flex-1 space-y-2">
         {items.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-canvas px-3 py-6 text-center text-[11px] text-muted-foreground">
-            No leads in this stage
+          <div
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed px-3 py-6 text-center text-[11px] transition-colors duration-150",
+              isOver ? "border-foreground/40 bg-canvas text-foreground" : "border-border bg-canvas text-muted-foreground",
+            )}
+          >
+            {isOver ? "Drop here" : "No leads in this stage"}
           </div>
         ) : items.map((l) => <DraggableCard key={l.id} lead={l} draggable={droppable} />)}
       </div>
@@ -173,21 +179,33 @@ function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: s
 }
 
 function DraggableCard({ lead, draggable }: { lead: Lead; draggable: boolean }) {
+  const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+
+  function open() {
+    navigate({ to: "/leads/$leadId", params: { leadId: lead.id } });
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...(draggable ? listeners : {})}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${lead.full_name}`}
       className={cn(
-        "rounded-lg border border-border bg-canvas p-3 shadow-sm hover:shadow",
-        draggable ? "cursor-grab" : "cursor-default",
-        isDragging && "opacity-50",
+        "group relative rounded-lg border border-border bg-canvas p-3 shadow-sm transition-shadow duration-150 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
+        draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+        isDragging && "opacity-50 shadow-lg",
       )}
     >
-      <p className="text-sm font-medium">{lead.full_name}</p>
+      <ArrowUpRight className="absolute right-2 top-2 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      <p className="pr-4 text-sm font-medium">{lead.full_name}</p>
       <p className="mt-1 text-xs text-muted-foreground">{lead.phone ?? lead.email ?? ""}</p>
       <p className="mt-2 text-xs">{fmtMoney(lead.budget_max, lead.currency)}</p>
     </div>

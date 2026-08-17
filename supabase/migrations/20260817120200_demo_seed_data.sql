@@ -20,9 +20,9 @@
 
 insert into public.team_members (id, full_name, email, phone, role, is_active, notes)
 values
-  ('11111111-1111-1111-1111-111111111101', 'Fatima Al-Kaabi', 'fatima.alkaabi@qbay.qa', '+974 5511 2201', 'sales_manager', true, 'Demo data — Sales Manager.'),
-  ('11111111-1111-1111-1111-111111111102', 'Youssef Haddad', 'youssef.haddad@qbay.qa', '+974 5511 2202', 'sales_agent', true, 'Demo data — Sales Agent.'),
-  ('11111111-1111-1111-1111-111111111103', 'Layla Ahmadi', 'layla.ahmadi@qbay.qa', '+974 5511 2203', 'marketing', true, 'Demo data — Marketing.')
+  ('11111111-1111-1111-1111-111111111101', 'Fatima Al-Kaabi', 'fatima.alkaabi@qbayrealestate.com', '+974 5511 2201', 'sales_manager', true, 'Demo data — Sales Manager.'),
+  ('11111111-1111-1111-1111-111111111102', 'Youssef Haddad', 'youssef.haddad@qbayrealestate.com', '+974 5511 2202', 'sales_agent', true, 'Demo data — Sales Agent.'),
+  ('11111111-1111-1111-1111-111111111103', 'Layla Ahmadi', 'layla.ahmadi@qbayrealestate.com', '+974 5511 2203', 'marketing', true, 'Demo data — Marketing.')
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------

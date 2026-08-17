@@ -1,4 +1,5 @@
 import { Button } from "./ui-primitives";
+import { DialogShell } from "./overlay";
 
 export function ConfirmDialog({
   open,
@@ -19,10 +20,9 @@ export function ConfirmDialog({
   onCancel: () => void;
   pending?: boolean;
 }) {
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-canvas p-5 shadow-2xl" role="dialog">
+    <DialogShell open={open} onOpenChange={(v) => { if (!v) onCancel(); }} ariaLabel={title}>
+      <div className="p-5">
         <h3 className="text-base font-semibold">{title}</h3>
         {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
         <div className="mt-5 flex items-center justify-end gap-2">
@@ -37,6 +37,6 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </DialogShell>
   );
 }

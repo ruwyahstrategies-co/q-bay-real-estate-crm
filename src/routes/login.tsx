@@ -83,7 +83,7 @@ function LoginPage() {
                 autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@qbay.qa"
+                placeholder="you@qbayrealestate.com"
               />
             </label>
             <label className="flex flex-col gap-1.5">

@@ -573,6 +573,53 @@ export type Database = {
           },
         ]
       }
+      pipeline_stages: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          organisation_id: string | null
+          position: number
+          stage_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          organisation_id?: string | null
+          position?: number
+          stage_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          organisation_id?: string | null
+          position?: number
+          stage_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           amenities: string[] | null
@@ -1088,9 +1135,11 @@ export type Database = {
           is_active: boolean
           notes: string | null
           organisation_id: string | null
+          permissions: Json | null
           phone: string | null
           role: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1101,9 +1150,11 @@ export type Database = {
           is_active?: boolean
           notes?: string | null
           organisation_id?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1114,9 +1165,11 @@ export type Database = {
           is_active?: boolean
           notes?: string | null
           organisation_id?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1245,6 +1298,11 @@ export type Database = {
     Functions: {
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
+        Returns: boolean
+      }
+      current_team_permissions: { Args: never; Returns: Json }
+      has_permission: {
+        Args: { _action: string; _module: string }
         Returns: boolean
       }
     }

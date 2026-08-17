@@ -39,6 +39,43 @@ export function useProperty(id: string | undefined) {
   });
 }
 
+/** First (display_order 0) media image per property, as signed preview URLs, for list/grid thumbnails. */
+export function usePropertyThumbnails(propertyIds: string[]) {
+  const ids = [...propertyIds].sort();
+  return useQuery({
+    queryKey: [...propertyKeys.all, "thumbnails", ids],
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await sb
+        .from("property_media")
+        .select("property_id, display_order, uploads(storage_bucket, storage_path)")
+        .in("property_id", ids)
+        .eq("media_type", "image")
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+
+      type ThumbnailRow = {
+        property_id: string;
+        uploads: { storage_bucket: string; storage_path: string } | null;
+      };
+      const firstByProperty = new Map<string, { storage_bucket: string; storage_path: string }>();
+      for (const row of (data ?? []) as unknown as ThumbnailRow[]) {
+        if (!row.uploads || firstByProperty.has(row.property_id)) continue;
+        firstByProperty.set(row.property_id, row.uploads);
+      }
+
+      const entries = await Promise.all(
+        Array.from(firstByProperty.entries()).map(async ([propertyId, upload]) => {
+          const { data: signed } = await sb.storage.from(upload.storage_bucket).createSignedUrl(upload.storage_path, 3600);
+          return [propertyId, signed?.signedUrl] as const;
+        }),
+      );
+      return Object.fromEntries(entries.filter(([, url]) => !!url)) as Record<string, string>;
+    },
+  });
+}
+
 export function usePropertyMedia(propertyId: string | undefined) {
   return useQuery({
     queryKey: propertyId ? propertyKeys.media(propertyId) : ["properties", "media", "none"],

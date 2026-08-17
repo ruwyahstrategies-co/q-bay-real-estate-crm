@@ -12,15 +12,19 @@ import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { LeadImporter } from "@/components/lead-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PipelineStageBadge } from "@/components/status-badge";
+import { PermissionGate } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { cn } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
-import { fmtMoney, fmtDate, stageLabel, PIPELINE_STAGES, type Lead } from "@/lib/db";
+import { fmtMoney, fmtDate, type Lead } from "@/lib/db";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
     meta: [
-      { title: "Leads — Real Estate CRM" },
+      { title: `Leads — ${APP_CONFIG.productName}` },
       { name: "description", content: "Manage buyer leads, intent and pipeline stages." },
     ],
   }),
@@ -40,24 +44,34 @@ function LeadsPage() {
 
   const { data: leads = [], isLoading } = useLeads({ search, stage, agent });
   const { data: team = [] } = useTeamMembers();
+  const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const agentName = (id: string | null) => team.find((t) => t.id === id)?.full_name ?? "Unassigned";
+  const { can } = usePermissions();
+  const canCreate = can("leads", "create");
+  const canEdit = can("leads", "edit");
+  const canDelete = can("leads", "delete");
 
   return (
     <AppShell>
+      <PermissionGate module="leads" action="view" page>
       <PageHeader
         eyebrow="Buyers"
         title="All Leads"
         description="Centralised buyer database with intent, budget and stage."
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
-              <Upload className="h-3.5 w-3.5" /> Import Leads
-            </Button>
-            <Button size="sm" onClick={() => { setEditLead(null); setOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" /> Add Lead
-            </Button>
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
+                <Upload className="h-3.5 w-3.5" /> Import Leads
+              </Button>
+            )}
+            {canCreate && (
+              <Button size="sm" onClick={() => { setEditLead(null); setOpen(true); }}>
+                <Plus className="h-3.5 w-3.5" /> Add Lead
+              </Button>
+            )}
           </>
         }
       />
@@ -78,8 +92,8 @@ function LeadsPage() {
           className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs"
         >
           <option value="">All stages</option>
-          {PIPELINE_STAGES.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
+          {stages.map((s) => (
+            <option key={s.id} value={s.stage_key}>{s.name}</option>
           ))}
         </select>
         <select
@@ -114,14 +128,16 @@ function LeadsPage() {
                 title="No leads yet"
                 description="Add a lead manually or import a CSV/XLSX file to get started."
                 action={
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
-                      <Upload className="h-3.5 w-3.5" /> Import Leads
-                    </Button>
-                    <Button size="sm" onClick={() => { setEditLead(null); setOpen(true); }}>
-                      <Plus className="h-3.5 w-3.5" /> Add Lead
-                    </Button>
-                  </div>
+                  canCreate ? (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
+                        <Upload className="h-3.5 w-3.5" /> Import Leads
+                      </Button>
+                      <Button size="sm" onClick={() => { setEditLead(null); setOpen(true); }}>
+                        <Plus className="h-3.5 w-3.5" /> Add Lead
+                      </Button>
+                    </div>
+                  ) : undefined
                 }
               />
             )
@@ -141,20 +157,26 @@ function LeadsPage() {
                   <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "—"}</td>
                   <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground" title="AI analysis required">Not analysed</td>
-                  <td className="px-4 py-3"><PipelineStageBadge stage={stageLabel(l.pipeline_stage)} /></td>
+                  <td className="px-4 py-3"><PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} /></td>
                   <td className="px-4 py-3 text-xs">{agentName(l.assigned_agent_id)}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(l.updated_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button className="rounded-md p-1.5 hover:bg-muted" title="Edit" onClick={() => { setEditLead(l); setOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button className="rounded-md p-1.5 hover:bg-muted" title="Archive" onClick={() => setConfirmArchive(l)}>
-                        <Archive className="h-3.5 w-3.5" />
-                      </button>
-                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Delete" onClick={() => setConfirmDelete(l)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {canEdit && (
+                        <button className="rounded-md p-1.5 hover:bg-muted" title="Edit" onClick={() => { setEditLead(l); setOpen(true); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button className="rounded-md p-1.5 hover:bg-muted" title="Archive" onClick={() => setConfirmArchive(l)}>
+                          <Archive className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Delete" onClick={() => setConfirmDelete(l)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -172,7 +194,7 @@ function LeadsPage() {
               <Link key={l.id} to="/leads/$leadId" params={{ leadId: l.id }} className="rounded-2xl border border-border bg-canvas p-5 hover:shadow-md transition">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">{l.full_name}</h4>
-                  <PipelineStageBadge stage={stageLabel(l.pipeline_stage)} />
+                  <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "—"}</p>
                 <p className="mt-3 text-xs"><strong>Budget:</strong> {fmtMoney(l.budget_max, l.currency)}</p>
@@ -218,6 +240,7 @@ function LeadsPage() {
           setConfirmDelete(null);
         }}
       />
+      </PermissionGate>
     </AppShell>
   );
 }

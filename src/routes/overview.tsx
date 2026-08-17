@@ -15,11 +15,14 @@ import { useProperties } from "@/hooks/use-properties";
 import { useMarketReports } from "@/hooks/use-market-intelligence";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { PermissionGate } from "@/components/permission-gate";
+import { useTasks } from "@/hooks/use-tasks";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/overview")({
   head: () => ({
     meta: [
-      { title: "Overview — Real Estate CRM" },
+      { title: `Overview — ${APP_CONFIG.productName}` },
       { name: "description", content: "Real-time view of buyer pipeline activity, intent and follow-ups." },
     ],
   }),
@@ -37,8 +40,16 @@ function OverviewPage() {
   const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(), []);
   const { data: events = [] } = usePropertyEvents(sinceISO);
   const { data: reports = [] } = useMarketReports();
+  const { data: openTasks = [] } = useTasks({ status: "pending" });
 
   const propertyById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
+
+  const now = Date.now();
+  const overdueTasks = openTasks.filter((t) => t.due_at && new Date(t.due_at).getTime() < now);
+  const upcomingTasks = openTasks
+    .filter((t) => t.due_at && new Date(t.due_at).getTime() >= now)
+    .sort((a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime())
+    .slice(0, 6);
 
   const activeLeads = leads.filter((l) => l.status === "active");
   const pipelineValue = activeLeads
@@ -97,6 +108,7 @@ function OverviewPage() {
 
   return (
     <AppShell>
+      <PermissionGate module="overview" action="view" page>
       <p className="mb-3 text-[13px] font-medium text-muted-foreground">Buyer Intelligence</p>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -211,6 +223,46 @@ function OverviewPage() {
         </div>
       </div>
 
+      {/* Follow-ups */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold">Overdue follow-ups</h3>
+            <span className="rounded-full bg-[#FADCDA] px-2 py-0.5 text-[11px]">{overdueTasks.length}</span>
+          </div>
+          {overdueTasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nothing overdue — you're on top of it.</p>
+          ) : (
+            <ul className="space-y-2 text-xs">
+              {overdueTasks.slice(0, 6).map((t) => (
+                <li key={t.id} className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
+                  <span className="truncate">{t.title}</span>
+                  <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold">Upcoming follow-ups</h3>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{upcomingTasks.length}</span>
+          </div>
+          {upcomingTasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No upcoming follow-ups scheduled.</p>
+          ) : (
+            <ul className="space-y-2 text-xs">
+              {upcomingTasks.map((t) => (
+                <li key={t.id} className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
+                  <span className="truncate">{t.title}</span>
+                  <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
       {/* Demand & Marketing signals */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
@@ -254,6 +306,7 @@ function OverviewPage() {
           )}
         </Card>
       </div>
+      </PermissionGate>
     </AppShell>
   );
 }

@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { cn } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useProperties } from "@/hooks/use-properties";
+import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import type { Lead } from "@/lib/db";
-import { PIPELINE_STAGES } from "@/lib/db";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -43,7 +45,17 @@ export function AddLeadDrawer({
   const create = useCreateLead();
   const update = useUpdateLead();
   const { data: team = [] } = useTeamMembers();
+  const { data: properties = [] } = useProperties({ status: "active" });
+  const { data: stages = [] } = usePipelineStages({ activeOnly: true });
+  const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
+  const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
+
+  const [interestedPropertyIds, setInterestedPropertyIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (open) setInterestedPropertyIds(currentInterests);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lead?.id, currentInterests.join(",")]);
 
   const [form, setForm] = useState<FormState>(() => ({
     full_name: lead?.full_name ?? "",
@@ -98,12 +110,21 @@ export function AddLeadDrawer({
       notes: form.notes || null,
     };
     try {
+      let leadId = lead?.id;
       if (isEdit && lead) {
         await update.mutateAsync({ id: lead.id, patch: payload });
         toast.success("Lead updated");
       } else {
-        await create.mutateAsync(payload);
+        const created = await create.mutateAsync(payload);
+        leadId = created.id;
         toast.success("Lead created");
+      }
+      if (leadId) {
+        try {
+          await syncInterests.mutateAsync({ leadId, propertyIds: interestedPropertyIds });
+        } catch (err) {
+          toast.error(`Lead saved, but property interests failed to sync: ${(err as Error).message}`);
+        }
       }
       onOpenChange(false);
     } catch (err) {
@@ -189,8 +210,8 @@ export function AddLeadDrawer({
           </Field>
           <Field label="Pipeline stage">
             <select className={inputCls} value={form.pipeline_stage ?? "new_lead"} onChange={(e) => set("pipeline_stage", e.target.value)}>
-              {PIPELINE_STAGES.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
+              {stages.map((s) => (
+                <option key={s.id} value={s.stage_key}>{s.name}</option>
               ))}
             </select>
           </Field>
@@ -201,6 +222,28 @@ export function AddLeadDrawer({
                 <option key={m.id} value={m.id}>{m.full_name}</option>
               ))}
             </select>
+          </Field>
+          <Field label={`Interested properties (${interestedPropertyIds.length} selected)`} full>
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-canvas p-2">
+              {properties.length === 0 ? (
+                <p className="px-1 py-2 text-xs text-muted-foreground">No active properties yet.</p>
+              ) : (
+                properties.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={interestedPropertyIds.includes(p.id)}
+                      onChange={(e) =>
+                        setInterestedPropertyIds((prev) =>
+                          e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                        )
+                      }
+                    />
+                    <span className="truncate">{p.reference_code ? `${p.reference_code} · ` : ""}{p.title}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </Field>
           <Field label="Notes" full>
             <textarea className={cn(inputCls, "h-24 py-2")} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />

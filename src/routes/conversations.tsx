@@ -9,9 +9,12 @@ import { Button, Card } from "@/components/ui-primitives";
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
 import { fmtDateTime, INTERACTION_TYPES, type Interaction } from "@/lib/db";
+import { AccessDenied } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/conversations")({
-  head: () => ({ meta: [{ title: "Conversations" }] }),
+  head: () => ({ meta: [{ title: `Conversations — ${APP_CONFIG.productName}` }] }),
   component: ConversationsPage,
 });
 
@@ -25,6 +28,12 @@ function ConversationsPage() {
   const { data: interactions = [] } = useInteractions({ search, type });
   const del = useDeleteInteraction();
   const selected = interactions.find((i) => i.id === selectedId) ?? interactions[0];
+  const { can } = usePermissions();
+  const canCreate = can("conversations", "create");
+  const canEdit = can("conversations", "edit");
+  const canDelete = can("conversations", "delete");
+
+  if (!can("conversations", "view")) return <AppShell><AccessDenied /></AppShell>;
 
   return (
     <AppShell>
@@ -33,9 +42,11 @@ function ConversationsPage() {
         title="Conversations"
         description="Store and review every buyer interaction across all channels."
         actions={
-          <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" /> Add interaction
-          </Button>
+          canCreate ? (
+            <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
+              <Plus className="h-3.5 w-3.5" /> Add interaction
+            </Button>
+          ) : undefined
         }
       />
 
@@ -94,16 +105,18 @@ function ConversationsPage() {
                   <p className="text-xs text-muted-foreground">{fmtDateTime(selected.interaction_date)}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(selected); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
-                  <button
-                    className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                    onClick={async () => {
-                      try { await del.mutateAsync(selected.id); toast.success("Deleted"); setSelectedId(null); }
-                      catch (e) { toast.error((e as Error).message); }
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(selected); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>}
+                  {canDelete && (
+                    <button
+                      className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                      onClick={async () => {
+                        try { await del.mutateAsync(selected.id); toast.success("Deleted"); setSelectedId(null); }
+                        catch (e) { toast.error((e as Error).message); }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
               <p className="whitespace-pre-wrap text-sm text-foreground">{selected.content ?? "(no content)"}</p>

@@ -22,11 +22,13 @@ import {
 import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/hooks/use-property-demand";
 import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { PermissionGate } from "@/components/permission-gate";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/property-demand")({
   head: () => ({
     meta: [
-      { title: "Property Demand — Real Estate CRM" },
+      { title: `Property Demand — ${APP_CONFIG.productName}` },
       { name: "description", content: "Real-time view of buyer attention across properties, areas and types." },
     ],
   }),
@@ -129,6 +131,7 @@ function PropertyDemandPage() {
 
   return (
     <AppShell>
+      <PermissionGate module="property_demand" action="view" page>
       <PageHeader
         eyebrow="Demand"
         title="Property Demand Analytics"
@@ -239,6 +242,7 @@ function PropertyDemandPage() {
       )}
 
       <MarketSourcesPanel />
+      </PermissionGate>
     </AppShell>
   );
 }

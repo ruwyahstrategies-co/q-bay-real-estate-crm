@@ -1,5 +1,6 @@
 import { Bell, Search, ChevronDown } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
+import { useCurrentUser } from "@/hooks/use-auth";
 
 const titles: Record<string, string> = {
   "/overview": "Overview",
@@ -24,6 +25,8 @@ function deriveTitle(pathname: string): string {
 export function AppHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const title = deriveTitle(pathname);
+  const { displayName } = useCurrentUser();
+  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "—";
 
   return (
     <header className="flex items-center justify-between gap-4 pb-6">
@@ -48,9 +51,9 @@ export function AppHeader() {
           aria-label="Account"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-pastel-purple text-[11px] font-semibold text-foreground ring-1 ring-white/60">
-            —
+            {initials}
           </span>
-          <span className="hidden sm:inline">Guest</span>
+          <span className="hidden sm:inline">{displayName}</span>
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       </div>

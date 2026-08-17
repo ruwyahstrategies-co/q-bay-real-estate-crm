@@ -17,13 +17,17 @@ import { Button } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
+import { PermissionGate } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
-import { PIPELINE_STAGES, fmtMoney, type Lead } from "@/lib/db";
+import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { fmtMoney, type Lead } from "@/lib/db";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/pipeline")({
-  head: () => ({ meta: [{ title: "Pipeline" }] }),
+  head: () => ({ meta: [{ title: `Pipeline — ${APP_CONFIG.productName}` }] }),
   component: PipelinePage,
 });
 
@@ -34,8 +38,12 @@ function PipelinePage() {
   const [agent, setAgent] = useState<string | null>(null);
   const { data: leads = [] } = useLeads({ search, agent });
   const { data: team = [] } = useTeamMembers();
+  const { data: pipelineStages = [] } = usePipelineStages({ activeOnly: true });
   const changeStage = useChangePipelineStage();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const { can } = usePermissions();
+  const canMove = can("pipeline", "move");
+  const canCreateLead = can("leads", "create");
 
   // Local optimistic copy of leads' stages
   const [localStage, setLocalStage] = useState<Record<string, string>>({});
@@ -45,7 +53,7 @@ function PipelinePage() {
   );
 
   async function onDragEnd(e: DragEndEvent) {
-    if (!e.over) return;
+    if (!canMove || !e.over) return;
     const leadId = String(e.active.id);
     const targetStage = String(e.over.id);
     const lead = leads.find((l) => l.id === leadId);
@@ -67,14 +75,17 @@ function PipelinePage() {
 
   return (
     <AppShell>
+      <PermissionGate module="pipeline" action="view" page>
       <PageHeader
         eyebrow="Sales"
         title="Pipeline"
-        description="Drag-and-drop pipeline across every stage."
+        description={canMove ? "Drag-and-drop pipeline across every stage." : "Pipeline overview (read-only)."}
         actions={
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5" /> Add Lead
-          </Button>
+          canCreateLead ? (
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add Lead
+            </Button>
+          ) : undefined
         }
       />
 
@@ -103,10 +114,10 @@ function PipelinePage() {
       {view === "board" ? (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="-mx-2 flex gap-3 overflow-x-auto px-2 pb-3">
-            {PIPELINE_STAGES.map((stage) => {
-              const items = merged.filter((l) => l.pipeline_stage === stage.key);
+            {pipelineStages.map((stage) => {
+              const items = merged.filter((l) => l.pipeline_stage === stage.stage_key);
               const total = items.reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
-              return <StageColumn key={stage.key} stageKey={stage.key} label={stage.label} items={items} total={total} />;
+              return <StageColumn key={stage.id} stageKey={stage.stage_key} label={stage.name} items={items} total={total} droppable={canMove} />;
             })}
           </div>
         </DndContext>
@@ -119,7 +130,7 @@ function PipelinePage() {
             ? merged.map((l) => (
                 <tr key={l.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-sm">{l.full_name}</td>
-                  <td className="px-4 py-3 text-xs capitalize">{l.pipeline_stage.replace(/_/g, " ")}</td>
+                  <td className="px-4 py-3 text-xs">{pipelineStages.find((s) => s.stage_key === l.pipeline_stage)?.name ?? l.pipeline_stage.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
                   <td className="px-4 py-3 text-xs">{team.find((t) => t.id === l.assigned_agent_id)?.full_name ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(l.updated_at).toLocaleDateString()}</td>
@@ -130,12 +141,13 @@ function PipelinePage() {
       )}
 
       <AddLeadDrawer open={addOpen} onOpenChange={setAddOpen} />
+      </PermissionGate>
     </AppShell>
   );
 }
 
-function StageColumn({ stageKey, label, items, total }: { stageKey: string; label: string; items: Lead[]; total: number }) {
-  const { setNodeRef, isOver } = useDroppable({ id: stageKey });
+function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: string; label: string; items: Lead[]; total: number; droppable: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageKey, disabled: !droppable });
   return (
     <div
       ref={setNodeRef}
@@ -153,24 +165,25 @@ function StageColumn({ stageKey, label, items, total }: { stageKey: string; labe
           <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-canvas px-3 py-6 text-center text-[11px] text-muted-foreground">
             No leads in this stage
           </div>
-        ) : items.map((l) => <DraggableCard key={l.id} lead={l} />)}
+        ) : items.map((l) => <DraggableCard key={l.id} lead={l} draggable={droppable} />)}
       </div>
       <p className="mt-3 text-[11px] text-muted-foreground">Total value: {total > 0 ? fmtMoney(total, items[0]?.currency) : "—"}</p>
     </div>
   );
 }
 
-function DraggableCard({ lead }: { lead: Lead }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
+function DraggableCard({ lead, draggable }: { lead: Lead; draggable: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(draggable ? listeners : {})}
       className={cn(
-        "cursor-grab rounded-lg border border-border bg-canvas p-3 shadow-sm hover:shadow",
+        "rounded-lg border border-border bg-canvas p-3 shadow-sm hover:shadow",
+        draggable ? "cursor-grab" : "cursor-default",
         isDragging && "opacity-50",
       )}
     >

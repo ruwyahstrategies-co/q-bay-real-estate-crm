@@ -15,11 +15,13 @@ import { useBrandProfile, useSaveBrandProfile, useBrandSearch, type BrandProfile
 import { useCreateTask, useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { fmtDate, type Task } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { PermissionGate } from "@/components/permission-gate";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/marketing-intelligence")({
   head: () => ({
     meta: [
-      { title: "Marketing Intelligence — Sales & Brand" },
+      { title: `Marketing Intelligence — ${APP_CONFIG.productName}` },
       { name: "description", content: "Objective-driven marketing strategy from real buyer conversations and online brand research." },
     ],
   }),
@@ -87,6 +89,7 @@ function MarketingIntelligencePage() {
 
   return (
     <AppShell>
+      <PermissionGate module="marketing_intelligence" action="view" page>
       <PageHeader
         eyebrow="Marketing"
         title="Marketing & Brand Intelligence"
@@ -161,6 +164,7 @@ function MarketingIntelligencePage() {
           <BrandGapView report={latestBrandGap} sourceById={sourceById} />
         </div>
       )}
+      </PermissionGate>
     </AppShell>
   );
 }

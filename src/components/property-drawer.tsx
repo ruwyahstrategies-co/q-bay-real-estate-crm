@@ -22,10 +22,12 @@ export function PropertyDrawer({
   open,
   onOpenChange,
   property,
+  onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   property?: Property | null;
+  onSaved?: (property: Property, wasNew: boolean) => void;
 }) {
   const create = useCreateProperty();
   const update = useUpdateProperty();
@@ -85,11 +87,13 @@ export function PropertyDrawer({
     };
     try {
       if (isEdit && property) {
-        await update.mutateAsync({ id: property.id, patch: payload });
+        const saved = await update.mutateAsync({ id: property.id, patch: payload });
         toast.success("Property updated");
+        onSaved?.(saved, false);
       } else {
-        await create.mutateAsync(payload);
+        const saved = await create.mutateAsync(payload);
         toast.success("Property created");
+        onSaved?.(saved, true);
       }
       onOpenChange(false);
     } catch (err) {

@@ -8,13 +8,17 @@ import { EmptyState } from "@/components/empty-state";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useLeads } from "@/hooks/use-leads";
 import { stageLabel } from "@/lib/db";
+import { AccessDenied } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-insights")({
-  head: () => ({ meta: [{ title: "AI Insights" }] }),
+  head: () => ({ meta: [{ title: `AI Insights — ${APP_CONFIG.productName}` }] }),
   component: AIInsightsPage,
 });
 
 function AIInsightsPage() {
+  const { can } = usePermissions();
   const { data: analyses = [], isLoading } = useAllCompletedAnalyses();
   const { data: leads = [] } = useLeads({ status: "all" });
 
@@ -50,6 +54,8 @@ function AIInsightsPage() {
   const propertyTypes = aggregateCounts(currentByLead.flatMap((a) => [a.output_json?.buyer_summary?.property_type].filter(Boolean)));
   const recommendedStages = aggregateCounts(currentByLead.map((a) => a.output_json?.buyer_summary?.pipeline_stage ?? a.output_json?.recommendedPipelineStage).filter(Boolean));
   const missingCritical = currentByLead.filter((a) => (a.output_json?.wants?.missing_info?.length ?? a.output_json?.missingInformation?.length ?? 0) >= 2);
+
+  if (!can("ai_insights", "view")) return <AppShell><AccessDenied /></AppShell>;
 
   if (isLoading) {
     return <AppShell><EmptyState title="Loading insights…" /></AppShell>;

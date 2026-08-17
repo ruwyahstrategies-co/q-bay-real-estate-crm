@@ -13,9 +13,12 @@ import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
 import { fmtDate, fmtSize, UPLOAD_CATEGORIES, type UploadCategoryKey } from "@/lib/db";
+import { AccessDenied } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/uploads")({
-  head: () => ({ meta: [{ title: "Uploads" }] }),
+  head: () => ({ meta: [{ title: `Uploads — ${APP_CONFIG.productName}` }] }),
   component: UploadsPage,
 });
 
@@ -40,6 +43,11 @@ function UploadsPage() {
   const { data: properties = [] } = useProperties({ status: "all" });
   const { data: uploads = [] } = useUploads();
   const deleteUpload = useDeleteUpload();
+  const { can } = usePermissions();
+  const canUpload = can("uploads", "upload");
+  const canDelete = can("uploads", "delete");
+
+  if (!can("uploads", "view")) return <AppShell><AccessDenied /></AppShell>;
 
   return (
     <AppShell>
@@ -48,9 +56,11 @@ function UploadsPage() {
         title="Upload Centre"
         description="Files are uploaded directly and stored securely in the cloud."
         actions={
-          <Button size="sm" onClick={() => setImporterOpen(true)}>
-            <UploadIcon className="h-3.5 w-3.5" /> Import leads
-          </Button>
+          canUpload ? (
+            <Button size="sm" onClick={() => setImporterOpen(true)}>
+              <UploadIcon className="h-3.5 w-3.5" /> Import leads
+            </Button>
+          ) : undefined
         }
       />
 
@@ -77,18 +87,20 @@ function UploadsPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {categoryItems.map((c) => (
-          <UploadDropzone
-            key={c.key}
-            title={UPLOAD_CATEGORIES[c.key].title}
-            description={c.description}
-            categoryKey={c.key}
-            leadId={leadId || null}
-            propertyId={propertyId || null}
-          />
-        ))}
-      </div>
+      {canUpload && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {categoryItems.map((c) => (
+            <UploadDropzone
+              key={c.key}
+              title={UPLOAD_CATEGORIES[c.key].title}
+              description={c.description}
+              categoryKey={c.key}
+              leadId={leadId || null}
+              propertyId={propertyId || null}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="mt-8">
         <h3 className="mb-3 text-[16px] font-semibold">Recent uploads</h3>
@@ -111,16 +123,18 @@ function UploadsPage() {
                       <button className="rounded-md p-1.5 hover:bg-muted" title="Download" onClick={() => downloadUpload(u).catch((e) => toast.error((e as Error).message))}>
                         <Download className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                        title="Delete"
-                        onClick={async () => {
-                          try { await deleteUpload.mutateAsync(u); toast.success("Deleted"); }
-                          catch (e) { toast.error((e as Error).message); }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                          title="Delete"
+                          onClick={async () => {
+                            try { await deleteUpload.mutateAsync(u); toast.success("Deleted"); }
+                            catch (e) { toast.error((e as Error).message); }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

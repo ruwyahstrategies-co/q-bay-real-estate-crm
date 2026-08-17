@@ -12,6 +12,8 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { APP_CONFIG } from "../lib/config";
+import { AuthProvider } from "../hooks/use-auth";
 
 function NotFoundComponent() {
   return (
@@ -78,15 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Real Estate CRM" },
-      { name: "description", content: "Real estate CRM for leads, properties, pipeline and buyer intelligence." },
-      { property: "og:title", content: "Real Estate CRM" },
+      { title: APP_CONFIG.productName },
+      { name: "description", content: APP_CONFIG.description },
+      { property: "og:title", content: APP_CONFIG.productName },
       {
         property: "og:description",
-        content: "Real estate CRM for leads, properties, pipeline and buyer intelligence.",
+        content: APP_CONFIG.description,
       },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "Real Estate CRM" },
+      { property: "og:site_name", content: APP_CONFIG.productName },
       { name: "twitter:card", content: "summary" },
     ],
     links: [
@@ -128,9 +130,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster richColors position="top-right" />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -23,9 +23,13 @@ import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
 import { CallTranscriptCard } from "@/components/call-transcript-card";
 import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
 import { useLeadReferences } from "@/hooks/use-references";
+import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
+import { PermissionGate } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/$leadId")({
-  head: () => ({ meta: [{ title: "Lead Profile" }] }),
+  head: () => ({ meta: [{ title: `Lead Profile — ${APP_CONFIG.productName}` }] }),
   component: LeadProfilePage,
 });
 
@@ -46,11 +50,13 @@ function LeadProfilePage() {
   const { data: files = [] } = useUploads({ leadId });
   const { data: history = [] } = usePipelineHistory(leadId);
   const { data: analyses = [] } = useLeadAnalyses(leadId);
+  const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const analyseMut = useAnalyseLead();
   const deleteInteraction = useDeleteInteraction();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const deleteUpload = useDeleteUpload();
+  const { can } = usePermissions();
 
   if (isLoading) return <AppShell><EmptyState title="Loading…" /></AppShell>;
   if (!lead) return (
@@ -73,8 +79,17 @@ function LeadProfilePage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const canEdit = can("leads", "edit");
+  const canRunAi = can("ai_insights", "run");
+  const canCreateInteraction = can("conversations", "create");
+  const canCreateTask = can("tasks", "create");
+  const canUpload = can("uploads", "upload");
+  const canDeleteInteraction = can("conversations", "delete");
+  const canDeleteUpload = can("uploads", "delete");
+
   return (
     <AppShell>
+      <PermissionGate module="leads" action="view" page>
       <Link to="/leads" className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-3.5 w-3.5" /> All leads
       </Link>
@@ -88,7 +103,7 @@ function LeadProfilePage() {
             <div>
               <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <PipelineStageBadge stage={stageLabel(lead.pipeline_stage)} />
+                <PipelineStageBadge stage={stageLabelFrom(stages, lead.pipeline_stage)} />
                 <IntentScore score={intentScore} />
                 <span className="text-xs text-muted-foreground">{agent?.full_name ?? "Unassigned agent"}</span>
               </div>
@@ -106,12 +121,16 @@ function LeadProfilePage() {
             {lead.email && (
               <a href={`mailto:${lead.email}`}><Button variant="outline" size="sm"><Mail className="h-3.5 w-3.5" /> Email</Button></a>
             )}
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </Button>
-            <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
-              <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing…" : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
-            </Button>
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            )}
+            {canRunAi && (
+              <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
+                <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing…" : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -166,9 +185,11 @@ function LeadProfilePage() {
 
       {tab === "Conversations" && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setInteractionOpen(true)}><Plus className="h-3.5 w-3.5" /> Add interaction</Button>
-          </div>
+          {canCreateInteraction && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setInteractionOpen(true)}><Plus className="h-3.5 w-3.5" /> Add interaction</Button>
+            </div>
+          )}
           <CallTranscriptCard lead={lead} />
           {interactions.length === 0 ? (
             <EmptyState compact title="No interactions yet" description="Log a call, WhatsApp message, meeting or note." />
@@ -187,15 +208,17 @@ function LeadProfilePage() {
                       {i.subject && <p className="mt-2 text-sm font-medium">{i.subject}</p>}
                       {i.content && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{i.content}</p>}
                     </div>
-                    <button
-                      className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                      onClick={async () => {
-                        try { await deleteInteraction.mutateAsync(i.id); toast.success("Deleted"); }
-                        catch (e) { toast.error((e as Error).message); }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {canDeleteInteraction && (
+                      <button
+                        className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                        onClick={async () => {
+                          try { await deleteInteraction.mutateAsync(i.id); toast.success("Deleted"); }
+                          catch (e) { toast.error((e as Error).message); }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -210,12 +233,14 @@ function LeadProfilePage() {
 
       {tab === "Files" && (
         <div className="space-y-3">
-          <UploadDropzone
-            title="Upload file for this lead"
-            description="Documents, sheets or audio."
-            categoryKey="general_documents"
-            leadId={lead.id}
-          />
+          {canUpload && (
+            <UploadDropzone
+              title="Upload file for this lead"
+              description="Documents, sheets or audio."
+              categoryKey="general_documents"
+              leadId={lead.id}
+            />
+          )}
           {files.length === 0 ? (
             <EmptyState compact title="No files yet" />
           ) : (
@@ -228,15 +253,17 @@ function LeadProfilePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => downloadUpload(f).catch((e) => toast.error((e as Error).message))}>Download</Button>
-                    <button
-                      className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                      onClick={async () => {
-                        try { await deleteUpload.mutateAsync(f); toast.success("Deleted"); }
-                        catch (e) { toast.error((e as Error).message); }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {canDeleteUpload && (
+                      <button
+                        className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                        onClick={async () => {
+                          try { await deleteUpload.mutateAsync(f); toast.success("Deleted"); }
+                          catch (e) { toast.error((e as Error).message); }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -247,9 +274,11 @@ function LeadProfilePage() {
 
       {tab === "Tasks" && (
         <div>
-          <div className="mb-3 flex justify-end">
-            <Button size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5" /> Add task</Button>
-          </div>
+          {canCreateTask && (
+            <div className="mb-3 flex justify-end">
+              <Button size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5" /> Add task</Button>
+            </div>
+          )}
           {tasks.length === 0 ? (
             <EmptyState compact title="No tasks yet" />
           ) : (
@@ -305,6 +334,7 @@ function LeadProfilePage() {
       <InteractionDrawer open={interactionOpen} onOpenChange={setInteractionOpen} defaultLeadId={lead.id} />
       <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultLeadId={lead.id} />
       <ConfirmDialog open={false} title="" onConfirm={() => {}} onCancel={() => {}} />
+      </PermissionGate>
     </AppShell>
   );
 }

@@ -15,9 +15,11 @@ import {
   useReceptionistCalls, useReceptionistCallToolEvents,
   type ReceptionistCall, type ReceptionistSettings, type ReceptionistStatus,
 } from "@/hooks/use-receptionist";
+import { PermissionGate } from "@/components/permission-gate";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-receptionist")({
-  head: () => ({ meta: [{ title: "AI Receptionist" }] }),
+  head: () => ({ meta: [{ title: `AI Receptionist — ${APP_CONFIG.productName}` }] }),
   component: AIReceptionistPage,
 });
 
@@ -29,6 +31,7 @@ function AIReceptionistPage() {
 
   return (
     <AppShell>
+      <PermissionGate module="ai_receptionist" action="view" page>
       <PageHeader
         eyebrow="Voice Channel"
         title="AI Receptionist"
@@ -55,6 +58,7 @@ function AIReceptionistPage() {
       {tab === "calls" && <CallsTab onOpen={setOpenCall} />}
 
       {openCall && <CallDetailDrawer call={openCall} onClose={() => setOpenCall(null)} />}
+      </PermissionGate>
     </AppShell>
   );
 }

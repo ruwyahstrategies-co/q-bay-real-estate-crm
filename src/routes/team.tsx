@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { UserCog, Plus, Pencil, Trash2 } from "lucide-react";
+import { UserCog, Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -9,23 +9,30 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { TeamMemberDrawer } from "@/components/team-member-drawer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PermissionGate } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers, useDeleteTeamMember, useUpdateTeamMember } from "@/hooks/use-team";
 import { useLeads } from "@/hooks/use-leads";
-import { fmtMoney, type TeamMember } from "@/lib/db";
+import { fmtMoney } from "@/lib/db";
+import type { StaffTeamMember } from "@/lib/db-extensions";
+import { ROLE_PRESETS, isRolePresetKey } from "@/lib/permissions";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/team")({
-  head: () => ({ meta: [{ title: "Team" }] }),
+  head: () => ({ meta: [{ title: `Team — ${APP_CONFIG.productName}` }] }),
   component: TeamPage,
 });
 
 function TeamPage() {
   const [open, setOpen] = useState(false);
-  const [edit, setEdit] = useState<TeamMember | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<TeamMember | null>(null);
+  const [edit, setEdit] = useState<StaffTeamMember | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<StaffTeamMember | null>(null);
   const { data: team = [] } = useTeamMembers();
   const { data: leads = [] } = useLeads({ status: "active" });
   const del = useDeleteTeamMember();
   const update = useUpdateTeamMember();
+  const { can } = usePermissions();
+  const canManage = can("team", "manage");
 
   function leadCount(id: string) {
     return leads.filter((l) => l.assigned_agent_id === id).length;
@@ -58,14 +65,17 @@ function TeamPage() {
 
   return (
     <AppShell>
+      <PermissionGate module="team" action="view" page>
       <PageHeader
         eyebrow="People"
         title="Team"
-        description="Manage agents and review performance."
+        description="Manage agents, staff logins and permissions."
         actions={
-          <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" /> Add member
-          </Button>
+          canManage ? (
+            <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
+              <Plus className="h-3.5 w-3.5" /> Add member
+            </Button>
+          ) : undefined
         }
       />
 
@@ -79,7 +89,7 @@ function TeamPage() {
       </div>
 
       <DataTable
-        columns={["Member", "Role", "Status", "Assigned leads", "Pipeline value", "Closed deals", "Actions"]}
+        columns={["Member", "Role", "Login", "Status", "Assigned leads", "Pipeline value", "Closed deals", "Actions"]}
         empty={<EmptyState icon={<UserCog className="h-4 w-4" />} title="No team members yet" description="Add agents to start assigning leads." />}
       >
         {team.length > 0
@@ -89,10 +99,18 @@ function TeamPage() {
                   <div>{m.full_name}</div>
                   <div className="text-xs text-muted-foreground">{m.email ?? m.phone ?? ""}</div>
                 </td>
-                <td className="px-4 py-3 text-xs capitalize">{m.role ?? "—"}</td>
+                <td className="px-4 py-3 text-xs">{isRolePresetKey(m.role) ? ROLE_PRESETS[m.role].label : (m.role ?? "—")}</td>
+                <td className="px-4 py-3 text-xs">
+                  {m.user_id ? (
+                    <span className="inline-flex items-center gap-1 text-foreground"><ShieldCheck className="h-3 w-3" /> Has login</span>
+                  ) : (
+                    <span className="text-muted-foreground">No login</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-xs">
                   <button
                     className={`rounded-full px-2 py-0.5 text-[11px] ${m.is_active ? "bg-pastel-green" : "bg-muted"}`}
+                    disabled={!canManage}
                     onClick={async () => {
                       try { await update.mutateAsync({ id: m.id, patch: { is_active: !m.is_active } }); }
                       catch (e) { toast.error((e as Error).message); }
@@ -105,17 +123,19 @@ function TeamPage() {
                 <td className="px-4 py-3 text-xs">{pipelineValue(m.id) > 0 ? fmtMoney(pipelineValue(m.id), "QAR") : "—"}</td>
                 <td className="px-4 py-3 text-xs">{closedDeals(m.id)}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
-                    <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setConfirmDelete(m)}><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
+                  {canManage && (
+                    <div className="flex items-center gap-1">
+                      <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
+                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setConfirmDelete(m)}><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))
           : null}
       </DataTable>
 
-      <TeamMemberDrawer open={open} onOpenChange={setOpen} member={edit} />
+      {canManage && <TeamMemberDrawer open={open} onOpenChange={setOpen} member={edit} />}
       <ConfirmDialog
         open={!!confirmDelete}
         title="Delete team member?"
@@ -131,6 +151,7 @@ function TeamPage() {
           setConfirmDelete(null);
         }}
       />
+      </PermissionGate>
     </AppShell>
   );
 }

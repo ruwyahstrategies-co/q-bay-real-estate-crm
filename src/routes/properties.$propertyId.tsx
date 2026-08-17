@@ -15,9 +15,12 @@ import { useDeleteUpload, getSignedPreviewUrl } from "@/hooks/use-uploads";
 import { useRecordPropertyEvent } from "@/hooks/use-property-events";
 import { usePropertyReferences } from "@/hooks/use-references";
 import { fmtDate } from "@/lib/db";
+import { PermissionGate } from "@/components/permission-gate";
+import { usePermissions } from "@/hooks/use-auth";
+import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/$propertyId")({
-  head: () => ({ meta: [{ title: "Property Details" }] }),
+  head: () => ({ meta: [{ title: `Property Details — ${APP_CONFIG.productName}` }] }),
   component: PropertyDetailPage,
 });
 
@@ -29,6 +32,10 @@ function PropertyDetailPage() {
   const qc = useQueryClient();
   const deleteUpload = useDeleteUpload();
   const recordEvent = useRecordPropertyEvent();
+  const { can } = usePermissions();
+  const canEdit = can("properties", "edit");
+  const canUpload = can("uploads", "upload");
+  const canDeleteUpload = can("uploads", "delete");
 
   // Record a 'view' event once per session per day per property
   useEffect(() => {
@@ -48,8 +55,12 @@ function PropertyDetailPage() {
       media_type: "image",
       display_order: media.length,
     });
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
+      qc.invalidateQueries({ queryKey: propertyKeys.all });
+    }
   }
 
   if (isLoading) return <AppShell><EmptyState title="Loading…" /></AppShell>;
@@ -57,6 +68,7 @@ function PropertyDetailPage() {
 
   return (
     <AppShell>
+      <PermissionGate module="properties" action="view" page>
       <Link to="/properties" className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-3.5 w-3.5" /> All properties
       </Link>
@@ -71,9 +83,11 @@ function PropertyDetailPage() {
             </p>
             <p className="mt-3 text-2xl font-semibold">{fmtMoney(property.price, property.currency)}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-3.5 w-3.5" /> Edit
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -111,19 +125,22 @@ function PropertyDetailPage() {
 
       <div className="mt-6">
         <h3 className="mb-3 text-base font-semibold">Media</h3>
-        <UploadDropzone
-          title="Upload property images"
-          description="JPG, PNG, or WEBP."
-          categoryKey="property_media"
-          propertyId={propertyId}
-          onUploaded={handleMediaUploaded}
-        />
+        {canUpload && (
+          <UploadDropzone
+            title="Upload property images"
+            description="JPG, PNG, or WEBP."
+            categoryKey="property_media"
+            propertyId={propertyId}
+            onUploaded={handleMediaUploaded}
+          />
+        )}
         {media.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {media.map((m) => (
               <MediaThumb
                 key={m.id}
                 upload={(m as unknown as { uploads: { id: string; filename: string; storage_bucket: string; storage_path: string } }).uploads}
+                canDelete={canDeleteUpload}
                 onDelete={async () => {
                   const u = (m as unknown as { uploads: { id: string; storage_bucket: string; storage_path: string; filename: string } }).uploads;
                   if (!u) return;
@@ -131,6 +148,7 @@ function PropertyDetailPage() {
                     await deleteUpload.mutateAsync(u as never);
                     await sb.from("property_media").delete().eq("id", m.id);
                     qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
+                    qc.invalidateQueries({ queryKey: propertyKeys.all });
                     toast.success("Removed");
                   } catch (e) { toast.error((e as Error).message); }
                 }}
@@ -140,18 +158,21 @@ function PropertyDetailPage() {
         )}
       </div>
 
-      <div className="mt-6">
-        <h3 className="mb-3 text-base font-semibold">Brochures & documents</h3>
-        <UploadDropzone
-          title="Upload brochures or floor plans"
-          categoryKey="brochures"
-          propertyId={propertyId}
-        />
-      </div>
+      {canUpload && (
+        <div className="mt-6">
+          <h3 className="mb-3 text-base font-semibold">Brochures & documents</h3>
+          <UploadDropzone
+            title="Upload brochures or floor plans"
+            categoryKey="brochures"
+            propertyId={propertyId}
+          />
+        </div>
+      )}
 
       <PropertyReferences propertyId={propertyId} />
 
       <PropertyDrawer open={editOpen} onOpenChange={setEditOpen} property={property} />
+      </PermissionGate>
     </AppShell>
   );
 }
@@ -206,9 +227,11 @@ function PropertyReferences({ propertyId }: { propertyId: string }) {
 function MediaThumb({
   upload,
   onDelete,
+  canDelete,
 }: {
   upload?: { id: string; filename: string; storage_bucket: string; storage_path: string } | null;
   onDelete: () => void;
+  canDelete: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -224,13 +247,15 @@ function MediaThumb({
       ) : (
         <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">{upload.filename}</div>
       )}
-      <button
-        onClick={onDelete}
-        className="absolute right-2 top-2 hidden h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground group-hover:flex"
-        aria-label="Remove"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+      {canDelete && (
+        <button
+          onClick={onDelete}
+          className="absolute right-2 top-2 hidden h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground group-hover:flex"
+          aria-label="Remove"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }

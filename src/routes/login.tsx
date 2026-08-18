@@ -8,7 +8,7 @@ import { Button } from "@/components/ui-primitives";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: `Sign in — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Sign in" }] }),
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
     if (data.session) throw redirect({ to: "/overview" });

@@ -78,7 +78,7 @@ export function AddLeadDrawer({
     notes: lead?.notes ?? "",
   }));
 
-  // Reset the form whenever a different record (or a fresh "add") is opened —
+  // Reset the form whenever a different record (or a fresh "add") is opened -
   // the drawer shell now stays mounted between opens, so this can no longer
   // rely on the old unmount-on-close behaviour to reset state.
   useEffect(() => {
@@ -175,10 +175,10 @@ export function AddLeadDrawer({
           <input className={inputCls} placeholder="Jane Doe" value={form.full_name ?? ""} onChange={(e) => set("full_name", e.target.value)} required />
         </Field>
         <Field label="Phone number">
-          <input className={inputCls} placeholder="+974…" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+          <input className={inputCls} placeholder="+974..." value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
         </Field>
         <Field label="Lead source">
-          <input className={inputCls} placeholder="Website, referral…" value={form.lead_source ?? ""} onChange={(e) => set("lead_source", e.target.value)} />
+          <input className={inputCls} placeholder="Website, referral..." value={form.lead_source ?? ""} onChange={(e) => set("lead_source", e.target.value)} />
         </Field>
         <Field label="Budget min">
           <input className={inputCls} type="number" value={form.budget_min ?? ""} onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value) : null)} />
@@ -231,7 +231,7 @@ export function AddLeadDrawer({
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">More details</p>
         </div>
         <Field label="Email">
-          <input className={inputCls} type="email" placeholder="jane@…" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+          <input className={inputCls} type="email" placeholder="jane@..." value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
         </Field>
         <Field label="Currency">
           <select className={inputCls} value={form.currency ?? "QAR"} onChange={(e) => set("currency", e.target.value)}>
@@ -253,7 +253,7 @@ export function AddLeadDrawer({
         </Field>
         <Field label="Purchase purpose">
           <select className={inputCls} value={form.purchase_purpose ?? ""} onChange={(e) => set("purchase_purpose", e.target.value)}>
-            <option value="">—</option>
+            <option value="">-</option>
             <option>Primary residence</option>
             <option>Investment</option>
             <option>Holiday home</option>
@@ -261,7 +261,7 @@ export function AddLeadDrawer({
         </Field>
         <Field label="Buying timeline">
           <select className={inputCls} value={form.buying_timeline ?? ""} onChange={(e) => set("buying_timeline", e.target.value)}>
-            <option value="">—</option>
+            <option value="">-</option>
             <option>Immediate</option>
             <option>1-3 months</option>
             <option>3-6 months</option>
@@ -271,7 +271,7 @@ export function AddLeadDrawer({
         </Field>
         <Field label="Financing status">
           <select className={inputCls} value={form.financing_status ?? ""} onChange={(e) => set("financing_status", e.target.value)}>
-            <option value="">—</option>
+            <option value="">-</option>
             <option>Cash</option>
             <option>Mortgage approved</option>
             <option>Mortgage pending</option>
@@ -282,7 +282,7 @@ export function AddLeadDrawer({
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" size="sm" disabled={pending}>
-            {pending ? "Saving…" : isEdit ? "Save changes" : "Save Lead"}
+            {pending ? "Saving..." : isEdit ? "Save changes" : "Save Lead"}
           </Button>
         </div>
       </form>

@@ -6,7 +6,7 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // Data doesn't need a network round-trip on every remount/tab switch —
+        // Data doesn't need a network round-trip on every remount/tab switch -
         // treat it as fresh for a short window so navigating around the CRM
         // (leads <-> pipeline <-> properties, tab switches, etc.) reuses the
         // cache instead of re-fetching identical data. Individual hooks can

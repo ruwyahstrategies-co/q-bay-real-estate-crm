@@ -17,10 +17,9 @@ import { usePropertyReferences } from "@/hooks/use-references";
 import { fmtDate } from "@/lib/db";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/$propertyId")({
-  head: () => ({ meta: [{ title: `Property Details — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Property Details" }] }),
   component: PropertyDetailPage,
 });
 
@@ -63,7 +62,7 @@ function PropertyDetailPage() {
     }
   }
 
-  if (isLoading) return <AppShell><EmptyState title="Loading…" /></AppShell>;
+  if (isLoading) return <AppShell><EmptyState title="Loading..." /></AppShell>;
   if (!property) return <AppShell><EmptyState title="Property not found" /></AppShell>;
 
   return (
@@ -79,7 +78,7 @@ function PropertyDetailPage() {
             <h2 className="text-xl font-semibold tracking-tight">{property.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {property.reference_code ? `${property.reference_code} · ` : ""}
-              {property.property_type ?? "—"} · {property.location ?? "—"}
+              {property.property_type ?? "-"} · {property.location ?? "-"}
             </p>
             <p className="mt-3 text-2xl font-semibold">{fmtMoney(property.price, property.currency)}</p>
           </div>
@@ -95,11 +94,11 @@ function PropertyDetailPage() {
         <Card>
           <h4 className="text-sm font-semibold">Specifications</h4>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <dt className="text-muted-foreground">Bedrooms</dt><dd>{property.bedrooms ?? "—"}</dd>
-            <dt className="text-muted-foreground">Bathrooms</dt><dd>{property.bathrooms ?? "—"}</dd>
-            <dt className="text-muted-foreground">Size</dt><dd>{property.size ? `${property.size} ${property.size_unit ?? ""}` : "—"}</dd>
-            <dt className="text-muted-foreground">Developer</dt><dd>{property.developer ?? "—"}</dd>
-            <dt className="text-muted-foreground">Status</dt><dd>{property.completion_status ?? "—"}</dd>
+            <dt className="text-muted-foreground">Bedrooms</dt><dd>{property.bedrooms ?? "-"}</dd>
+            <dt className="text-muted-foreground">Bathrooms</dt><dd>{property.bathrooms ?? "-"}</dd>
+            <dt className="text-muted-foreground">Size</dt><dd>{property.size ? `${property.size} ${property.size_unit ?? ""}` : "-"}</dd>
+            <dt className="text-muted-foreground">Developer</dt><dd>{property.developer ?? "-"}</dd>
+            <dt className="text-muted-foreground">Status</dt><dd>{property.completion_status ?? "-"}</dd>
             <dt className="text-muted-foreground">Availability</dt><dd className="capitalize">{property.availability}</dd>
           </dl>
         </Card>

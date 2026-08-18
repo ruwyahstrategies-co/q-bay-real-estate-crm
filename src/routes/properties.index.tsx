@@ -14,10 +14,9 @@ import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useProperties, useArchiveProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
 import { fmtMoney, type Property } from "@/lib/db";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/")({
-  head: () => ({ meta: [{ title: `Properties — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Properties" }] }),
   component: PropertiesPage,
 });
 
@@ -58,7 +57,7 @@ function PropertiesPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
         <input
           type="text"
-          placeholder="Search by title, reference, location…"
+          placeholder="Search by title, reference, location..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -86,7 +85,7 @@ function PropertiesPage() {
         <DataTable
           columns={["Property", "Reference", "Type", "Location", "Developer", "Price", "Beds", "Size", "Availability", "Actions"]}
           empty={
-            isLoading ? <EmptyState title="Loading…" /> :
+            isLoading ? <EmptyState title="Loading..." /> :
             <EmptyState icon={<Building2 className="h-4 w-4" />} title="No properties yet" description="Add a property to build your inventory." />
           }
         >
@@ -104,13 +103,13 @@ function PropertiesPage() {
                   {p.title}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-xs">{p.reference_code ?? "—"}</td>
-              <td className="px-4 py-3 text-xs">{p.property_type ?? "—"}</td>
-              <td className="px-4 py-3 text-xs">{p.location ?? "—"}</td>
-              <td className="px-4 py-3 text-xs">{p.developer ?? "—"}</td>
+              <td className="px-4 py-3 text-xs">{p.reference_code ?? "-"}</td>
+              <td className="px-4 py-3 text-xs">{p.property_type ?? "-"}</td>
+              <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
+              <td className="px-4 py-3 text-xs">{p.developer ?? "-"}</td>
               <td className="px-4 py-3 text-xs">{fmtMoney(p.price, p.currency)}</td>
-              <td className="px-4 py-3 text-xs">{p.bedrooms ?? "—"}</td>
-              <td className="px-4 py-3 text-xs">{p.size ? `${p.size} ${p.size_unit ?? ""}` : "—"}</td>
+              <td className="px-4 py-3 text-xs">{p.bedrooms ?? "-"}</td>
+              <td className="px-4 py-3 text-xs">{p.size ? `${p.size} ${p.size_unit ?? ""}` : "-"}</td>
               <td className="px-4 py-3 text-xs capitalize">{p.availability}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
@@ -139,9 +138,9 @@ function PropertiesPage() {
               </div>
               <div className="p-5">
                 <h4 className="text-sm font-semibold">{p.title}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{p.location ?? "—"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{p.location ?? "-"}</p>
                 <p className="mt-3 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{p.property_type ?? "—"} · {p.bedrooms ?? "?"} bed · {p.size ?? "?"} {p.size_unit ?? ""}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{p.property_type ?? "-"} · {p.bedrooms ?? "?"} bed · {p.size ?? "?"} {p.size_unit ?? ""}</p>
               </div>
             </Link>
           ))}

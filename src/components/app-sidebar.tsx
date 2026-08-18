@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   BarChart3,
+  LineChart,
   Megaphone,
   ChevronsLeft,
   ChevronsRight,
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { to: "/ai-insights", label: "AI Insights", icon: Sparkles, module: "ai_insights" },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, module: "pipeline" },
   { to: "/property-demand", label: "Property Demand", icon: BarChart3, module: "property_demand" },
+  { to: "/analytics", label: "Analytics", icon: LineChart, module: "analytics" },
   { to: "/marketing-intelligence", label: "Marketing Intelligence", icon: Megaphone, module: "marketing_intelligence" },
   { to: "/team", label: "Team", icon: UserCog, module: "team" },
   { to: "/ai-receptionist", label: "AI Receptionist", icon: PhoneCall, module: "ai_receptionist" },
@@ -63,7 +65,7 @@ export function AppSidebar({
   const items = useVisibleNavItems();
   const { displayName, roleLabel } = useCurrentUser();
   const navigate = useNavigate();
-  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "—";
+  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "-";
 
   async function handleSignOut() {
     await signOut();

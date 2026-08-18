@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Upload, LayoutGrid, Rows3, Users, Pencil, Archive, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -11,20 +11,20 @@ import { Button } from "@/components/ui-primitives";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { LeadImporter } from "@/components/lead-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { PipelineStageBadge } from "@/components/status-badge";
+import { PipelineStageBadge, IntentScore } from "@/components/status-badge";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { cn } from "@/lib/utils";
-import { useArchiveLead, useDeleteLead, useLeads } from "@/hooks/use-leads";
+import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
+import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useTeamMembers } from "@/hooks/use-team";
 import { fmtMoney, fmtDate, type Lead } from "@/lib/db";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
     meta: [
-      { title: `Leads — ${APP_CONFIG.productName}` },
+      { title: "Leads" },
       { name: "description", content: "Manage buyer leads, intent and pipeline stages." },
     ],
   }),
@@ -45,13 +45,37 @@ function LeadsPage() {
   const { data: leads = [], isLoading } = useLeads({ search, stage, agent });
   const { data: team = [] } = useTeamMembers();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
+  const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
   const archive = useArchiveLead();
   const del = useDeleteLead();
+  const updateLead = useUpdateLead();
   const agentName = (id: string | null) => team.find((t) => t.id === id)?.full_name ?? "Unassigned";
   const { can } = usePermissions();
   const canCreate = can("leads", "create");
   const canEdit = can("leads", "edit");
   const canDelete = can("leads", "delete");
+  const canAssign = can("leads", "assign");
+
+  // Latest completed analysis per lead, powering the Intent Score column.
+  const intentByLead = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of completedAnalyses) {
+      if (!a.lead_id || map.has(a.lead_id)) continue;
+      const out = a.output_json as any;
+      const score = out?.deep_analysis?.intent_score ?? out?.intentScore;
+      if (typeof score === "number") map.set(a.lead_id, score);
+    }
+    return map;
+  }, [completedAnalyses]);
+
+  async function assignAgent(leadId: string, agentId: string | null) {
+    try {
+      await updateLead.mutateAsync({ id: leadId, patch: { assigned_agent_id: agentId } });
+      toast.success(agentId ? "Agent assigned" : "Lead unassigned");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   return (
     <AppShell>
@@ -80,7 +104,7 @@ function LeadsPage() {
         <div className="relative flex-1 min-w-[200px]">
           <input
             type="text"
-            placeholder="Search by name, phone, email…"
+            placeholder="Search by name, phone, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-full rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -121,7 +145,7 @@ function LeadsPage() {
           columns={["Buyer", "Contact", "Budget", "Preferred Area", "Property Type", "Intent Score", "Pipeline Stage", "Assigned Agent", "Last Contact", "Actions"]}
           empty={
             isLoading ? (
-              <EmptyState title="Loading leads…" />
+              <EmptyState title="Loading leads..." />
             ) : (
               <EmptyState
                 icon={<Users className="h-4 w-4" />}
@@ -150,15 +174,37 @@ function LeadsPage() {
                     <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    <div>{l.phone ?? "—"}</div>
+                    <div>{l.phone ?? "-"}</div>
                     <div>{l.email ?? ""}</div>
                   </td>
-                  <td className="px-4 py-3 text-xs">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "—"}</td>
-                  <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground" title="AI analysis required">Not analysed</td>
+                  <td className="px-4 py-3 text-xs">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "-"}</td>
+                  <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "-"}</td>
+                  <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "-"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {intentByLead.has(l.id) ? (
+                      <IntentScore score={intentByLead.get(l.id)} />
+                    ) : (
+                      <span className="text-muted-foreground" title="Run AI analysis to score this lead">Not analysed</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3"><PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} /></td>
-                  <td className="px-4 py-3 text-xs">{agentName(l.assigned_agent_id)}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {canAssign ? (
+                      <select
+                        value={l.assigned_agent_id ?? ""}
+                        onChange={(e) => assignAgent(l.id, e.target.value || null)}
+                        className="h-8 max-w-[150px] rounded-lg border border-border bg-canvas px-2 text-xs"
+                        aria-label={`Assign agent for ${l.full_name}`}
+                      >
+                        <option value="">Unassigned</option>
+                        {team.filter((m) => m.is_active !== false).map((m) => (
+                          <option key={m.id} value={m.id}>{m.full_name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      agentName(l.assigned_agent_id)
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(l.updated_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -196,9 +242,9 @@ function LeadsPage() {
                   <h4 className="text-sm font-semibold">{l.full_name}</h4>
                   <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "—"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "-"}</p>
                 <p className="mt-3 text-xs"><strong>Budget:</strong> {fmtMoney(l.budget_max, l.currency)}</p>
-                <p className="text-xs"><strong>Area:</strong> {l.preferred_locations?.join(", ") ?? "—"}</p>
+                <p className="text-xs"><strong>Area:</strong> {l.preferred_locations?.join(", ") ?? "-"}</p>
               </Link>
             ))
           )}

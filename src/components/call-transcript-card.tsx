@@ -144,7 +144,7 @@ function ChipList({ label, items }: { label: string; items: string[] }) {
   if (!items || items.length === 0) return (
     <div>
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-[11px] text-muted-foreground">—</p>
+      <p className="text-[11px] text-muted-foreground">-</p>
     </div>
   );
   return (

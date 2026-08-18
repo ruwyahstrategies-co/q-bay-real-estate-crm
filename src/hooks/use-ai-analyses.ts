@@ -52,8 +52,18 @@ export function useLeadAnalyses(leadId: string | undefined) {
   return useQuery({
     queryKey: ["ai_analyses", leadId],
     enabled: !!leadId,
+    // Analyses only change when someone re-runs them (which invalidates this
+    // key), so keep results cached instead of refetching on every tab switch.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, error } = await sb.from("ai_analyses").select("*").eq("lead_id", leadId!).order("created_at",{ascending:false});
+      const { data, error } = await sb
+        .from("ai_analyses")
+        .select("*")
+        .eq("lead_id", leadId!)
+        .order("created_at", { ascending: false })
+        .limit(10);
       if (error) throw error;
       return data as AIAnalysis[];
     },
@@ -63,8 +73,16 @@ export function useLeadAnalyses(leadId: string | undefined) {
 export function useAllCompletedAnalyses() {
   return useQuery({
     queryKey: ["ai_analyses", "all_completed"],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, error } = await sb.from("ai_analyses").select("*").eq("status","completed").order("created_at",{ascending:false});
+      const { data, error } = await sb
+        .from("ai_analyses")
+        .select("*")
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data as AIAnalysis[];
     },

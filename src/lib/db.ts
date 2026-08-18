@@ -112,7 +112,7 @@ export const UPLOAD_CATEGORIES = {
 export type UploadCategoryKey = keyof typeof UPLOAD_CATEGORIES;
 
 export function fmtMoney(amount: number | null | undefined, currency: string | null | undefined): string {
-  if (amount == null) return "—";
+  if (amount == null) return "-";
   const cur = currency || "QAR";
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(amount);
@@ -122,17 +122,17 @@ export function fmtMoney(amount: number | null | undefined, currency: string | n
 }
 
 export function fmtDate(d: string | null | undefined): string {
-  if (!d) return "—";
+  if (!d) return "-";
   return new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function fmtDateTime(d: string | null | undefined): string {
-  if (!d) return "—";
+  if (!d) return "-";
   return new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 export function fmtSize(bytes: number | null | undefined): string {
-  if (bytes == null) return "—";
+  if (bytes == null) return "-";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;

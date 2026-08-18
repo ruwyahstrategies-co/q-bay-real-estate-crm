@@ -26,7 +26,7 @@ export function AppHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const title = deriveTitle(pathname);
   const { displayName } = useCurrentUser();
-  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "—";
+  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "-";
 
   return (
     <header className="flex items-center justify-between gap-4 pb-6">

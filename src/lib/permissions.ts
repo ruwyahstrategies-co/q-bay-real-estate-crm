@@ -20,6 +20,7 @@ export const MODULES = {
   ai_insights: ["view", "run"],
   property_demand: ["view"],
   marketing_intelligence: ["view"],
+  analytics: ["view"],
   team: ["view", "manage"],
   settings: ["view", "manage"],
   ai_receptionist: ["view", "manage"],
@@ -42,6 +43,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   ai_insights: "AI Insights",
   property_demand: "Property Demand",
   marketing_intelligence: "Marketing Intelligence",
+  analytics: "Analytics",
   team: "Team",
   settings: "Settings",
   ai_receptionist: "AI Receptionist",
@@ -96,6 +98,7 @@ export const ROLE_PRESETS = {
       ai_insights: ["view", "run"],
       property_demand: ["view"],
       marketing_intelligence: ["view"],
+      analytics: ["view"],
       team: ["view"],
       settings: ["view"],
       ai_receptionist: ["view"],
@@ -114,6 +117,7 @@ export const ROLE_PRESETS = {
       tasks: ["view", "create", "edit", "complete"],
       ai_insights: ["view", "run"],
       property_demand: ["view"],
+      analytics: ["view"],
     }),
   },
   marketing: {
@@ -127,6 +131,7 @@ export const ROLE_PRESETS = {
       uploads: ["view", "upload"],
       property_demand: ["view"],
       marketing_intelligence: ["view"],
+      analytics: ["view"],
     }),
   },
   accounting: {
@@ -137,11 +142,12 @@ export const ROLE_PRESETS = {
       leads: ["view"],
       properties: ["view"],
       pipeline: ["view"],
+      analytics: ["view"],
     }),
   },
   coordinator: {
     label: "Coordinator",
-    description: "Operational support — tasks, uploads and scheduling across leads.",
+    description: "Operational support - tasks, uploads and scheduling across leads.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view", "edit"],

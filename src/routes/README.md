@@ -8,7 +8,7 @@ is `src/routes/__root.tsx`.
 ## Conventions
 
 | File | URL |
-| --- | --- |
+| - | - |
 | `index.tsx` | `/` |
 | `about.tsx` | `/about` |
 | `users/index.tsx` | `/users` |

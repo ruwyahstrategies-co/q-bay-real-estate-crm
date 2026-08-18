@@ -26,10 +26,9 @@ import { useLeadReferences } from "@/hooks/use-references";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/$leadId")({
-  head: () => ({ meta: [{ title: `Lead Profile — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Lead Profile" }] }),
   component: LeadProfilePage,
 });
 
@@ -58,7 +57,7 @@ function LeadProfilePage() {
   const deleteUpload = useDeleteUpload();
   const { can } = usePermissions();
 
-  if (isLoading) return <AppShell><EmptyState title="Loading…" /></AppShell>;
+  if (isLoading) return <AppShell><EmptyState title="Loading..." /></AppShell>;
   if (!lead) return (
     <AppShell>
       <EmptyState title="Lead not found" description="This lead may have been deleted." />
@@ -98,7 +97,7 @@ function LeadProfilePage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-pastel-purple text-base font-semibold text-foreground">
-              {initials || "—"}
+              {initials || "-"}
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
@@ -128,7 +127,7 @@ function LeadProfilePage() {
             )}
             {canRunAi && (
               <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
-                <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing…" : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
+                <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing..." : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
               </Button>
             )}
           </div>
@@ -155,23 +154,23 @@ function LeadProfilePage() {
           <Card>
             <h4 className="text-sm font-semibold">Contact</h4>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <dt className="text-muted-foreground">Phone</dt><dd>{lead.phone ?? "—"}</dd>
-              <dt className="text-muted-foreground">Email</dt><dd>{lead.email ?? "—"}</dd>
-              <dt className="text-muted-foreground">Nationality</dt><dd>{lead.nationality ?? "—"}</dd>
-              <dt className="text-muted-foreground">Language</dt><dd>{lead.preferred_language ?? "—"}</dd>
-              <dt className="text-muted-foreground">Source</dt><dd>{lead.lead_source ?? "—"}</dd>
+              <dt className="text-muted-foreground">Phone</dt><dd>{lead.phone ?? "-"}</dd>
+              <dt className="text-muted-foreground">Email</dt><dd>{lead.email ?? "-"}</dd>
+              <dt className="text-muted-foreground">Nationality</dt><dd>{lead.nationality ?? "-"}</dd>
+              <dt className="text-muted-foreground">Language</dt><dd>{lead.preferred_language ?? "-"}</dd>
+              <dt className="text-muted-foreground">Source</dt><dd>{lead.lead_source ?? "-"}</dd>
             </dl>
           </Card>
           <Card>
             <h4 className="text-sm font-semibold">Preferences</h4>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <dt className="text-muted-foreground">Budget</dt>
-              <dd>{fmtMoney(lead.budget_min, lead.currency)} – {fmtMoney(lead.budget_max, lead.currency)}</dd>
-              <dt className="text-muted-foreground">Locations</dt><dd>{lead.preferred_locations?.join(", ") ?? "—"}</dd>
-              <dt className="text-muted-foreground">Types</dt><dd>{lead.preferred_property_types?.join(", ") ?? "—"}</dd>
-              <dt className="text-muted-foreground">Purpose</dt><dd>{lead.purchase_purpose ?? "—"}</dd>
-              <dt className="text-muted-foreground">Timeline</dt><dd>{lead.buying_timeline ?? "—"}</dd>
-              <dt className="text-muted-foreground">Financing</dt><dd>{lead.financing_status ?? "—"}</dd>
+              <dd>{fmtMoney(lead.budget_min, lead.currency)} - {fmtMoney(lead.budget_max, lead.currency)}</dd>
+              <dt className="text-muted-foreground">Locations</dt><dd>{lead.preferred_locations?.join(", ") ?? "-"}</dd>
+              <dt className="text-muted-foreground">Types</dt><dd>{lead.preferred_property_types?.join(", ") ?? "-"}</dd>
+              <dt className="text-muted-foreground">Purpose</dt><dd>{lead.purchase_purpose ?? "-"}</dd>
+              <dt className="text-muted-foreground">Timeline</dt><dd>{lead.buying_timeline ?? "-"}</dd>
+              <dt className="text-muted-foreground">Financing</dt><dd>{lead.financing_status ?? "-"}</dd>
             </dl>
           </Card>
           {lead.notes && (
@@ -392,7 +391,7 @@ function ActivityTimeline({
 
 function PropertyInterestsTab({ leadId }: { leadId: string }) {
   const { data, isLoading } = useLeadReferences(leadId);
-  if (isLoading) return <EmptyState compact title="Loading…" />;
+  if (isLoading) return <EmptyState compact title="Loading..." />;
   const interests = (data?.interests ?? []) as any[];
   const mentioned = (data?.mentioned ?? []) as any[];
   const seen = new Set(interests.map((i) => i.property_id));

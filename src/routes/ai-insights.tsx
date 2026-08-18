@@ -10,10 +10,9 @@ import { useLeads } from "@/hooks/use-leads";
 import { stageLabel } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-insights")({
-  head: () => ({ meta: [{ title: `AI Insights — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "AI Insights" }] }),
   component: AIInsightsPage,
 });
 
@@ -58,7 +57,7 @@ function AIInsightsPage() {
   if (!can("ai_insights", "view")) return <AppShell><AccessDenied /></AppShell>;
 
   if (isLoading) {
-    return <AppShell><EmptyState title="Loading insights…" /></AppShell>;
+    return <AppShell><EmptyState title="Loading insights..." /></AppShell>;
   }
 
   if (totalAnalysed === 0) {
@@ -161,7 +160,7 @@ function LeadGroupCard({
                   {lead?.full_name ?? a.lead_id}
                 </Link>
                 {showIntent && (
-                  <span className="text-muted-foreground">Intent {a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? "—"}</span>
+                  <span className="text-muted-foreground">Intent {a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? "-"}</span>
                 )}
               </li>
             );

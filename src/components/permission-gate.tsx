@@ -6,7 +6,7 @@ import { EmptyState } from "./empty-state";
 
 /**
  * Gates rendering on a permission check. With no `fallback`, renders nothing
- * when denied — use this to hide buttons/actions. Pass `page` for full-page
+ * when denied - use this to hide buttons/actions. Pass `page` for full-page
  * gating with a proper "Access Denied" state instead of a blank screen.
  */
 export function PermissionGate({

@@ -117,6 +117,7 @@ export const ROLE_PRESETS = {
       tasks: ["view", "create", "edit", "complete"],
       ai_insights: ["view", "run"],
       property_demand: ["view"],
+      analytics: ["view"],
     }),
   },
   marketing: {

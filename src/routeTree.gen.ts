@@ -20,6 +20,7 @@ import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-in
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ConversationsRouteImport } from './routes/conversations'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiReceptionistRouteImport } from './routes/ai-receptionist'
 import { Route as AiInsightsRouteImport } from './routes/ai-insights'
 import { Route as IndexRouteImport } from './routes/index'
@@ -83,6 +84,11 @@ const ConversationsRoute = ConversationsRouteImport.update({
   path: '/conversations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AiReceptionistRoute = AiReceptionistRouteImport.update({
   id: '/ai-receptionist',
   path: '/ai-receptionist',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-insights': typeof AiInsightsRoute
   '/ai-receptionist': typeof AiReceptionistRoute
+  '/analytics': typeof AnalyticsRoute
   '/conversations': typeof ConversationsRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-insights': typeof AiInsightsRoute
   '/ai-receptionist': typeof AiReceptionistRoute
+  '/analytics': typeof AnalyticsRoute
   '/conversations': typeof ConversationsRoute
   '/login': typeof LoginRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai-insights': typeof AiInsightsRoute
   '/ai-receptionist': typeof AiReceptionistRoute
+  '/analytics': typeof AnalyticsRoute
   '/conversations': typeof ConversationsRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-insights'
     | '/ai-receptionist'
+    | '/analytics'
     | '/conversations'
     | '/leads'
     | '/login'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-insights'
     | '/ai-receptionist'
+    | '/analytics'
     | '/conversations'
     | '/login'
     | '/marketing-intelligence'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-insights'
     | '/ai-receptionist'
+    | '/analytics'
     | '/conversations'
     | '/leads'
     | '/login'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiInsightsRoute: typeof AiInsightsRoute
   AiReceptionistRoute: typeof AiReceptionistRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   ConversationsRoute: typeof ConversationsRoute
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConversationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ai-receptionist': {
       id: '/ai-receptionist'
       path: '/ai-receptionist'
@@ -417,6 +437,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiInsightsRoute: AiInsightsRoute,
   AiReceptionistRoute: AiReceptionistRoute,
+  AnalyticsRoute: AnalyticsRoute,
   ConversationsRoute: ConversationsRoute,
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRoute,

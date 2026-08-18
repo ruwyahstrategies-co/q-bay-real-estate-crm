@@ -6,16 +6,16 @@ import { can as canCheck, type ActionKey, type ModuleKey, type PermissionSet } f
 
 /**
  * - "loading": initial Supabase session lookup in flight.
- * - "unauthenticated": no session --- render <Navigate to="/login" />.
+ * - "unauthenticated": no session - render <Navigate to="/login" />.
  * - "resolving": session present, staff row lookup in flight. Permissions
- *   must be treated as NONE during this state --- never briefly show admin
+ *   must be treated as NONE during this state - never briefly show admin
  *   nav/actions while we don't yet know who this is.
  * - "unprovisioned": authenticated, but no team_members row is linked to
  *   this login. This is a real state a real user can land in (e.g. their
  *   Supabase Auth account exists but an admin hasn't created their staff
- *   record yet, or it was unlinked) --- show a clear message, not a crash.
+ *   record yet, or it was unlinked) - show a clear message, not a crash.
  * - "inactive": linked staff row exists but is_active = false.
- * - "authorized": linked, active staff row resolved --- `permissions` reflects
+ * - "authorized": linked, active staff row resolved - `permissions` reflects
  *   exactly what's stored in team_members.permissions (the same value RLS
  *   reads via current_team_permissions()), no client-side role fallback.
  */
@@ -23,7 +23,7 @@ export type AuthStatus = "loading" | "unauthenticated" | "resolving" | "unprovis
 
 type AuthState = {
   status: AuthStatus;
-  /** True while status is "loading" or "resolving" --- session/profile not yet settled. */
+  /** True while status is "loading" or "resolving" - session/profile not yet settled. */
   loading: boolean;
   session: Session | null;
   authUser: User | null;
@@ -38,7 +38,7 @@ const AuthContext = createContext<AuthState | null>(null);
 
 /**
  * Strictly resolves the caller's staff row by team_members.user_id = auth.uid().
- * No email-based fallback --- an Auth email happening to match a CRM row is not
+ * No email-based fallback - an Auth email happening to match a CRM row is not
  * sufficient to authorize someone. If a controlled recovery/migration path is
  * ever needed, it should be an explicit, separately-audited mechanism, not
  * part of normal runtime authorization.
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   else if (teamMember.is_active === false) status = "inactive";
   else status = "authorized";
 
-  // Stored permissions are authoritative --- this must match exactly what
+  // Stored permissions are authoritative - this must match exactly what
   // public.current_team_permissions() returns in the database, since that's
   // what RLS actually enforces. No role-preset fallback merge here: role
   // presets are a UI convenience for populating permissions when a staff
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const permissions: PermissionSet = status === "authorized" ? (teamMember!.permissions ?? {}) : {};
 
   const displayName = teamMember?.full_name ?? authUser?.email ?? "Guest";
-  const roleLabel = teamMember?.role ?? "---";
+  const roleLabel = teamMember?.role ?? "-";
 
   const value: AuthState = {
     status,

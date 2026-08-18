@@ -147,7 +147,7 @@ export const ROLE_PRESETS = {
   },
   coordinator: {
     label: "Coordinator",
-    description: "Operational support --- tasks, uploads and scheduling across leads.",
+    description: "Operational support - tasks, uploads and scheduling across leads.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view", "edit"],

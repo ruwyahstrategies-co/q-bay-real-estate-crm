@@ -1,7 +1,7 @@
 import type { SVGProps } from "react";
 
 /**
- * Inline brand mark --- bundled with the app (no external CDN request), so it
+ * Inline brand mark - bundled with the app (no external CDN request), so it
  * renders identically on Lovable, Vercel or any other host.
  */
 export function BrandMark({ className, ...props }: SVGProps<SVGSVGElement>) {

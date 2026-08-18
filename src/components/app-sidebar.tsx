@@ -65,7 +65,7 @@ export function AppSidebar({
   const items = useVisibleNavItems();
   const { displayName, roleLabel } = useCurrentUser();
   const navigate = useNavigate();
-  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "---";
+  const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "-";
 
   async function handleSignOut() {
     await signOut();

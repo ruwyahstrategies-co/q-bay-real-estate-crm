@@ -151,7 +151,7 @@ export function InteractionDrawer({
         </Field>
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving--¦" : "Save"}</Button>
+          <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving..." : "Save"}</Button>
         </div>
       </form>
     </DrawerShell>

@@ -230,7 +230,7 @@ function OverviewPage() {
             <span className="rounded-full bg-[#FADCDA] px-2 py-0.5 text-[11px]">{overdueTasks.length}</span>
           </div>
           {overdueTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing overdue --- you're on top of it.</p>
+            <p className="text-xs text-muted-foreground">Nothing overdue - you're on top of it.</p>
           ) : (
             <ul className="space-y-2 text-xs">
               {overdueTasks.slice(0, 6).map((t) => (
@@ -315,7 +315,7 @@ function SignalRow({ label, value, extra }: { label: string; value: string | nul
     <li className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="truncate text-right text-foreground/90">
-        {value ?? <span className="text-muted-foreground">---</span>}
+        {value ?? <span className="text-muted-foreground">-</span>}
         {extra && <span className="ml-1 text-[10px] text-muted-foreground">({extra})</span>}
       </span>
     </li>

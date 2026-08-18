@@ -243,7 +243,7 @@ export function TeamMemberDrawer({
         <div className="mt-5">
           <h4 className="text-sm font-semibold">Permissions</h4>
           <p className="mt-1 text-xs text-muted-foreground">
-            The role preset sets sensible defaults --- enable or disable individual modules and actions below.
+            The role preset sets sensible defaults - enable or disable individual modules and actions below.
           </p>
           <div className="mt-3 overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs">
@@ -295,7 +295,7 @@ export function TeamMemberDrawer({
                     <Dices className="h-3.5 w-3.5" />
                   </Button>
                   <Button type="button" size="sm" disabled={resetPassword.isPending} onClick={handleResetPassword}>
-                    {resetPassword.isPending ? "Saving--¦" : "Save"}
+                    {resetPassword.isPending ? "Saving..." : "Save"}
                   </Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => setResetOpen(false)}>Cancel</Button>
                 </div>
@@ -337,7 +337,7 @@ export function TeamMemberDrawer({
 
         <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving--¦" : "Save"}</Button>
+          <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving..." : "Save"}</Button>
         </div>
       </form>
     </DrawerShell>

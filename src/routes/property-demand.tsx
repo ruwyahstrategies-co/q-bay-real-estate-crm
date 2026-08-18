@@ -111,7 +111,7 @@ function PropertyDemandPage() {
   const viewsNoEnquiries = perProperty.filter((r) => (r.counts.view ?? 0) >= 3 && (r.counts.enquiry ?? 0) === 0).slice(0, 6);
   const enquiriesNoOffers = perProperty.filter((r) => (r.counts.enquiry ?? 0) >= 2 && (r.counts.offer ?? 0) === 0).slice(0, 6);
 
-  // Pricing opportunities --- evidence-based, never auto-changes price.
+  // Pricing opportunities - evidence-based, never auto-changes price.
   const pricingOpps = perProperty
     .map((r) => {
       const e = r.counts;
@@ -142,7 +142,7 @@ function PropertyDemandPage() {
             onClick={async () => {
               try {
                 const r = await scanMentions.mutateAsync();
-                toast.success(`Mentions scan complete --- ${r.inserted} new`);
+                toast.success(`Mentions scan complete - ${r.inserted} new`);
               } catch (e) { toast.error((e as Error).message); }
             }}
             disabled={scanMentions.isPending}
@@ -177,7 +177,7 @@ function PropertyDemandPage() {
       </Card>
 
       {eventsLoading ? (
-        <EmptyState title="Loading demand--�" />
+        <EmptyState title="Loading demand..." />
       ) : filteredEvents.length === 0 ? (
         <EmptyState
           icon={<BarChart3 className="h-4 w-4" />}
@@ -246,7 +246,7 @@ function PropertyDemandPage() {
   );
 }
 
-/* --- subcomponents --- */
+/* - subcomponents - */
 
 function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
   return (
@@ -290,9 +290,9 @@ function aggCountKey(
 function aggPriceBuckets(events: PropertyEvent[], byId: Map<string, any>): [string, number][] {
   const buckets = [
     { label: "< 1M", max: 1_000_000 },
-    { label: "1M --- 3M", max: 3_000_000 },
-    { label: "3M --- 6M", max: 6_000_000 },
-    { label: "6M --- 10M", max: 10_000_000 },
+    { label: "1M - 3M", max: 3_000_000 },
+    { label: "3M - 6M", max: 6_000_000 },
+    { label: "6M - 10M", max: 10_000_000 },
     { label: "10M +", max: Infinity },
   ];
   const counts = new Map<string, number>();
@@ -406,7 +406,7 @@ function PricingOpportunityCard({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{p.title}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {p.reference_code ? `${p.reference_code} · ` : ""}{p.property_type ?? ""} · {p.location ?? "---"}
+            {p.reference_code ? `${p.reference_code} · ` : ""}{p.property_type ?? ""} · {p.location ?? "-"}
           </p>
           <p className="mt-2 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
         </div>
@@ -426,7 +426,7 @@ function PricingOpportunityCard({
         reducing incentives.
       </p>
       <p className="mt-2 text-[10px] text-muted-foreground">
-        This is a recommendation only --- no price change is applied automatically.
+        This is a recommendation only - no price change is applied automatically.
       </p>
       <div className="mt-3 flex gap-2">
         <Link to="/properties/$propertyId" params={{ propertyId: p.id }}>
@@ -437,7 +437,7 @@ function PricingOpportunityCard({
   );
 }
 
-/* --- Market sources panel --- */
+/* - Market sources panel - */
 
 function MarketSourcesPanel() {
   const [query, setQuery] = useState("");
@@ -510,7 +510,7 @@ function MarketSourcesPanel() {
 
         <div className="mt-5">
           {isLoading ? (
-            <p className="text-xs text-muted-foreground">Loading sources--�</p>
+            <p className="text-xs text-muted-foreground">Loading sources...</p>
           ) : sources.length === 0 ? (
             <EmptyState compact icon={<Inbox className="h-4 w-4" />} title="No online sources cached yet" description="Run a market research query above to fetch and cache public sources." />
           ) : (
@@ -552,7 +552,7 @@ function MarketSourcesPanel() {
   );
 }
 
-/* --- Demand ranking: server-side weighted score (internal behaviour prioritised) --- */
+/* - Demand ranking: server-side weighted score (internal behaviour prioritised) - */
 
 function DemandRankingSection({ propertyById }: { propertyById: Map<string, any> }) {
   const { data: rows = [], isLoading } = usePropertyDemandScores();
@@ -596,7 +596,7 @@ function DemandRankingSection({ propertyById }: { propertyById: Map<string, any>
       </div>
       <p className="mt-1 text-[11px] text-muted-foreground">
         Transparent weighted score: interested leads ×4, shortlists ×3, enquiries ×3, viewing requests ×5,
-        offers ×8, brochures ×2, views ×1, rejections -��2{internalOnly ? "" : ", online mentions ×1"}.
+        offers ×8, brochures ×2, views ×1, rejections -2{internalOnly ? "" : ", online mentions ×1"}.
       </p>
       <ul className="mt-3 space-y-1.5">
         {ranked.map(({ row, score, internal }) => {
@@ -615,7 +615,7 @@ function DemandRankingSection({ propertyById }: { propertyById: Map<string, any>
                     </Link>
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {p.location ?? "---"} · {fmtMoney(p.price, p.currency)} · {p.availability ?? "---"}
+                    {p.location ?? "-"} · {fmtMoney(p.price, p.currency)} · {p.availability ?? "-"}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
                     <Chip label="leads" v={row.interested_leads} />
@@ -651,7 +651,7 @@ function Chip({ label, v }: { label: string; v: number }) {
 
 function SupportingDetails({ propertyId }: { propertyId: string }) {
   const { data, isLoading } = usePropertySupport(propertyId);
-  if (isLoading || !data) return <p className="mt-2 text-[11px] text-muted-foreground">Loading--�</p>;
+  if (isLoading || !data) return <p className="mt-2 text-[11px] text-muted-foreground">Loading...</p>;
   const { interests, events, interactions } = data;
   const leadsMap = new Map<string, { id: string; full_name: string; stage?: string }>();
   for (const i of interests) {

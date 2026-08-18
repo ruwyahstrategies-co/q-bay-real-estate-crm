@@ -14,7 +14,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/conversations")({
-  head: () => ({ meta: [{ title: `Conversations — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Conversations" }] }),
   component: ConversationsPage,
 });
 

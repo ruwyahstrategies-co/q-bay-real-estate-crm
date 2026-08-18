@@ -19,7 +19,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-receptionist")({
-  head: () => ({ meta: [{ title: `AI Receptionist — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "AI Receptionist" }] }),
   component: AIReceptionistPage,
 });
 

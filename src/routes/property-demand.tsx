@@ -28,7 +28,7 @@ import { APP_CONFIG } from "@/lib/config";
 export const Route = createFileRoute("/property-demand")({
   head: () => ({
     meta: [
-      { title: `Property Demand — ${APP_CONFIG.productName}` },
+      { title: "Property Demand" },
       { name: "description", content: "Real-time view of buyer attention across properties, areas and types." },
     ],
   }),

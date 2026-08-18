@@ -27,7 +27,7 @@ import { fmtMoney, type Lead } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/pipeline")({
-  head: () => ({ meta: [{ title: `Pipeline — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Pipeline" }] }),
   component: PipelinePage,
 });
 

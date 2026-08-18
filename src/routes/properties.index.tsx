@@ -17,7 +17,7 @@ import { fmtMoney, type Property } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/")({
-  head: () => ({ meta: [{ title: `Properties — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Properties" }] }),
   component: PropertiesPage,
 });
 

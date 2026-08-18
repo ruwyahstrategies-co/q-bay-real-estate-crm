@@ -13,7 +13,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-insights")({
-  head: () => ({ meta: [{ title: `AI Insights — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "AI Insights" }] }),
   component: AIInsightsPage,
 });
 

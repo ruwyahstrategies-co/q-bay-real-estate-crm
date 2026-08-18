@@ -24,7 +24,7 @@ import { APP_CONFIG } from "@/lib/config";
 export const Route = createFileRoute("/leads/")({
   head: () => ({
     meta: [
-      { title: `Leads — ${APP_CONFIG.productName}` },
+      { title: "Leads" },
       { name: "description", content: "Manage buyer leads, intent and pipeline stages." },
     ],
   }),

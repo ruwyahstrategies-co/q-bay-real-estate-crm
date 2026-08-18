@@ -18,7 +18,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/uploads")({
-  head: () => ({ meta: [{ title: `Uploads — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Uploads" }] }),
   component: UploadsPage,
 });
 

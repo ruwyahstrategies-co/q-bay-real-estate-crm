@@ -13,7 +13,7 @@ import { sb } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: `Settings — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Settings" }] }),
   component: SettingsPage,
 });
 

@@ -29,7 +29,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/$leadId")({
-  head: () => ({ meta: [{ title: `Lead Profile — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Lead Profile" }] }),
   component: LeadProfilePage,
 });
 

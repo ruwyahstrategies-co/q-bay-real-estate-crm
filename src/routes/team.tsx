@@ -19,7 +19,7 @@ import { ROLE_PRESETS, isRolePresetKey } from "@/lib/permissions";
 import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/team")({
-  head: () => ({ meta: [{ title: `Team — ${APP_CONFIG.productName}` }] }),
+  head: () => ({ meta: [{ title: "Team" }] }),
   component: TeamPage,
 });
 

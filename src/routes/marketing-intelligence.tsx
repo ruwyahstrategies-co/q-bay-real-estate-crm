@@ -21,7 +21,7 @@ import { APP_CONFIG } from "@/lib/config";
 export const Route = createFileRoute("/marketing-intelligence")({
   head: () => ({
     meta: [
-      { title: `Marketing Intelligence — ${APP_CONFIG.productName}` },
+      { title: "Marketing Intelligence" },
       { name: "description", content: "Objective-driven marketing strategy from real buyer conversations and online brand research." },
     ],
   }),

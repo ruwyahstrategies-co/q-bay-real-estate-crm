@@ -14,7 +14,6 @@ import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useProperties, useArchiveProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
 import { fmtMoney, type Property } from "@/lib/db";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties" }] }),

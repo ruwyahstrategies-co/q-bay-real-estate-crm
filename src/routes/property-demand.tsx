@@ -23,7 +23,6 @@ import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/h
 import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/property-demand")({
   head: () => ({

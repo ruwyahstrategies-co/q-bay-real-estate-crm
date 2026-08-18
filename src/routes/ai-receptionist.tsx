@@ -16,7 +16,6 @@ import {
   type ReceptionistCall, type ReceptionistSettings, type ReceptionistStatus,
 } from "@/hooks/use-receptionist";
 import { PermissionGate } from "@/components/permission-gate";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-receptionist")({
   head: () => ({ meta: [{ title: "AI Receptionist" }] }),

@@ -16,7 +16,6 @@ import { useCreateTask, useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { fmtDate, type Task } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/marketing-intelligence")({
   head: () => ({

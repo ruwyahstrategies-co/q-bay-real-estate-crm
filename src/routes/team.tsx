@@ -16,7 +16,6 @@ import { useLeads } from "@/hooks/use-leads";
 import { fmtMoney } from "@/lib/db";
 import type { StaffTeamMember } from "@/lib/db-extensions";
 import { ROLE_PRESETS, isRolePresetKey } from "@/lib/permissions";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/team")({
   head: () => ({ meta: [{ title: "Team" }] }),

@@ -17,7 +17,6 @@ import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
 import { useTasks } from "@/hooks/use-tasks";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/overview")({
   head: () => ({

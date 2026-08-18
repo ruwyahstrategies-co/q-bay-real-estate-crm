@@ -17,7 +17,6 @@ import { usePropertyReferences } from "@/hooks/use-references";
 import { fmtDate } from "@/lib/db";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),

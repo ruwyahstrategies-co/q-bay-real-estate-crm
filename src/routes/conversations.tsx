@@ -11,7 +11,6 @@ import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions"
 import { fmtDateTime, INTERACTION_TYPES, type Interaction } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/conversations")({
   head: () => ({ meta: [{ title: "Conversations" }] }),

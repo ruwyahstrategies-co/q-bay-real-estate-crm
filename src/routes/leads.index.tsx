@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { fmtMoney, fmtDate, type Lead } from "@/lib/db";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({

@@ -15,7 +15,6 @@ import { useProperties } from "@/hooks/use-properties";
 import { fmtDate, fmtSize, UPLOAD_CATEGORIES, type UploadCategoryKey } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/uploads")({
   head: () => ({ meta: [{ title: "Uploads" }] }),

@@ -10,7 +10,6 @@ import { useLeads } from "@/hooks/use-leads";
 import { stageLabel } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
-import { APP_CONFIG } from "@/lib/config";
 
 export const Route = createFileRoute("/ai-insights")({
   head: () => ({ meta: [{ title: "AI Insights" }] }),

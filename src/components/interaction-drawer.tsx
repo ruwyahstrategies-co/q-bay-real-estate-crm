@@ -123,7 +123,7 @@ export function InteractionDrawer({
         </Field>
         <Field label="Lead">
           <select className={inputCls} value={form.lead_id ?? ""} onChange={(e) => set("lead_id", e.target.value || null)}>
-            <option value="">--- None ---</option>
+            <option value="">None</option>
             {leads.map((l) => (
               <option key={l.id} value={l.id}>{l.full_name}</option>
             ))}
@@ -131,7 +131,7 @@ export function InteractionDrawer({
         </Field>
         <Field label="Property (optional)">
           <select className={inputCls} value={form.property_id ?? ""} onChange={(e) => set("property_id", e.target.value || null)}>
-            <option value="">--- None ---</option>
+            <option value="">None</option>
             {properties.map((p) => (
               <option key={p.id} value={p.id}>{p.title}</option>
             ))}

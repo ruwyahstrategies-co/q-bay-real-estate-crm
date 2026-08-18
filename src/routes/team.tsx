@@ -51,12 +51,12 @@ function TeamPage() {
     .reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
   const totalClosed = leads.filter((l) => l.pipeline_stage === "won").length;
   const totalLost = leads.filter((l) => l.pipeline_stage === "lost").length;
-  const conv = totalClosed + totalLost > 0 ? `${Math.round((totalClosed / (totalClosed + totalLost)) * 100)}%` : "—";
+  const conv = totalClosed + totalLost > 0 ? `${Math.round((totalClosed / (totalClosed + totalLost)) * 100)}%` : "---";
 
   const metrics = [
     { label: "Team members", value: String(team.length) },
     { label: "Assigned leads", value: String(totalAssigned) },
-    { label: "Pipeline value", value: totalPipeline > 0 ? fmtMoney(totalPipeline, leads[0]?.currency) : "—" },
+    { label: "Pipeline value", value: totalPipeline > 0 ? fmtMoney(totalPipeline, leads[0]?.currency) : "---" },
     { label: "Closed deals", value: String(totalClosed) },
     { label: "Lost deals", value: String(totalLost) },
     { label: "Conversion rate", value: conv },
@@ -98,7 +98,7 @@ function TeamPage() {
                   <div>{m.full_name}</div>
                   <div className="text-xs text-muted-foreground">{m.email ?? m.phone ?? ""}</div>
                 </td>
-                <td className="px-4 py-3 text-xs">{isRolePresetKey(m.role) ? ROLE_PRESETS[m.role].label : (m.role ?? "—")}</td>
+                <td className="px-4 py-3 text-xs">{isRolePresetKey(m.role) ? ROLE_PRESETS[m.role].label : (m.role ?? "---")}</td>
                 <td className="px-4 py-3 text-xs">
                   {m.user_id ? (
                     <span className="inline-flex items-center gap-1 text-foreground"><ShieldCheck className="h-3 w-3" /> Has login</span>
@@ -119,7 +119,7 @@ function TeamPage() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-xs">{leadCount(m.id)}</td>
-                <td className="px-4 py-3 text-xs">{pipelineValue(m.id) > 0 ? fmtMoney(pipelineValue(m.id), "QAR") : "—"}</td>
+                <td className="px-4 py-3 text-xs">{pipelineValue(m.id) > 0 ? fmtMoney(pipelineValue(m.id), "QAR") : "---"}</td>
                 <td className="px-4 py-3 text-xs">{closedDeals(m.id)}</td>
                 <td className="px-4 py-3">
                   {canManage && (

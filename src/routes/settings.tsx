@@ -100,7 +100,7 @@ function SettingsPage() {
                 </select>
               </label>
               {canManage ? (
-                <Button size="sm" onClick={saveOrganisation} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                <Button size="sm" onClick={saveOrganisation} disabled={saving}>{saving ? "Saving--�" : "Save"}</Button>
               ) : (
                 <p className="text-xs text-muted-foreground">You have read-only access to organisation settings.</p>
               )}
@@ -116,7 +116,7 @@ function SettingsPage() {
           {active === "Permissions" && (
             <div className="mt-4 max-w-md space-y-3 text-sm">
               <p className="text-muted-foreground">
-                Permissions are granted per staff member from the Team page — role presets set sensible defaults, and
+                Permissions are granted per staff member from the Team page --- role presets set sensible defaults, and
                 individual modules/actions can be overridden per person.
               </p>
               <Link to="/team">
@@ -132,13 +132,13 @@ function SettingsPage() {
                 <div>
                   <p className="font-medium">Signed in via Supabase Auth</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You're signed in as <strong>{teamMember?.email ?? "—"}</strong> with the{" "}
+                    You're signed in as <strong>{teamMember?.email ?? "---"}</strong> with the{" "}
                     <strong className="capitalize">{roleLabel.replace(/_/g, " ")}</strong> role.
                   </p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Staff logins are created and revoked from the Team page — only administrators can create new logins.
+                Staff logins are created and revoked from the Team page --- only administrators can create new logins.
                 Passwords are never stored or visible in this application; resets issue a new temporary password directly
                 through Supabase Auth. Row-level authorization on the database is documented in
                 {" "}<code className="rounded bg-muted px-1 py-0.5">BACKEND_REQUIREMENTS.md</code> for backend implementation.

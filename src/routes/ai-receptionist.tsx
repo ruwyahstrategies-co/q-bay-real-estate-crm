@@ -62,7 +62,7 @@ function AIReceptionistPage() {
   );
 }
 
-// ─────────────────────────────── Status ────────────────────────────────
+// --------------------------------------------------------------------------------------------- Status ------------------------------------------------------------------------------------------------
 
 function StatusTab({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { data: status, isLoading, refetch, isFetching } = useReceptionistStatus();
@@ -83,7 +83,7 @@ function StatusTab({ onOpenSettings }: { onOpenSettings: () => void }) {
           }
         />
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Checking…</p>
+          <p className="text-sm text-muted-foreground">Checking--�</p>
         ) : !status ? (
           <p className="text-sm text-muted-foreground">Unable to load status.</p>
         ) : (
@@ -156,9 +156,9 @@ function StatusTab({ onOpenSettings }: { onOpenSettings: () => void }) {
 
 function ModeBanner({ status }: { status: ReceptionistStatus }) {
   const map = {
-    live: { bg: "bg-pastel-green", icon: CheckCircle2, label: "Live — agent reachable" },
-    partial: { bg: "bg-pastel-cream", icon: AlertCircle, label: "Partial configuration — see missing items" },
-    not_configured: { bg: "bg-muted", icon: AlertCircle, label: "Not configured — add ElevenLabs and Twilio secrets" },
+    live: { bg: "bg-pastel-green", icon: CheckCircle2, label: "Live --- agent reachable" },
+    partial: { bg: "bg-pastel-cream", icon: AlertCircle, label: "Partial configuration --- see missing items" },
+    not_configured: { bg: "bg-muted", icon: AlertCircle, label: "Not configured --- add ElevenLabs and Twilio secrets" },
   } as const;
   const m = map[status.mode];
   const Icon = m.icon;
@@ -182,14 +182,14 @@ function StatusRow({ ok, label, value }: { ok: boolean; label: string; value?: s
   );
 }
 
-// ─────────────────────────────── Settings ──────────────────────────────
+// --------------------------------------------------------------------------------------------- Settings ------------------------------------------------------------------------------------------
 
 function SettingsTab() {
   const { data: settings, isLoading } = useReceptionistSettings();
   const update = useUpdateReceptionistSettings();
   const [draft, setDraft] = useState<Partial<ReceptionistSettings> | null>(null);
 
-  if (isLoading) return <Card><p className="text-sm text-muted-foreground">Loading…</p></Card>;
+  if (isLoading) return <Card><p className="text-sm text-muted-foreground">Loading--�</p></Card>;
   if (!settings) return <Card><p className="text-sm text-muted-foreground">Settings unavailable.</p></Card>;
 
   const s = { ...settings, ...(draft ?? {}) };
@@ -237,7 +237,7 @@ function SettingsTab() {
             <option value="closed">Closed (announce only)</option>
           </select>
         </Field>
-        <Field label="Human transfer number (display only — value lives in server secret)">
+        <Field label="Human transfer number (display only --- value lives in server secret)">
           <Input value={s.human_transfer_number ?? ""} onChange={(v) => onChange("human_transfer_number", v)} />
         </Field>
         <Field label="Max call duration (seconds)">
@@ -282,7 +282,7 @@ function SettingsTab() {
       <div className="lg:col-span-2 flex justify-end gap-2">
         <Button variant="ghost" disabled={!draft} onClick={() => setDraft(null)}>Discard</Button>
         <Button onClick={save} disabled={!draft || update.isPending}>
-          {update.isPending ? "Saving…" : "Save settings"}
+          {update.isPending ? "Saving--�" : "Save settings"}
         </Button>
       </div>
     </div>
@@ -318,12 +318,12 @@ function Textarea({ value, onChange }: { value: string; onChange: (v: string) =>
   );
 }
 
-// ─────────────────────────────── Calls ─────────────────────────────────
+// --------------------------------------------------------------------------------------------- Calls ---------------------------------------------------------------------------------------------------
 
 function CallsTab({ onOpen }: { onOpen: (call: ReceptionistCall) => void }) {
   const { data, isLoading } = useReceptionistCalls();
 
-  if (isLoading) return <Card><p className="text-sm text-muted-foreground">Loading calls…</p></Card>;
+  if (isLoading) return <Card><p className="text-sm text-muted-foreground">Loading calls--�</p></Card>;
   if (!data || data.length === 0) {
     return (
       <Card className="text-center">
@@ -362,21 +362,21 @@ function CallsTab({ onOpen }: { onOpen: (call: ReceptionistCall) => void }) {
                 onClick={() => onOpen(c as ReceptionistCall)}
                 className="cursor-pointer border-t border-border hover:bg-muted/30"
               >
-                <td className="px-4 py-2.5 font-mono text-xs">{c.caller_number ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs">{c.caller_number ?? "---"}</td>
                 <td className="px-4 py-2.5">
-                  {lead?.full_name ?? <span className="text-xs text-muted-foreground">{c.is_new_lead ? "New" : "—"}</span>}
+                  {lead?.full_name ?? <span className="text-xs text-muted-foreground">{c.is_new_lead ? "New" : "---"}</span>}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">{fmtDateTime(c.started_at ?? c.created_at)}</td>
-                <td className="px-4 py-2.5 text-xs">{c.duration_seconds ? `${c.duration_seconds}s` : "—"}</td>
-                <td className="px-4 py-2.5 text-xs">{c.outcome ?? c.status ?? "—"}</td>
-                <td className="px-4 py-2.5 text-xs">{c.intent_level ?? "—"}</td>
-                <td className="px-4 py-2.5 text-xs">{mentions || "—"}</td>
+                <td className="px-4 py-2.5 text-xs">{c.duration_seconds ? `${c.duration_seconds}s` : "---"}</td>
+                <td className="px-4 py-2.5 text-xs">{c.outcome ?? c.status ?? "---"}</td>
+                <td className="px-4 py-2.5 text-xs">{c.intent_level ?? "---"}</td>
+                <td className="px-4 py-2.5 text-xs">{mentions || "---"}</td>
                 <td className="px-4 py-2.5 text-xs">
                   {c.transfer_status ? (
                     <span className="inline-flex items-center gap-1 text-amber-700">
                       <PhoneForwarded className="h-3 w-3" />{c.transfer_status}
                     </span>
-                  ) : "—"}
+                  ) : "---"}
                 </td>
               </tr>
             );
@@ -387,7 +387,7 @@ function CallsTab({ onOpen }: { onOpen: (call: ReceptionistCall) => void }) {
   );
 }
 
-// ─────────────────────────── Call Detail Drawer ────────────────────────
+// --------------------------------------------------------------------------------- Call Detail Drawer ------------------------------------------------------------------------
 
 function CallDetailDrawer({ call, onClose }: { call: ReceptionistCall; onClose: () => void }) {
   const { data: events } = useReceptionistCallToolEvents(call.id);
@@ -408,11 +408,11 @@ function CallDetailDrawer({ call, onClose }: { call: ReceptionistCall; onClose: 
         <div className="space-y-4 p-4">
           <div className="grid gap-2 text-xs sm:grid-cols-2">
             <Meta label="Started" value={fmtDateTime(call.started_at)} />
-            <Meta label="Duration" value={call.duration_seconds ? `${call.duration_seconds}s` : "—"} />
+            <Meta label="Duration" value={call.duration_seconds ? `${call.duration_seconds}s` : "---"} />
             <Meta label="Outcome" value={call.outcome ?? call.status} />
-            <Meta label="Intent level" value={call.intent_level ?? "—"} />
-            <Meta label="Transfer" value={call.transfer_status ?? "—"} />
-            <Meta label="Conversation id" value={call.elevenlabs_conversation_id ?? "—"} mono />
+            <Meta label="Intent level" value={call.intent_level ?? "---"} />
+            <Meta label="Transfer" value={call.transfer_status ?? "---"} />
+            <Meta label="Conversation id" value={call.elevenlabs_conversation_id ?? "---"} mono />
           </div>
 
           {call.summary && (
@@ -484,7 +484,7 @@ function Meta({ label, value, mono }: { label: string; value: string | null; mon
   return (
     <div className="flex items-center justify-between rounded-md border border-border px-2.5 py-1.5">
       <span className="text-muted-foreground">{label}</span>
-      <span className={cn(mono && "font-mono text-[10px]")}>{value ?? "—"}</span>
+      <span className={cn(mono && "font-mono text-[10px]")}>{value ?? "---"}</span>
     </div>
   );
 }

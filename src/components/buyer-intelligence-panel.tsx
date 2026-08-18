@@ -63,7 +63,7 @@ export function BuyerIntelligencePanel({ lead }: Props) {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  if (isLoading) return <EmptyState compact title="Loading analysis…" />;
+  if (isLoading) return <EmptyState compact title="Loading analysis--�" />;
 
   if (!current && !isProcessing && !failed) {
     return (
@@ -93,10 +93,10 @@ export function BuyerIntelligencePanel({ lead }: Props) {
               : <CheckCircle2 className="h-4 w-4" />}
             <div>
               <p className="text-sm font-semibold">
-                {isProcessing ? "Analysing…" : outdated ? "Sales intelligence outdated" : "Sales intelligence ready"}
+                {isProcessing ? "Analysing--�" : outdated ? "Sales intelligence outdated" : "Sales intelligence ready"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "—"}{outdated && ` · ${outdatedReason ? `Changed: ${outdatedReason.replace(/_/g, " ")}` : "New activity since this analysis"}. Regenerate to refresh.`}</>}
+                {current && <>Last run {fmtDateTime(current.created_at)} · Model {current.model ?? "---"}{outdated && ` · ${outdatedReason ? `Changed: ${outdatedReason.replace(/_/g, " ")}` : "New activity since this analysis"}. Regenerate to refresh.`}</>}
                 {!current && failed && <>Last attempt failed: {failed.error_message}</>}
               </p>
             </div>
@@ -221,7 +221,7 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
           <div className="mt-3 rounded-lg border border-dashed border-border p-2">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Missing info to qualify accurately</p>
             <ul className="mt-1 text-xs text-foreground/85">
-              {s.wants.missing_info.map((m, i) => <li key={i}>• {m}</li>)}
+              {s.wants.missing_info.map((m, i) => <li key={i}>--� {m}</li>)}
             </ul>
           </div>
         )}
@@ -235,14 +235,14 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
         <div className="mt-3 space-y-3">
           <div className="rounded-lg border border-border bg-canvas p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Next action</p>
-            <p className="mt-1 text-sm font-medium">{s.sales_playbook.next_action || "—"}</p>
+            <p className="mt-1 text-sm font-medium">{s.sales_playbook.next_action || "---"}</p>
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="outline" onClick={createNextTask}><ListTodo className="h-3.5 w-3.5" /> Create task</Button>
             </div>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Call strategy</p>
-            <p className="mt-1 text-xs">{s.sales_playbook.call_strategy || "—"}</p>
+            <p className="mt-1 text-xs">{s.sales_playbook.call_strategy || "---"}</p>
           </div>
           {s.sales_playbook.questions?.length > 0 && (
             <div>
@@ -256,7 +256,7 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
           <DraftBox label="Email draft" channel="email" text={s.sales_playbook.email_draft} onCopy={copy} onSave={saveDraft} />
           <div className="rounded-lg border border-border bg-canvas p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Objection-handling response</p>
-            <p className="mt-1 text-xs whitespace-pre-wrap">{s.sales_playbook.objection_response || "—"}</p>
+            <p className="mt-1 text-xs whitespace-pre-wrap">{s.sales_playbook.objection_response || "---"}</p>
           </div>
         </div>
       </Card>
@@ -330,9 +330,9 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
         {deepOpen && (
           <div className="mt-3 space-y-3">
             <div className="grid grid-cols-3 gap-2 text-center">
-              <Metric label="Intent" value={`${s.deep_analysis.intent_score ?? "—"}`} />
-              <Metric label="Confidence" value={`${s.deep_analysis.confidence ?? "—"}`} />
-              <Metric label="Urgency" value={s.deep_analysis.urgency || "—"} />
+              <Metric label="Intent" value={`${s.deep_analysis.intent_score ?? "---"}`} />
+              <Metric label="Confidence" value={`${s.deep_analysis.confidence ?? "---"}`} />
+              <Metric label="Urgency" value={s.deep_analysis.urgency || "---"} />
             </div>
             {s.deep_analysis.summary && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{s.deep_analysis.summary}</p>}
             {s.deep_analysis.motivations?.length > 0 && (
@@ -372,7 +372,7 @@ function KV({ k, v }: { k: string; v?: string | null }) {
   return (
     <div className="flex flex-col">
       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{k}</span>
-      <span className="text-sm">{v && v !== "" ? v : "—"}</span>
+      <span className="text-sm">{v && v !== "" ? v : "---"}</span>
     </div>
   );
 }
@@ -381,7 +381,7 @@ function ChipList({ title, items, tone }: { title: string; items: string[]; tone
   if (!items || items.length === 0) return (
     <div>
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">—</p>
+      <p className="mt-1 text-xs text-muted-foreground">---</p>
     </div>
   );
   return (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { cn } from "@/lib/utils";
 
 // Shared animated overlay shells for drawers and dialogs. Kept intentionally
-// restrained (~160ms) — see the "Drawers / modals" polish pass. Both shells
+// restrained (~160ms) --- see the "Drawers / modals" polish pass. Both shells
 // stay mounted for the duration of the exit transition instead of vanishing
 // instantly, so close feels smooth instead of abrupt.
 

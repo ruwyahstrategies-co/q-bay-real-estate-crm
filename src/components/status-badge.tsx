@@ -51,7 +51,7 @@ export function PipelineStageBadge({ stage }: { stage: string }) {
 
 export function IntentScore({ score }: { score?: number | null }) {
   if (score == null) {
-    return <span className="text-xs text-muted-foreground">—</span>;
+    return <span className="text-xs text-muted-foreground">---</span>;
   }
   let variant: Variant = "neutral";
   if (score >= 75) variant = "green";

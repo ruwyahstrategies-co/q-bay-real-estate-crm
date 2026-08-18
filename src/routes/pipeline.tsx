@@ -90,7 +90,7 @@ function PipelinePage() {
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
         <input
           type="text"
-          placeholder="Search leads in pipeline…"
+          placeholder="Search leads in pipeline--�"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -132,7 +132,7 @@ function PipelinePage() {
                   </td>
                   <td className="px-4 py-3 text-xs">{pipelineStages.find((s) => s.stage_key === l.pipeline_stage)?.name ?? l.pipeline_stage.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
-                  <td className="px-4 py-3 text-xs">{team.find((t) => t.id === l.assigned_agent_id)?.full_name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">{team.find((t) => t.id === l.assigned_agent_id)?.full_name ?? "---"}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(l.updated_at).toLocaleDateString()}</td>
                 </tr>
               ))
@@ -172,7 +172,7 @@ function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: s
           </div>
         ) : items.map((l) => <DraggableCard key={l.id} lead={l} draggable={droppable} />)}
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">Total value: {total > 0 ? fmtMoney(total, items[0]?.currency) : "—"}</p>
+      <p className="mt-3 text-[11px] text-muted-foreground">Total value: {total > 0 ? fmtMoney(total, items[0]?.currency) : "---"}</p>
     </div>
   );
 }

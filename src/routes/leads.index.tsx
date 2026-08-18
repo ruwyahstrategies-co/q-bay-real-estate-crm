@@ -79,7 +79,7 @@ function LeadsPage() {
         <div className="relative flex-1 min-w-[200px]">
           <input
             type="text"
-            placeholder="Search by name, phone, email…"
+            placeholder="Search by name, phone, email--�"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-full rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -120,7 +120,7 @@ function LeadsPage() {
           columns={["Buyer", "Contact", "Budget", "Preferred Area", "Property Type", "Intent Score", "Pipeline Stage", "Assigned Agent", "Last Contact", "Actions"]}
           empty={
             isLoading ? (
-              <EmptyState title="Loading leads…" />
+              <EmptyState title="Loading leads--�" />
             ) : (
               <EmptyState
                 icon={<Users className="h-4 w-4" />}
@@ -149,12 +149,12 @@ function LeadsPage() {
                     <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    <div>{l.phone ?? "—"}</div>
+                    <div>{l.phone ?? "---"}</div>
                     <div>{l.email ?? ""}</div>
                   </td>
-                  <td className="px-4 py-3 text-xs">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "—"}</td>
-                  <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "---"}</td>
+                  <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "---"}</td>
+                  <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "---"}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground" title="AI analysis required">Not analysed</td>
                   <td className="px-4 py-3"><PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} /></td>
                   <td className="px-4 py-3 text-xs">{agentName(l.assigned_agent_id)}</td>
@@ -195,9 +195,9 @@ function LeadsPage() {
                   <h4 className="text-sm font-semibold">{l.full_name}</h4>
                   <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "—"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "---"}</p>
                 <p className="mt-3 text-xs"><strong>Budget:</strong> {fmtMoney(l.budget_max, l.currency)}</p>
-                <p className="text-xs"><strong>Area:</strong> {l.preferred_locations?.join(", ") ?? "—"}</p>
+                <p className="text-xs"><strong>Area:</strong> {l.preferred_locations?.join(", ") ?? "---"}</p>
               </Link>
             ))
           )}

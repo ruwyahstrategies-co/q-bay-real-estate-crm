@@ -185,7 +185,7 @@ export function PropertyDrawer({
         </Field>
         <Field label="Completion status">
           <select className={inputCls} value={form.completion_status ?? ""} onChange={(e) => set("completion_status", e.target.value)}>
-            <option value="">—</option>
+            <option value="">---</option>
             <option>Ready</option>
             <option>Off-plan</option>
             <option>Under construction</option>
@@ -204,7 +204,7 @@ export function PropertyDrawer({
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" size="sm" disabled={pending}>
-            {pending ? "Saving…" : isEdit ? "Save changes" : "Save Property"}
+            {pending ? "Saving--�" : isEdit ? "Save changes" : "Save Property"}
           </Button>
         </div>
       </form>

@@ -82,12 +82,12 @@ export function PipelineStagesManager() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading stagesâ€¦</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading stages--¦</p>;
 
   return (
     <div>
       <p className="text-xs text-muted-foreground">
-        Drag to reorder. Renaming only changes the display label â€” the pipeline board and lead forms
+        Drag to reorder. Renaming only changes the display label --- the pipeline board and lead forms
         update automatically.
       </p>
       <div className="mt-4 space-y-2">
@@ -134,7 +134,7 @@ export function PipelineStagesManager() {
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="New stage nameâ€¦"
+          placeholder="New stage name--¦"
           className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           onKeyDown={(e) => {
             if (e.key === "Enter") {

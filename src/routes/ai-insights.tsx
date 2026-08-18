@@ -57,7 +57,7 @@ function AIInsightsPage() {
   if (!can("ai_insights", "view")) return <AppShell><AccessDenied /></AppShell>;
 
   if (isLoading) {
-    return <AppShell><EmptyState title="Loading insightsâ€¦" /></AppShell>;
+    return <AppShell><EmptyState title="Loading insights--¦" /></AppShell>;
   }
 
   if (totalAnalysed === 0) {
@@ -87,7 +87,7 @@ function AIInsightsPage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <LeadGroupCard icon={<Flame className="h-3.5 w-3.5" />} title="Hot buyers" rows={hot} leadById={leadById} emptyMsg="No hot leads yet." />
-        <LeadGroupCard icon={<Target className="h-3.5 w-3.5" />} title="High intent (â‰¥70)" rows={highIntent} leadById={leadById} emptyMsg="No high-intent leads yet." showIntent />
+        <LeadGroupCard icon={<Target className="h-3.5 w-3.5" />} title="High intent (-‰¥70)" rows={highIntent} leadById={leadById} emptyMsg="No high-intent leads yet." showIntent />
         <LeadGroupCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="At risk" rows={atRisk} leadById={leadById} emptyMsg="No at-risk leads." />
         <LeadGroupCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="High urgency" rows={highUrgency} leadById={leadById} emptyMsg="No high-urgency leads." />
 
@@ -160,7 +160,7 @@ function LeadGroupCard({
                   {lead?.full_name ?? a.lead_id}
                 </Link>
                 {showIntent && (
-                  <span className="text-muted-foreground">Intent {a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? "â€”"}</span>
+                  <span className="text-muted-foreground">Intent {a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? "---"}</span>
                 )}
               </li>
             );

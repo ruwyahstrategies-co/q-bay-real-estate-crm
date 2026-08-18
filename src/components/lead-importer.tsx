@@ -116,7 +116,7 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
       setSheets(wb.SheetNames);
       setSelectedSheet(wb.SheetNames[0] ?? "");
       setStep("sheet");
-      // store wb on window-ish — actually re-parse on confirm
+      // store wb on window-ish --- actually re-parse on confirm
       (handleFileSelected as unknown as { __wb?: XLSX.WorkBook }).__wb = wb;
     } else {
       toast.error("Please select a CSV or XLSX file.");
@@ -327,7 +327,7 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
                       value={mapping[f.key] ?? ""}
                       onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
                     >
-                      <option value="">— Skip —</option>
+                      <option value="">--- Skip ---</option>
                       {headers.map((h) => (
                         <option key={h} value={h}>{h}</option>
                       ))}
@@ -358,7 +358,7 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setStep("file")}>Back</Button>
                 <Button size="sm" onClick={runImport} disabled={busy}>
-                  {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {busy ? "Importing…" : "Confirm import"}
+                  {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {busy ? "Importing--�" : "Confirm import"}
                 </Button>
               </div>
             </div>

@@ -111,7 +111,7 @@ function MarketingIntelligencePage() {
           </Field>
           {objective === "custom" && (
             <Field label="Custom objective" className="md:col-span-2">
-              <input value={customObjective} onChange={(e) => setCustomObjective(e.target.value)} placeholder="Describe what you want to achieve…" className={inputCls} />
+              <input value={customObjective} onChange={(e) => setCustomObjective(e.target.value)} placeholder="Describe what you want to achieve--�" className={inputCls} />
             </Field>
           )}
           {periodKind === "custom" && (
@@ -146,7 +146,7 @@ function MarketingIntelligencePage() {
 
       {/* Strategy output */}
       {isLoading ? (
-        <EmptyState title="Loading reports…" />
+        <EmptyState title="Loading reports--�" />
       ) : !latestStrategy ? (
         <EmptyState
           icon={<Megaphone className="h-4 w-4" />}
@@ -276,7 +276,7 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
         </div>
         {o.label === "early_signals" && (
           <span className="rounded-full bg-canvas px-3 py-1 text-[11px] font-medium text-foreground/70">
-            Requires more data — treat as directional only
+            Requires more data --- treat as directional only
           </span>
         )}
       </div>
@@ -329,14 +329,14 @@ function StrategyReportView({ report, sourceById }: { report: MarketReport; sour
                     reportId={report.id}
                     sourceRef={`campaign:${i}`}
                     title={`Campaign: ${c.angle}`}
-                    description={`Audience: ${c.audience}\nProblem: ${c.problem}\nChannel: ${c.channel} — ${c.channel_reason}`}
+                    description={`Audience: ${c.audience}\nProblem: ${c.problem}\nChannel: ${c.channel} --- ${c.channel_reason}`}
                     refs={c.refs ?? []}
                     propertyRefs={c.related_property_refs ?? []}
                   />
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">For {c.audience}</p>
                 <p className="mt-2 text-xs"><span className="font-medium">Problem: </span>{c.problem}</p>
-                <p className="mt-1 text-xs"><span className="font-medium">Channel: </span>{c.channel} <span className="text-muted-foreground">— {c.channel_reason}</span></p>
+                <p className="mt-1 text-xs"><span className="font-medium">Channel: </span>{c.channel} <span className="text-muted-foreground">--- {c.channel_reason}</span></p>
                 {c.related_property_refs?.length > 0 && (
                   <PropertyRefs refs={c.related_property_refs} />
                 )}
@@ -427,7 +427,7 @@ function GapCard({ title, text, accent }: { title: string; text?: string; accent
   return (
     <Card className={cn(accent && "bg-pastel-cream/60")}>
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{title}</p>
-      <p className="mt-1 text-sm">{text || "—"}</p>
+      <p className="mt-1 text-sm">{text || "---"}</p>
     </Card>
   );
 }
@@ -436,7 +436,7 @@ function KV({ k, v }: { k: string; v?: string | null }) {
   return (
     <div className="flex flex-col">
       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{k}</span>
-      <span className="text-sm">{v && v !== "" ? v : "—"}</span>
+      <span className="text-sm">{v && v !== "" ? v : "---"}</span>
     </div>
   );
 }
@@ -498,7 +498,7 @@ function EvidenceRefs({ refs = [], tags = [], sourceById }: { refs?: string[]; t
   );
 }
 
-/* --- Marketing → Execution bridge --- */
+/* --- Marketing -�� Execution bridge --- */
 
 const MARKETING_STATUSES = ["proposed", "approved", "in_progress", "completed"] as const;
 type MarketingStatus = (typeof MARKETING_STATUSES)[number];
@@ -565,7 +565,7 @@ function ExecutionTasksPanel({ reportId }: { reportId: string }) {
 
   return (
     <div className="mt-6">
-      <h3 className="mb-3 text-[16px] font-semibold">Execution — tasks from this report</h3>
+      <h3 className="mb-3 text-[16px] font-semibold">Execution --- tasks from this report</h3>
       <ul className="space-y-2">
         {tasks.map((t) => {
           const status: MarketingStatus = (t.refs?.marketing_status as MarketingStatus) ?? "proposed";

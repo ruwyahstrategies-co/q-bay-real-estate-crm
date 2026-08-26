@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_whatsapp_connections: {
+        Row: {
+          access_token_secret_id: string | null
+          connection_status: string
+          created_at: string
+          display_phone_number: string | null
+          id: string
+          last_error: string | null
+          last_verified_at: string | null
+          phone_number_id: string | null
+          team_member_id: string
+          updated_at: string
+          waba_id: string | null
+          webhook_verify_token_secret_id: string | null
+        }
+        Insert: {
+          access_token_secret_id?: string | null
+          connection_status?: string
+          created_at?: string
+          display_phone_number?: string | null
+          id?: string
+          last_error?: string | null
+          last_verified_at?: string | null
+          phone_number_id?: string | null
+          team_member_id: string
+          updated_at?: string
+          waba_id?: string | null
+          webhook_verify_token_secret_id?: string | null
+        }
+        Update: {
+          access_token_secret_id?: string | null
+          connection_status?: string
+          created_at?: string
+          display_phone_number?: string | null
+          id?: string
+          last_error?: string | null
+          last_verified_at?: string | null
+          phone_number_id?: string | null
+          team_member_id?: string
+          updated_at?: string
+          waba_id?: string | null
+          webhook_verify_token_secret_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_whatsapp_connections_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: true
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_analyses: {
         Row: {
           analysis_type: string | null
@@ -120,6 +173,274 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      areas: {
+        Row: {
+          country_id: string
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          country_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          country_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          content: string | null
+          created_at: string
+          excerpt: string | null
+          featured_image: string | null
+          id: string
+          is_published: boolean
+          published_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      countries: {
+        Row: {
+          code: string | null
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      developments: {
+        Row: {
+          amenities: string[] | null
+          area_id: string | null
+          assigned_agent_id: string | null
+          brochure_upload_id: string | null
+          completion_status: string | null
+          country_id: string | null
+          created_at: string
+          currency: string | null
+          delivery_timeline: string | null
+          description: string | null
+          developer: string | null
+          hero_image_url: string | null
+          hero_video_url: string | null
+          id: string
+          is_published: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          organisation_id: string | null
+          owner_id: string | null
+          payment_plan: Json | null
+          price_from: number | null
+          price_to: number | null
+          property_types: string[] | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: string | null
+          tour_360_url: string | null
+          unit_mix: Json | null
+          updated_at: string
+        }
+        Insert: {
+          amenities?: string[] | null
+          area_id?: string | null
+          assigned_agent_id?: string | null
+          brochure_upload_id?: string | null
+          completion_status?: string | null
+          country_id?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_timeline?: string | null
+          description?: string | null
+          developer?: string | null
+          hero_image_url?: string | null
+          hero_video_url?: string | null
+          id?: string
+          is_published?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          organisation_id?: string | null
+          owner_id?: string | null
+          payment_plan?: Json | null
+          price_from?: number | null
+          price_to?: number | null
+          property_types?: string[] | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: string | null
+          tour_360_url?: string | null
+          unit_mix?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          amenities?: string[] | null
+          area_id?: string | null
+          assigned_agent_id?: string | null
+          brochure_upload_id?: string | null
+          completion_status?: string | null
+          country_id?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_timeline?: string | null
+          description?: string | null
+          developer?: string | null
+          hero_image_url?: string | null
+          hero_video_url?: string | null
+          id?: string
+          is_published?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          organisation_id?: string | null
+          owner_id?: string | null
+          payment_plan?: Json | null
+          price_from?: number | null
+          price_to?: number | null
+          property_types?: string[] | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: string | null
+          tour_360_url?: string | null
+          unit_mix?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developments_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
         ]
@@ -361,26 +682,36 @@ export type Database = {
           budget_max: number | null
           budget_min: number | null
           buying_timeline: string | null
+          classification: string | null
           created_at: string
           created_by: string | null
           currency: string | null
+          development_id: string | null
           email: string | null
           financing_status: string | null
           full_name: string
           id: string
+          intent_score: number | null
           lead_source: string | null
           nationality: string | null
           notes: string | null
           organisation_id: string | null
           phone: string | null
           pipeline_stage: string
+          preferred_area_id: string | null
           preferred_bedrooms: number[] | null
+          preferred_country_id: string | null
           preferred_language: string | null
           preferred_locations: string[] | null
           preferred_property_types: string[] | null
+          priority: string | null
           purchase_purpose: string | null
           status: string
+          team_id: string | null
+          telesales_outcome: string | null
+          telesales_qualified: boolean | null
           updated_at: string
+          workflow: string
         }
         Insert: {
           archived_at?: string | null
@@ -388,26 +719,36 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           buying_timeline?: string | null
+          classification?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          development_id?: string | null
           email?: string | null
           financing_status?: string | null
           full_name: string
           id?: string
+          intent_score?: number | null
           lead_source?: string | null
           nationality?: string | null
           notes?: string | null
           organisation_id?: string | null
           phone?: string | null
           pipeline_stage?: string
+          preferred_area_id?: string | null
           preferred_bedrooms?: number[] | null
+          preferred_country_id?: string | null
           preferred_language?: string | null
           preferred_locations?: string[] | null
           preferred_property_types?: string[] | null
+          priority?: string | null
           purchase_purpose?: string | null
           status?: string
+          team_id?: string | null
+          telesales_outcome?: string | null
+          telesales_qualified?: boolean | null
           updated_at?: string
+          workflow?: string
         }
         Update: {
           archived_at?: string | null
@@ -415,26 +756,36 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           buying_timeline?: string | null
+          classification?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          development_id?: string | null
           email?: string | null
           financing_status?: string | null
           full_name?: string
           id?: string
+          intent_score?: number | null
           lead_source?: string | null
           nationality?: string | null
           notes?: string | null
           organisation_id?: string | null
           phone?: string | null
           pipeline_stage?: string
+          preferred_area_id?: string | null
           preferred_bedrooms?: number[] | null
+          preferred_country_id?: string | null
           preferred_language?: string | null
           preferred_locations?: string[] | null
           preferred_property_types?: string[] | null
+          priority?: string | null
           purchase_purpose?: string | null
           status?: string
+          team_id?: string | null
+          telesales_outcome?: string | null
+          telesales_qualified?: boolean | null
           updated_at?: string
+          workflow?: string
         }
         Relationships: [
           {
@@ -445,10 +796,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_preferred_area_id_fkey"
+            columns: ["preferred_area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_preferred_country_id_fkey"
+            columns: ["preferred_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -524,6 +903,39 @@ export type Database = {
           logo_url?: string | null
           name?: string | null
           timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      owners: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -624,84 +1036,179 @@ export type Database = {
         Row: {
           amenities: string[] | null
           archived_at: string | null
+          area_id: string | null
+          assigned_agent_id: string | null
           assigned_team: string[] | null
           availability: string
           bathrooms: number | null
           bedrooms: number | null
           completion_status: string | null
+          country_id: string | null
           created_at: string
           created_by: string | null
           currency: string | null
           description: string | null
           developer: string | null
+          development_id: string | null
+          expires_at: string | null
+          hero_image_url: string | null
+          hero_video_url: string | null
+          highlights: string[] | null
           id: string
+          is_published: boolean
+          last_refreshed_at: string | null
+          latitude: number | null
+          listing_source: string | null
           location: string | null
+          longitude: number | null
           organisation_id: string | null
+          owner_id: string | null
+          plot_size: number | null
           price: number | null
           property_type: string | null
+          purpose: string
           reference_code: string | null
+          seo_description: string | null
+          seo_title: string | null
           size: number | null
           size_unit: string | null
+          slug: string | null
           status: string
           title: string
+          tour_360_url: string | null
           updated_at: string
         }
         Insert: {
           amenities?: string[] | null
           archived_at?: string | null
+          area_id?: string | null
+          assigned_agent_id?: string | null
           assigned_team?: string[] | null
           availability?: string
           bathrooms?: number | null
           bedrooms?: number | null
           completion_status?: string | null
+          country_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           description?: string | null
           developer?: string | null
+          development_id?: string | null
+          expires_at?: string | null
+          hero_image_url?: string | null
+          hero_video_url?: string | null
+          highlights?: string[] | null
           id?: string
+          is_published?: boolean
+          last_refreshed_at?: string | null
+          latitude?: number | null
+          listing_source?: string | null
           location?: string | null
+          longitude?: number | null
           organisation_id?: string | null
+          owner_id?: string | null
+          plot_size?: number | null
           price?: number | null
           property_type?: string | null
+          purpose?: string
           reference_code?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
           size?: number | null
           size_unit?: string | null
+          slug?: string | null
           status?: string
           title: string
+          tour_360_url?: string | null
           updated_at?: string
         }
         Update: {
           amenities?: string[] | null
           archived_at?: string | null
+          area_id?: string | null
+          assigned_agent_id?: string | null
           assigned_team?: string[] | null
           availability?: string
           bathrooms?: number | null
           bedrooms?: number | null
           completion_status?: string | null
+          country_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           description?: string | null
           developer?: string | null
+          development_id?: string | null
+          expires_at?: string | null
+          hero_image_url?: string | null
+          hero_video_url?: string | null
+          highlights?: string[] | null
           id?: string
+          is_published?: boolean
+          last_refreshed_at?: string | null
+          latitude?: number | null
+          listing_source?: string | null
           location?: string | null
+          longitude?: number | null
           organisation_id?: string | null
+          owner_id?: string | null
+          plot_size?: number | null
           price?: number | null
           property_type?: string | null
+          purpose?: string
           reference_code?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
           size?: number | null
           size_unit?: string | null
+          slug?: string | null
           status?: string
           title?: string
+          tour_360_url?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "properties_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "properties_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
         ]
@@ -760,6 +1267,72 @@ export type Database = {
           },
           {
             foreignKeyName: "property_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+        ]
+      }
+      property_leases: {
+        Row: {
+          contract_upload_id: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          lease_end: string | null
+          lease_start: string | null
+          maintenance_notes: string | null
+          payment_status: string | null
+          property_id: string
+          rent_amount: number | null
+          tenant_email: string | null
+          tenant_name: string | null
+          tenant_phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_upload_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          lease_end?: string | null
+          lease_start?: string | null
+          maintenance_notes?: string | null
+          payment_status?: string | null
+          property_id: string
+          rent_amount?: number | null
+          tenant_email?: string | null
+          tenant_name?: string | null
+          tenant_phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_upload_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          lease_end?: string | null
+          lease_start?: string | null
+          maintenance_notes?: string | null
+          payment_status?: string | null
+          property_id?: string
+          rent_amount?: number | null
+          tenant_email?: string | null
+          tenant_name?: string | null
+          tenant_phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_leases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_leases_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "property_demand_scores"
@@ -826,192 +1399,245 @@ export type Database = {
           },
         ]
       }
-      receptionist_calls: {
+      property_submissions: {
         Row: {
-          called_number: string | null
-          caller_number: string | null
+          area_id: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          converted_property_id: string | null
+          country_id: string | null
           created_at: string
-          created_task_ids: Json | null
-          duration_seconds: number | null
-          elevenlabs_conversation_id: string | null
-          ended_at: string | null
-          extracted_data: Json | null
+          currency: string | null
+          description: string | null
+          documents: Json
+          email: string | null
+          full_name: string | null
           id: string
-          intent_level: string | null
-          is_new_lead: boolean | null
-          lead_id: string | null
-          outcome: string | null
-          properties_mentioned: Json | null
-          raw_webhook: Json | null
-          recording_url: string | null
-          started_at: string | null
-          status: string | null
-          summary: string | null
-          transcript: Json | null
-          transfer_status: string | null
-          transfer_target: string | null
+          last_refreshed_at: string | null
+          location: string | null
+          media: Json
+          phone: string | null
+          price: number | null
+          property_type: string | null
+          purpose: string | null
+          review_notes: string | null
+          reviewed_by: string | null
+          size: number | null
+          status: string
+          submitted_at: string | null
           updated_at: string
+          website_profile_id: string | null
         }
         Insert: {
-          called_number?: string | null
-          caller_number?: string | null
+          area_id?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          converted_property_id?: string | null
+          country_id?: string | null
           created_at?: string
-          created_task_ids?: Json | null
-          duration_seconds?: number | null
-          elevenlabs_conversation_id?: string | null
-          ended_at?: string | null
-          extracted_data?: Json | null
+          currency?: string | null
+          description?: string | null
+          documents?: Json
+          email?: string | null
+          full_name?: string | null
           id?: string
-          intent_level?: string | null
-          is_new_lead?: boolean | null
-          lead_id?: string | null
-          outcome?: string | null
-          properties_mentioned?: Json | null
-          raw_webhook?: Json | null
-          recording_url?: string | null
-          started_at?: string | null
-          status?: string | null
-          summary?: string | null
-          transcript?: Json | null
-          transfer_status?: string | null
-          transfer_target?: string | null
+          last_refreshed_at?: string | null
+          location?: string | null
+          media?: Json
+          phone?: string | null
+          price?: number | null
+          property_type?: string | null
+          purpose?: string | null
+          review_notes?: string | null
+          reviewed_by?: string | null
+          size?: number | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
+          website_profile_id?: string | null
         }
         Update: {
-          called_number?: string | null
-          caller_number?: string | null
+          area_id?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          converted_property_id?: string | null
+          country_id?: string | null
           created_at?: string
-          created_task_ids?: Json | null
-          duration_seconds?: number | null
-          elevenlabs_conversation_id?: string | null
-          ended_at?: string | null
-          extracted_data?: Json | null
+          currency?: string | null
+          description?: string | null
+          documents?: Json
+          email?: string | null
+          full_name?: string | null
           id?: string
-          intent_level?: string | null
-          is_new_lead?: boolean | null
-          lead_id?: string | null
-          outcome?: string | null
-          properties_mentioned?: Json | null
-          raw_webhook?: Json | null
-          recording_url?: string | null
-          started_at?: string | null
-          status?: string | null
-          summary?: string | null
-          transcript?: Json | null
-          transfer_status?: string | null
-          transfer_target?: string | null
+          last_refreshed_at?: string | null
+          location?: string | null
+          media?: Json
+          phone?: string | null
+          price?: number | null
+          property_type?: string | null
+          purpose?: string | null
+          review_notes?: string | null
+          reviewed_by?: string | null
+          size?: number | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
+          website_profile_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "receptionist_calls_lead_id_fkey"
+            foreignKeyName: "property_submissions_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_converted_property_id_fkey"
+            columns: ["converted_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_converted_property_id_fkey"
+            columns: ["converted_property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_submissions_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_website_profile_id_fkey"
+            columns: ["website_profile_id"]
+            isOneToOne: false
+            referencedRelation: "website_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_activity_events: {
+        Row: {
+          event_type: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          occurred_at: string
+          property_id: string | null
+          team_member_id: string
+          viewing_id: string | null
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          occurred_at?: string
+          property_id?: string | null
+          team_member_id: string
+          viewing_id?: string | null
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          occurred_at?: string
+          property_id?: string | null
+          team_member_id?: string
+          viewing_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_activity_events_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "staff_activity_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_activity_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "staff_activity_events_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_activity_events_viewing_id_fkey"
+            columns: ["viewing_id"]
+            isOneToOne: false
+            referencedRelation: "viewings"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      receptionist_settings: {
+      staff_sessions: {
         Row: {
-          after_hours_behaviour: string | null
-          agent_display_name: string | null
-          allowed_property_info: Json | null
-          business_hours: Json | null
-          callback_rules: Json | null
+          check_in_latitude: number | null
+          check_in_longitude: number | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          checked_in_at: string
+          checked_out_at: string | null
           created_at: string
-          enabled: boolean | null
-          greeting: string | null
-          human_transfer_number: string | null
           id: string
-          languages: Json | null
-          max_call_duration_seconds: number | null
-          outbound_test_allowlist: Json | null
-          qualification_questions: Json | null
-          required_lead_fields: Json | null
-          updated_at: string
-          viewing_request_rules: Json | null
+          team_member_id: string
         }
         Insert: {
-          after_hours_behaviour?: string | null
-          agent_display_name?: string | null
-          allowed_property_info?: Json | null
-          business_hours?: Json | null
-          callback_rules?: Json | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          checked_in_at?: string
+          checked_out_at?: string | null
           created_at?: string
-          enabled?: boolean | null
-          greeting?: string | null
-          human_transfer_number?: string | null
           id?: string
-          languages?: Json | null
-          max_call_duration_seconds?: number | null
-          outbound_test_allowlist?: Json | null
-          qualification_questions?: Json | null
-          required_lead_fields?: Json | null
-          updated_at?: string
-          viewing_request_rules?: Json | null
+          team_member_id: string
         }
         Update: {
-          after_hours_behaviour?: string | null
-          agent_display_name?: string | null
-          allowed_property_info?: Json | null
-          business_hours?: Json | null
-          callback_rules?: Json | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          checked_in_at?: string
+          checked_out_at?: string | null
           created_at?: string
-          enabled?: boolean | null
-          greeting?: string | null
-          human_transfer_number?: string | null
           id?: string
-          languages?: Json | null
-          max_call_duration_seconds?: number | null
-          outbound_test_allowlist?: Json | null
-          qualification_questions?: Json | null
-          required_lead_fields?: Json | null
-          updated_at?: string
-          viewing_request_rules?: Json | null
-        }
-        Relationships: []
-      }
-      receptionist_tool_events: {
-        Row: {
-          call_id: string | null
-          created_at: string
-          elevenlabs_conversation_id: string | null
-          error: string | null
-          id: string
-          request_summary: Json | null
-          result_summary: Json | null
-          success: boolean | null
-          tool_name: string
-        }
-        Insert: {
-          call_id?: string | null
-          created_at?: string
-          elevenlabs_conversation_id?: string | null
-          error?: string | null
-          id?: string
-          request_summary?: Json | null
-          result_summary?: Json | null
-          success?: boolean | null
-          tool_name: string
-        }
-        Update: {
-          call_id?: string | null
-          created_at?: string
-          elevenlabs_conversation_id?: string | null
-          error?: string | null
-          id?: string
-          request_summary?: Json | null
-          result_summary?: Json | null
-          success?: boolean | null
-          tool_name?: string
+          team_member_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "receptionist_tool_events_call_id_fkey"
-            columns: ["call_id"]
+            foreignKeyName: "staff_sessions_team_member_id_fkey"
+            columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "receptionist_calls"
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -1138,6 +1764,7 @@ export type Database = {
           permissions: Json | null
           phone: string | null
           role: string | null
+          team_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1153,6 +1780,7 @@ export type Database = {
           permissions?: Json | null
           phone?: string | null
           role?: string | null
+          team_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1168,6 +1796,7 @@ export type Database = {
           permissions?: Json | null
           phone?: string | null
           role?: string | null
+          team_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1178,6 +1807,151 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          leader_id: string | null
+          name: string
+          organisation_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          leader_id?: string | null
+          name: string
+          organisation_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          leader_id?: string | null
+          name?: string
+          organisation_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          agent_id: string | null
+          closed_at: string | null
+          commission_value: number | null
+          created_at: string
+          currency: string | null
+          expense: number | null
+          id: string
+          income: number | null
+          lead_id: string | null
+          notes: string | null
+          organisation_id: string | null
+          property_id: string | null
+          status: string
+          transaction_type: string
+          transaction_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          closed_at?: string | null
+          commission_value?: number | null
+          created_at?: string
+          currency?: string | null
+          expense?: number | null
+          id?: string
+          income?: number | null
+          lead_id?: string | null
+          notes?: string | null
+          organisation_id?: string | null
+          property_id?: string | null
+          status?: string
+          transaction_type?: string
+          transaction_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          closed_at?: string | null
+          commission_value?: number | null
+          created_at?: string
+          currency?: string | null
+          expense?: number | null
+          id?: string
+          income?: number | null
+          lead_id?: string | null
+          notes?: string | null
+          organisation_id?: string | null
+          property_id?: string | null
+          status?: string
+          transaction_type?: string
+          transaction_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
           },
         ]
       }
@@ -1273,6 +2047,211 @@ export type Database = {
           },
         ]
       }
+      viewings: {
+        Row: {
+          assigned_agent_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          latitude: number | null
+          lead_id: string | null
+          longitude: number | null
+          notes: string | null
+          property_id: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          lead_id?: string | null
+          longitude?: number | null
+          notes?: string | null
+          property_id?: string | null
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          lead_id?: string | null
+          longitude?: number | null
+          notes?: string | null
+          property_id?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viewings_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+        ]
+      }
+      website_enquiries: {
+        Row: {
+          assigned_agent_id: string | null
+          created_at: string
+          development_id: string | null
+          email: string | null
+          id: string
+          lead_id: string | null
+          message: string | null
+          name: string
+          phone: string | null
+          property_id: string | null
+          source_url: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          development_id?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          message?: string | null
+          name: string
+          phone?: string | null
+          property_id?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          development_id?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          message?: string | null
+          name?: string
+          phone?: string | null
+          property_id?: string | null
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_enquiries_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+        ]
+      }
+      website_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_webhook_routes: {
+        Row: {
+          created_at: string
+          phone_number_id: string
+          team_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          phone_number_id: string
+          team_member_id: string
+        }
+        Update: {
+          created_at?: string
+          phone_number_id?: string
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_webhook_routes_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       property_demand_scores: {
@@ -1300,10 +2279,46 @@ export type Database = {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
       }
+      current_team_id: { Args: never; Returns: string }
+      current_team_member_id: { Args: never; Returns: string }
       current_team_permissions: { Args: never; Returns: Json }
       has_permission: {
         Args: { _action: string; _module: string }
         Returns: boolean
+      }
+      match_properties_for_lead: {
+        Args: { _lead_id: string; _limit?: number }
+        Returns: {
+          property_id: string
+          reasons: string[]
+          score: number
+        }[]
+      }
+      match_prospects_for_property: {
+        Args: { _limit?: number; _property_id: string }
+        Returns: {
+          lead_id: string
+          reasons: string[]
+          score: number
+        }[]
+      }
+      similar_properties: {
+        Args: { _limit?: number; _property_id: string }
+        Returns: {
+          property_id: string
+          reasons: string[]
+          score: number
+        }[]
+      }
+      vault_create_secret: {
+        Args: { _name: string; _secret: string }
+        Returns: string
+      }
+      vault_delete_secret: { Args: { _id: string }; Returns: undefined }
+      vault_read_secret: { Args: { _id: string }; Returns: string }
+      vault_update_secret: {
+        Args: { _id: string; _secret: string }
+        Returns: undefined
       }
     }
     Enums: {

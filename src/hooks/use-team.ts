@@ -78,6 +78,7 @@ export type CreateStaffUserInput = {
   email: string;
   phone?: string | null;
   role: string;
+  team_id?: string | null;
   permissions: PermissionSet;
   temporary_password: string;
   is_active: boolean;

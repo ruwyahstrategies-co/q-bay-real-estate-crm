@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ShieldCheck, Users, Clock } from "lucide-react";
+import { ShieldCheck, Users, Clock, MessageCircle, MapPinned, Plus, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
@@ -11,6 +11,8 @@ import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { sb } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
+import { useMyWhatsappConnection, useSaveWhatsappConnection, useVerifyWhatsapp, useDisconnectWhatsapp } from "@/hooks/use-whatsapp";
+import { useCountries, useAreas, useCreateCountry, useUpdateCountry, useCreateArea, useUpdateArea } from "@/hooks/use-locations";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings" }] }),
@@ -20,7 +22,9 @@ export const Route = createFileRoute("/settings")({
 const sections = [
   "Organisation",
   "Pipeline stages",
+  "Locations",
   "Permissions",
+  "My WhatsApp Connection",
   "Security",
   "Lead & property fields",
   "Notifications",
@@ -113,6 +117,10 @@ function SettingsPage() {
             )
           )}
 
+          {active === "Locations" && <LocationsSection canManage={canManage} />}
+
+          {active === "My WhatsApp Connection" && <WhatsappSection />}
+
           {active === "Permissions" && (
             <div className="mt-4 max-w-md space-y-3 text-sm">
               <p className="text-muted-foreground">
@@ -163,5 +171,182 @@ function SettingsPage() {
       </div>
       </PermissionGate>
     </AppShell>
+  );
+}
+
+function WhatsappSection() {
+  const { data: connection, isLoading } = useMyWhatsappConnection();
+  const save = useSaveWhatsappConnection();
+  const verify = useVerifyWhatsapp();
+  const disconnect = useDisconnectWhatsapp();
+
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [wabaId, setWabaId] = useState("");
+  const [displayNumber, setDisplayNumber] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+
+  useEffect(() => {
+    if (!connection) return;
+    setPhoneNumberId(connection.phone_number_id ?? "");
+    setWabaId(connection.waba_id ?? "");
+    setDisplayNumber(connection.display_phone_number ?? "");
+  }, [connection?.id]);
+
+  async function handleSave() {
+    if (!phoneNumberId.trim()) return toast.error("Phone Number ID is required");
+    try {
+      await save.mutateAsync({
+        phone_number_id: phoneNumberId.trim(),
+        waba_id: wabaId || undefined,
+        display_phone_number: displayNumber || undefined,
+        access_token: accessToken || undefined,
+        webhook_verify_token: verifyToken || undefined,
+      });
+      setAccessToken("");
+      setVerifyToken("");
+      toast.success("WhatsApp connection saved");
+    } catch (e) { toast.error((e as Error).message); }
+  }
+
+  return (
+    <div className="mt-4 max-w-lg space-y-4 text-sm">
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
+        <MessageCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        <div>
+          <p className="font-medium">Your own WhatsApp Business (Meta Cloud API) connection</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Each staff member connects their own WhatsApp Business number here. There is no shared/global
+            WhatsApp sender - your access token is stored encrypted and is never shown again after saving.
+          </p>
+          {!isLoading && connection && (
+            <p className="mt-2 text-xs">
+              Status: <span className={cn("font-medium", connection.connection_status === "connected" ? "text-foreground" : "text-muted-foreground")}>
+                {connection.connection_status}
+              </span>
+              {connection.display_phone_number ? ` - ${connection.display_phone_number}` : ""}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Phone Number ID *</span>
+        <input className={inputCls} value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="From Meta Business Suite" />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">WhatsApp Business Account ID</span>
+        <input className={inputCls} value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Display phone number</span>
+        <input className={inputCls} value={displayNumber} onChange={(e) => setDisplayNumber(e.target.value)} placeholder="+974..." />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Access token {connection ? "(leave blank to keep current)" : "*"}</span>
+        <input className={inputCls} type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Meta permanent access token" />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Webhook verify token (optional)</span>
+        <input className={inputCls} value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} placeholder="Shared secret for Meta's webhook subscription" />
+      </label>
+
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={handleSave} disabled={save.isPending}>{save.isPending ? "Saving..." : "Save connection"}</Button>
+        {connection && (
+          <Button size="sm" variant="outline" onClick={async () => {
+            try { const r = await verify.mutateAsync(); if (r.ok) toast.success("Connection verified"); else toast.error(r.error ?? "Verification failed"); }
+            catch (e) { toast.error((e as Error).message); }
+          }} disabled={verify.isPending}>{verify.isPending ? "Verifying..." : "Verify connection"}</Button>
+        )}
+        {connection && (
+          <Button size="sm" variant="ghost" onClick={async () => {
+            try { await disconnect.mutateAsync(); toast.success("Disconnected"); setPhoneNumberId(""); setWabaId(""); setDisplayNumber(""); }
+            catch (e) { toast.error((e as Error).message); }
+          }} disabled={disconnect.isPending}>Disconnect</Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LocationsSection({ canManage }: { canManage: boolean }) {
+  const { data: countries = [] } = useCountries();
+  const createCountry = useCreateCountry();
+  const updateCountry = useUpdateCountry();
+  const [newCountry, setNewCountry] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<string>("");
+  const { data: areas = [] } = useAreas(selectedCountry || undefined);
+  const createArea = useCreateArea();
+  const updateArea = useUpdateArea();
+  const [newArea, setNewArea] = useState("");
+
+  return (
+    <div className="mt-4 max-w-2xl space-y-5 text-sm">
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <MapPinned className="h-4 w-4" />
+          <h4 className="font-semibold">Countries</h4>
+        </div>
+        <div className="space-y-1.5">
+          {countries.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5">
+              <button className={cn("text-xs", selectedCountry === c.id && "font-semibold")} onClick={() => setSelectedCountry(c.id)}>{c.name}</button>
+              <button
+                disabled={!canManage}
+                onClick={() => updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })}
+                className={cn("rounded-full px-2 py-0.5 text-[11px]", c.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
+              >{c.is_active ? "Active" : "Inactive"}</button>
+            </div>
+          ))}
+        </div>
+        {canManage && (
+          <div className="mt-2 flex gap-2">
+            <input className={inputCls} value={newCountry} onChange={(e) => setNewCountry(e.target.value)} placeholder="New country..." />
+            <Button size="sm" onClick={async () => {
+              const name = newCountry.trim();
+              if (!name) return;
+              try {
+                await createCountry.mutateAsync({ name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), display_order: countries.length });
+                setNewCountry("");
+              } catch (e) { toast.error((e as Error).message); }
+            }}><Plus className="h-3.5 w-3.5" /></Button>
+          </div>
+        )}
+      </div>
+
+      {selectedCountry && (
+        <div>
+          <h4 className="mb-2 font-semibold">Areas in {countries.find((c) => c.id === selectedCountry)?.name}</h4>
+          <div className="space-y-1.5">
+            {areas.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5">
+                <span className="text-xs">{a.name}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={!canManage}
+                    onClick={() => updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })}
+                    className={cn("rounded-full px-2 py-0.5 text-[11px]", a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
+                  >{a.is_active ? "Active" : "Inactive"}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {canManage && (
+            <div className="mt-2 flex gap-2">
+              <input className={inputCls} value={newArea} onChange={(e) => setNewArea(e.target.value)} placeholder="New area..." />
+              <Button size="sm" onClick={async () => {
+                const name = newArea.trim();
+                if (!name) return;
+                try {
+                  await createArea.mutateAsync({ country_id: selectedCountry, name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), display_order: areas.length });
+                  setNewArea("");
+                } catch (e) { toast.error((e as Error).message); }
+              }}><Plus className="h-3.5 w-3.5" /></Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

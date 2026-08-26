@@ -6,24 +6,39 @@
 //
 // NOTE ON SECURITY: this module only controls what the frontend renders and
 // allows the user to click. It is NOT a substitute for backend authorization.
-// Real enforcement must happen via Supabase RLS policies once the backend
-// links auth users to team_members (see BACKEND_REQUIREMENTS.md).
+// Real enforcement happens via Supabase RLS (public.has_permission()) and the
+// edge functions, which read the same team_members.permissions JSON.
+//
+// Team isolation: leads/tasks/viewings/conversations/staff_activity support
+// three tiers of visibility instead of a single "view": `view` (own
+// assigned work only), `view_team` (everything for the caller's team,
+// resolved server-side via team_members.team_id), and `view_all`
+// (organisation-wide). RLS enforces the same tiers — see
+// supabase/migrations/20260827000400_rls.sql.
 
 export const MODULES = {
   overview: ["view"],
-  leads: ["view", "create", "edit", "delete", "assign"],
-  properties: ["view", "create", "edit", "delete"],
+  leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign"],
+  properties: ["view", "create", "edit", "delete", "publish"],
+  developments: ["view", "create", "edit", "delete", "publish"],
+  owners: ["view", "create", "edit", "delete"],
+  locations: ["view", "manage"],
+  viewings: ["view", "view_team", "view_all", "create", "edit", "complete"],
   pipeline: ["view", "move"],
-  conversations: ["view", "create", "edit", "delete"],
+  conversations: ["view", "view_team", "view_all", "create", "edit", "delete"],
   uploads: ["view", "upload", "delete"],
-  tasks: ["view", "create", "edit", "complete"],
+  tasks: ["view", "view_team", "view_all", "create", "edit", "complete"],
   ai_insights: ["view", "run"],
   property_demand: ["view"],
   marketing_intelligence: ["view"],
   analytics: ["view"],
+  journal: ["view", "create", "edit", "delete", "publish"],
+  website_enquiries: ["view", "assign"],
+  submissions: ["view", "review"],
+  accounting: ["view", "manage"],
+  staff_activity: ["view", "view_team", "view_all"],
   team: ["view", "manage"],
   settings: ["view", "manage"],
-  ai_receptionist: ["view", "manage"],
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -36,6 +51,10 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   overview: "Overview",
   leads: "Leads",
   properties: "Properties",
+  developments: "Developments",
+  owners: "Owners",
+  locations: "Countries & Areas",
+  viewings: "Viewings",
   pipeline: "Pipeline",
   conversations: "Conversations",
   uploads: "Uploads",
@@ -44,13 +63,19 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   property_demand: "Property Demand",
   marketing_intelligence: "Marketing Intelligence",
   analytics: "Analytics",
+  journal: "Journal",
+  website_enquiries: "Website Enquiries",
+  submissions: "Listing Submissions",
+  accounting: "Accounting",
+  staff_activity: "Staff Activity",
   team: "Team",
   settings: "Settings",
-  ai_receptionist: "AI Receptionist",
 };
 
 export const ACTION_LABELS: Record<string, string> = {
-  view: "View",
+  view: "View (own)",
+  view_team: "View team",
+  view_all: "View all",
   create: "Create",
   edit: "Edit",
   delete: "Delete",
@@ -60,6 +85,8 @@ export const ACTION_LABELS: Record<string, string> = {
   complete: "Complete",
   run: "Run",
   manage: "Manage",
+  publish: "Publish",
+  review: "Review",
 };
 
 export function fullAccessPermissions(): PermissionSet {
@@ -81,27 +108,57 @@ const ALL_MODULES = Object.keys(MODULES) as ModuleKey[];
 export const ROLE_PRESETS = {
   administrator: {
     label: "Administrator",
-    description: "Full access to every module, including team and settings.",
+    description: "Full, organisation-wide access to every module.",
     permissions: (): PermissionSet => fullAccessPermissions(),
   },
-  sales_manager: {
-    label: "Sales Manager",
-    description: "Full sales workflow control plus visibility into team performance.",
+  team_leader: {
+    label: "Team Leader",
+    description: "Full visibility and control over their own team's leads, tasks and viewings.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
-      leads: ["view", "create", "edit", "delete", "assign"],
+      leads: ["view", "view_team", "create", "edit", "delete", "assign"],
       properties: ["view", "create", "edit"],
+      developments: ["view"],
+      owners: ["view"],
+      locations: ["view"],
+      viewings: ["view", "view_team", "create", "edit", "complete"],
       pipeline: ["view", "move"],
-      conversations: ["view", "create", "edit", "delete"],
+      conversations: ["view", "view_team", "create", "edit"],
       uploads: ["view", "upload", "delete"],
-      tasks: ["view", "create", "edit", "complete"],
+      tasks: ["view", "view_team", "create", "edit", "complete"],
       ai_insights: ["view", "run"],
       property_demand: ["view"],
       marketing_intelligence: ["view"],
       analytics: ["view"],
       team: ["view"],
+      staff_activity: ["view_team"],
+    }),
+  },
+  sales_manager: {
+    label: "Sales Manager",
+    description: "Full sales workflow control plus organisation-wide visibility into team performance.",
+    permissions: (): PermissionSet => ({
+      overview: ["view"],
+      leads: ["view", "view_all", "create", "edit", "delete", "assign"],
+      properties: ["view", "create", "edit", "publish"],
+      developments: ["view", "create", "edit"],
+      owners: ["view", "create", "edit"],
+      locations: ["view"],
+      viewings: ["view", "view_all", "create", "edit", "complete"],
+      pipeline: ["view", "move"],
+      conversations: ["view", "view_all", "create", "edit", "delete"],
+      uploads: ["view", "upload", "delete"],
+      tasks: ["view", "view_all", "create", "edit", "complete"],
+      ai_insights: ["view", "run"],
+      property_demand: ["view"],
+      marketing_intelligence: ["view"],
+      analytics: ["view"],
+      website_enquiries: ["view", "assign"],
+      submissions: ["view", "review"],
+      accounting: ["view"],
+      team: ["view"],
+      staff_activity: ["view_all"],
       settings: ["view"],
-      ai_receptionist: ["view"],
     }),
   },
   sales_agent: {
@@ -111,6 +168,10 @@ export const ROLE_PRESETS = {
       overview: ["view"],
       leads: ["view", "create", "edit", "assign"],
       properties: ["view"],
+      developments: ["view"],
+      owners: ["view"],
+      locations: ["view"],
+      viewings: ["view", "create", "edit", "complete"],
       pipeline: ["view", "move"],
       conversations: ["view", "create", "edit"],
       uploads: ["view", "upload"],
@@ -120,29 +181,47 @@ export const ROLE_PRESETS = {
       analytics: ["view"],
     }),
   },
+  telesales: {
+    label: "Telesales",
+    description: "Works cold/telesales leads, records call outcomes and qualifies prospects for transfer.",
+    permissions: (): PermissionSet => ({
+      overview: ["view"],
+      leads: ["view", "create", "edit"],
+      properties: ["view"],
+      locations: ["view"],
+      pipeline: ["view", "move"],
+      conversations: ["view", "create", "edit"],
+      tasks: ["view", "create", "edit", "complete"],
+      property_demand: ["view"],
+    }),
+  },
   marketing: {
     label: "Marketing",
-    description: "Market and demand intelligence, read access to inventory and leads.",
+    description: "Market and demand intelligence, journal/blog, read access to inventory and leads.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view"],
       properties: ["view", "create", "edit"],
+      developments: ["view", "create", "edit"],
       conversations: ["view"],
       uploads: ["view", "upload"],
       property_demand: ["view"],
       marketing_intelligence: ["view"],
       analytics: ["view"],
+      journal: ["view", "create", "edit", "publish"],
+      website_enquiries: ["view"],
     }),
   },
   accounting: {
     label: "Accounting",
-    description: "Financial visibility into pipeline value and closed deals.",
+    description: "Financial visibility into pipeline value, transactions and closed deals.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view"],
       properties: ["view"],
       pipeline: ["view"],
       analytics: ["view"],
+      accounting: ["view", "manage"],
     }),
   },
   coordinator: {
@@ -152,6 +231,7 @@ export const ROLE_PRESETS = {
       overview: ["view"],
       leads: ["view", "edit"],
       properties: ["view", "edit"],
+      viewings: ["view", "create", "edit", "complete"],
       pipeline: ["view", "move"],
       conversations: ["view", "create", "edit"],
       uploads: ["view", "upload", "delete"],
@@ -194,6 +274,11 @@ export function can(
   if (!permissions) return false;
   const actions = permissions[module];
   return !!actions && actions.includes(action);
+}
+
+/** True if the caller can see leads/tasks/viewings/conversations beyond their own (view_team or view_all). */
+export function canSeeBeyondOwn(permissions: PermissionSet | null | undefined, module: ModuleKey): boolean {
+  return can(permissions, module, "view_team") || can(permissions, module, "view_all");
 }
 
 export function mergePermissions(base: PermissionSet, overrides: PermissionSet): PermissionSet {

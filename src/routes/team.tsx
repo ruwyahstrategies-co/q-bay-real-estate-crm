@@ -8,6 +8,7 @@ import { Button, Card } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { TeamMemberDrawer } from "@/components/team-member-drawer";
+import { TeamsManager } from "@/components/teams-manager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
@@ -86,6 +87,13 @@ function TeamPage() {
           </Card>
         ))}
       </div>
+
+      {canManage && (
+        <Card className="mb-6">
+          <h3 className="mb-1 text-base font-semibold">Teams</h3>
+          <TeamsManager />
+        </Card>
+      )}
 
       <DataTable
         columns={["Member", "Role", "Login", "Status", "Assigned leads", "Pipeline value", "Closed deals", "Actions"]}

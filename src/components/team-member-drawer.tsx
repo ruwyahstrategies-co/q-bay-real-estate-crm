@@ -11,6 +11,7 @@ import {
   useResetStaffPassword,
   useSetStaffActive,
 } from "@/hooks/use-team";
+import { useTeams } from "@/hooks/use-teams";
 import type { StaffTeamMember } from "@/lib/db-extensions";
 import {
   MODULES,
@@ -73,6 +74,8 @@ export function TeamMemberDrawer({
   );
   const [isActive, setIsActive] = useState(member?.is_active ?? true);
   const [notes, setNotes] = useState(member?.notes ?? "");
+  const [teamId, setTeamId] = useState<string>((member as any)?.team_id ?? "");
+  const { data: teams = [] } = useTeams();
 
   const [createLogin, setCreateLogin] = useState(!isEdit);
   const [tempPassword, setTempPassword] = useState("");
@@ -92,6 +95,7 @@ export function TeamMemberDrawer({
     setPermissions(member?.permissions ?? defaultPermissionsForRole(member?.role ?? role));
     setIsActive(member?.is_active ?? true);
     setNotes(member?.notes ?? "");
+    setTeamId((member as any)?.team_id ?? "");
     setCreateLogin(!member?.id);
     setTempPassword("");
     setResetOpen(false);
@@ -135,6 +139,7 @@ export function TeamMemberDrawer({
           email: email.trim(),
           phone: phone || null,
           role: rolePreset,
+          team_id: teamId || null,
           permissions,
           temporary_password: tempPassword,
           is_active: isActive,
@@ -150,6 +155,7 @@ export function TeamMemberDrawer({
         email: email || null,
         phone: phone || null,
         role: rolePreset,
+        team_id: teamId || null,
         permissions,
         is_active: isActive,
         notes: notes || null,
@@ -233,6 +239,14 @@ export function TeamMemberDrawer({
             <select className={inputCls} value={isActive ? "yes" : "no"} onChange={(e) => setIsActive(e.target.value === "yes")}>
               <option value="yes">Active</option>
               <option value="no">Inactive</option>
+            </select>
+          </Field>
+          <Field label="Team">
+            <select className={inputCls} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <option value="">No team</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
             </select>
           </Field>
         </div>

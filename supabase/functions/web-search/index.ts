@@ -1,10 +1,53 @@
 // Server-side web research. Manual refresh only.
-// Uses TAVILY_API_KEY when present, falling back to SERPER_API_KEY.
-// Never returns the raw API key. Stores results in external_market_sources.
+// Tavily is the only search provider. Never returns the raw API key.
+// Stores results in external_market_sources.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
-import { authorizeCaller } from "../_shared/user-auth.ts";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+type TeamMemberRow = { id: string; user_id: string | null; is_active: boolean | null; role: string | null; permissions: Record<string, string[]> | null };
+type ResolvedCaller = { ok: true; userId: string; email: string | null; teamMember: TeamMemberRow } | { ok: false; status: number; error: string };
+async function resolveActiveCaller(req: Request, serviceClient: SupabaseClient): Promise<ResolvedCaller> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return { ok: false, status: 401, error: "Missing bearer token" };
+  const token = authHeader.replace("Bearer ", "");
+  const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+  const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: userData, error: userErr } = await anonClient.auth.getUser(token);
+  if (userErr || !userData?.user) return { ok: false, status: 401, error: "Invalid session" };
+  const user = userData.user;
+  const { data: teamMember, error: memberErr } = await serviceClient
+    .from("team_members").select("id, user_id, is_active, role, permissions").eq("user_id", user.id).maybeSingle();
+  if (memberErr) return { ok: false, status: 500, error: "Failed to resolve staff record" };
+  if (!teamMember) return { ok: false, status: 403, error: "Account not provisioned. Ask an administrator to create your staff login." };
+  if (teamMember.is_active === false) return { ok: false, status: 403, error: "Account is inactive." };
+  return { ok: true, userId: user.id, email: user.email ?? null, teamMember: teamMember as TeamMemberRow };
+}
+function hasPermission(teamMember: TeamMemberRow, moduleKey: string, action: string): boolean {
+  const actions = teamMember.permissions?.[moduleKey];
+  return Array.isArray(actions) && actions.includes(action);
+}
+async function authorizeCaller(req: Request, serviceClient: SupabaseClient, checks: { module: string; action: string }[]) {
+  const resolved = await resolveActiveCaller(req, serviceClient);
+  if (!resolved.ok) return resolved;
+  for (const { module: moduleKey, action } of checks) {
+    if (!hasPermission(resolved.teamMember, moduleKey, action)) return { ok: false as const, status: 403, error: `Missing permission: ${moduleKey}.${action}` };
+  }
+  return { ok: true as const, userId: resolved.userId, email: resolved.email, teamMember: resolved.teamMember };
+}
+async function checkRateLimit(req: Request, service: SupabaseClient, fnName: string, maxPerMinute: number): Promise<boolean> {
+  try {
+    const xf = req.headers.get("x-forwarded-for");
+    const ip = xf ? xf.split(",")[0].trim() : req.headers.get("cf-connecting-ip") || "anon";
+    const [{ data: ipOk }, { data: globalOk }] = await Promise.all([
+      service.rpc("check_rate_limit", { _key: `${fnName}:ip:${ip}`, _max_per_minute: maxPerMinute }),
+      service.rpc("check_rate_limit", { _key: `${fnName}:global`, _max_per_minute: maxPerMinute * 10 }),
+    ]);
+    return ipOk !== false && globalOk !== false;
+  } catch { return true; }
+}
+function tooManyRequests(corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify({ error: "Too many requests. Please slow down and try again in a minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -51,25 +94,6 @@ async function tavilySearch(query: string, key: string): Promise<SearchResult[]>
     url: r.url,
     content: r.content ?? "",
     publisher: tryHost(r.url),
-  }));
-}
-
-async function serperSearch(query: string, key: string): Promise<SearchResult[]> {
-  const res = await fetch("https://google.serper.dev/search", {
-    method: "POST",
-    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ q: query, num: 8 }),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Serper error ${res.status}: ${t.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  return (data.organic ?? []).map((r: any) => ({
-    title: r.title ?? r.link,
-    url: r.link,
-    content: r.snippet ?? "",
-    publisher: tryHost(r.link),
   }));
 }
 
@@ -121,21 +145,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  if (!await checkRateLimit(req, "web-search", 6)) return tooManyRequests(CORS);
-
-  const tavily = Deno.env.get("TAVILY_API_KEY");
-  const serper = Deno.env.get("SERPER_API_KEY");
-  const provider = tavily ? "tavily" : serper ? "serper" : null;
-  if (!provider) {
-    return json({
-      error: "Web search provider is not configured. Add TAVILY_API_KEY (recommended) or SERPER_API_KEY in Lovable Cloud secrets.",
-      code: "no_provider",
-    }, 503);
-  }
-
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (!await checkRateLimit(req, supabase, "web-search", 6)) return tooManyRequests(CORS);
+
+  const tavily = Deno.env.get("TAVILY_API_KEY");
+  if (!tavily) {
+    return json({
+      error: "Web search provider is not configured. Add TAVILY_API_KEY in Supabase Edge Function secrets.",
+      code: "no_provider",
+    }, 503);
+  }
 
   const auth = await authorizeCaller(req, supabase, [{ module: "property_demand", action: "view" }]);
   if (!auth.ok) return json({ error: auth.error }, auth.status);
@@ -178,7 +200,7 @@ Deno.serve(async (req) => {
 
   let results: SearchResult[];
   try {
-    results = provider === "tavily" ? await tavilySearch(query, tavily!) : await serperSearch(query, serper!);
+    results = await tavilySearch(query, tavily);
   } catch (e) {
     return json({ error: (e as Error).message }, 502);
   }
@@ -194,7 +216,7 @@ Deno.serve(async (req) => {
     relevant_locations: matchAny(r.content, locationsHint),
     relevant_property_types: matchAny(r.content, typesHint),
     price_info: extractPriceInfo(r.content),
-    raw: { provider },
+    raw: { provider: "tavily" },
     retrieved_at: new Date().toISOString(),
     active: true,
   }));
@@ -204,5 +226,5 @@ Deno.serve(async (req) => {
     .upsert(rows, { onConflict: "url" });
   if (error) return json({ error: error.message }, 500);
 
-  return json({ ok: true, inserted: rows.length, provider });
+  return json({ ok: true, inserted: rows.length, provider: "tavily" });
 });

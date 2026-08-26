@@ -1,9 +1,52 @@
 // Marketing & Brand Intelligence — objective-driven analysis.
 // Modes: 'strategy' (default) | 'brand_gap'
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { checkRateLimit, tooManyRequests } from "../_shared/rate-limit.ts";
-import { authorizeCaller } from "../_shared/user-auth.ts";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+type TeamMemberRow = { id: string; user_id: string | null; is_active: boolean | null; role: string | null; permissions: Record<string, string[]> | null };
+type ResolvedCaller = { ok: true; userId: string; email: string | null; teamMember: TeamMemberRow } | { ok: false; status: number; error: string };
+async function resolveActiveCaller(req: Request, serviceClient: SupabaseClient): Promise<ResolvedCaller> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return { ok: false, status: 401, error: "Missing bearer token" };
+  const token = authHeader.replace("Bearer ", "");
+  const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+  const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: userData, error: userErr } = await anonClient.auth.getUser(token);
+  if (userErr || !userData?.user) return { ok: false, status: 401, error: "Invalid session" };
+  const user = userData.user;
+  const { data: teamMember, error: memberErr } = await serviceClient
+    .from("team_members").select("id, user_id, is_active, role, permissions").eq("user_id", user.id).maybeSingle();
+  if (memberErr) return { ok: false, status: 500, error: "Failed to resolve staff record" };
+  if (!teamMember) return { ok: false, status: 403, error: "Account not provisioned. Ask an administrator to create your staff login." };
+  if (teamMember.is_active === false) return { ok: false, status: 403, error: "Account is inactive." };
+  return { ok: true, userId: user.id, email: user.email ?? null, teamMember: teamMember as TeamMemberRow };
+}
+function hasPermission(teamMember: TeamMemberRow, moduleKey: string, action: string): boolean {
+  const actions = teamMember.permissions?.[moduleKey];
+  return Array.isArray(actions) && actions.includes(action);
+}
+async function authorizeCaller(req: Request, serviceClient: SupabaseClient, checks: { module: string; action: string }[]) {
+  const resolved = await resolveActiveCaller(req, serviceClient);
+  if (!resolved.ok) return resolved;
+  for (const { module: moduleKey, action } of checks) {
+    if (!hasPermission(resolved.teamMember, moduleKey, action)) return { ok: false as const, status: 403, error: `Missing permission: ${moduleKey}.${action}` };
+  }
+  return { ok: true as const, userId: resolved.userId, email: resolved.email, teamMember: resolved.teamMember };
+}
+async function checkRateLimit(req: Request, service: SupabaseClient, fnName: string, maxPerMinute: number): Promise<boolean> {
+  try {
+    const xf = req.headers.get("x-forwarded-for");
+    const ip = xf ? xf.split(",")[0].trim() : req.headers.get("cf-connecting-ip") || "anon";
+    const [{ data: ipOk }, { data: globalOk }] = await Promise.all([
+      service.rpc("check_rate_limit", { _key: `${fnName}:ip:${ip}`, _max_per_minute: maxPerMinute }),
+      service.rpc("check_rate_limit", { _key: `${fnName}:global`, _max_per_minute: maxPerMinute * 10 }),
+    ]);
+    return ipOk !== false && globalOk !== false;
+  } catch { return true; }
+}
+function tooManyRequests(corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify({ error: "Too many requests. Please slow down and try again in a minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -46,12 +89,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  if (!await checkRateLimit(req, "market-intelligence", 4)) return tooManyRequests(CORS);
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  if (!await checkRateLimit(req, supabase, "market-intelligence", 4)) return tooManyRequests(CORS);
 
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return json({ error: "AI provider not configured" }, 500);
-
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const auth = await authorizeCaller(req, supabase, [{ module: "marketing_intelligence", action: "view" }]);
   if (!auth.ok) return json({ error: auth.error }, auth.status);
@@ -225,7 +268,7 @@ ${COMMON_RULES}`;
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://lovable.app",
+        "HTTP-Referer": Deno.env.get("OPENROUTER_SITE_URL") || "https://qbayrealestate.com",
         "X-Title": "Marketing Intelligence",
       },
       body: JSON.stringify({

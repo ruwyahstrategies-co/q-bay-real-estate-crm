@@ -28,15 +28,24 @@ Client (must keep the `VITE_` prefix — inlined at build time):
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_SUPABASE_PROJECT_ID`
+- `VITE_MAPBOX_TOKEN` (optional — map features degrade gracefully without it)
 
 Server (never exposed to the browser, read inside handlers):
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY` (only if server-side privileged access is needed)
-- `OPENROUTER_API_KEY`
-- `TAVILY_API_KEY`
-- `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_WEBHOOK_SECRET`
-  (once the voice agent keys are available)
+
+Edge function secrets (configured in Supabase, not Vercel):
+
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (auto-provisioned by Supabase)
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (optional), `OPENROUTER_SITE_URL` (optional)
+- `TAVILY_API_KEY` (the only web-search provider — no Serper fallback)
+
+There is no AI Receptionist, Twilio, ElevenLabs, or Lovable dependency in this
+build. Per-agent WhatsApp Business API credentials are NOT global secrets —
+each staff member connects their own number from Settings → My WhatsApp
+Business Connection; the access token is stored in Supabase Vault, never in
+an environment variable.
 
 Backend edge functions and the database stay hosted on the existing backend
 project — they are not redeployed by Vercel. Their secrets remain configured in

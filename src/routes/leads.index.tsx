@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Upload, LayoutGrid, Rows3, Users, Pencil, Archive, Trash2 } from "lucide-react";
+import { Plus, Upload, Download, LayoutGrid, Rows3, Users, Pencil, Archive, Trash2, MessageCircle } from "lucide-react";
+import { downloadCsv } from "@/lib/csv-export";
+import { DialogShell } from "@/components/overlay";
+import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +22,8 @@ import { cn } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useTeamMembers } from "@/hooks/use-team";
-import { fmtMoney, fmtDate, type Lead } from "@/lib/db";
+import { useDevelopments } from "@/hooks/use-developments";
+import { fmtMoney, fmtDate, LEAD_CLASSIFICATIONS, LEAD_WORKFLOWS, type Lead } from "@/lib/db";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
@@ -39,11 +43,17 @@ function LeadsPage() {
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<string | null>(null);
   const [agent, setAgent] = useState<string | null>(null);
+  const [classification, setClassification] = useState<string | null>(null);
+  const [workflow, setWorkflow] = useState<string | null>(null);
+  const [developmentId, setDevelopmentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Lead | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  const { data: leads = [], isLoading } = useLeads({ search, stage, agent });
+  const { data: leads = [], isLoading } = useLeads({ search, stage, agent, classification, workflow, developmentId });
   const { data: team = [] } = useTeamMembers();
+  const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
   const archive = useArchiveLead();
@@ -86,6 +96,34 @@ function LeadsPage() {
         description="Centralised buyer database with intent, budget and stage."
         actions={
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadCsv(
+                  `leads-${new Date().toISOString().slice(0, 10)}.csv`,
+                  leads,
+                  [
+                    { key: "full_name", label: "Full name" },
+                    { key: "phone", label: "Phone" },
+                    { key: "email", label: "Email" },
+                    { key: "classification", label: "Classification" },
+                    { key: "workflow", label: "Workflow" },
+                    { key: "budget_min", label: "Budget min" },
+                    { key: "budget_max", label: "Budget max" },
+                    { key: "currency", label: "Currency" },
+                    { key: "preferred_locations", label: "Preferred locations" },
+                    { key: "preferred_property_types", label: "Preferred property types" },
+                    { key: "pipeline_stage", label: "Pipeline stage" },
+                    { key: "lead_source", label: "Source" },
+                    { key: "assigned_agent_id", label: "Assigned agent id" },
+                    { key: "created_at", label: "Created" },
+                  ],
+                )
+              }
+            >
+              <Download className="h-3.5 w-3.5" /> Export
+            </Button>
             {canCreate && (
               <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
                 <Upload className="h-3.5 w-3.5" /> Import Leads
@@ -130,6 +168,18 @@ function LeadsPage() {
             <option key={m.id} value={m.id}>{m.full_name}</option>
           ))}
         </select>
+        <select value={classification ?? ""} onChange={(e) => setClassification(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
+          <option value="">All types</option>
+          {LEAD_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={workflow ?? ""} onChange={(e) => setWorkflow(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
+          <option value="">Sales + Telesales</option>
+          {LEAD_WORKFLOWS.map((w) => <option key={w} value={w}>{w}</option>)}
+        </select>
+        <select value={developmentId ?? ""} onChange={(e) => setDevelopmentId(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
+          <option value="">All developments</option>
+          {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
           <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "table" && "bg-canvas")} onClick={() => setView("table")} aria-label="Table view">
             <Rows3 className="h-3.5 w-3.5" />
@@ -140,9 +190,17 @@ function LeadsPage() {
         </div>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
+          <span>{selected.size} selected</span>
+          <Button size="sm" variant="outline" onClick={() => setBroadcastOpen(true)}><MessageCircle className="h-3.5 w-3.5" /> WhatsApp Broadcast</Button>
+          <button className="ml-auto text-muted-foreground hover:underline" onClick={() => setSelected(new Set())}>Clear</button>
+        </div>
+      )}
+
       {view === "table" ? (
         <DataTable
-          columns={["Buyer", "Contact", "Budget", "Preferred Area", "Property Type", "Intent Score", "Pipeline Stage", "Assigned Agent", "Last Contact", "Actions"]}
+          columns={["", "Buyer", "Contact", "Budget", "Preferred Area", "Property Type", "Intent Score", "Pipeline Stage", "Assigned Agent", "Last Contact", "Actions"]}
           empty={
             isLoading ? (
               <EmptyState title="Loading leads..." />
@@ -170,6 +228,17 @@ function LeadsPage() {
           {leads.length > 0
             ? leads.map((l) => (
                 <tr key={l.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(l.id)}
+                      onChange={(e) => setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                        return next;
+                      })}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium">
                     <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
                   </td>
@@ -253,6 +322,12 @@ function LeadsPage() {
 
       <AddLeadDrawer open={open} onOpenChange={setOpen} lead={editLead} />
       <LeadImporter open={importerOpen} onOpenChange={setImporterOpen} />
+      <BroadcastDialog
+        open={broadcastOpen}
+        onOpenChange={setBroadcastOpen}
+        leads={leads.filter((l) => selected.has(l.id))}
+        onDone={() => setSelected(new Set())}
+      />
       <ConfirmDialog
         open={!!confirmArchive}
         title="Archive lead?"
@@ -292,3 +367,85 @@ function LeadsPage() {
 }
 // Silence unused import lint:
 void FilterBar; void FilterPill;
+
+// Broadcasts through EACH lead's assigned agent's OWN WhatsApp connection -
+// the caller can only successfully send for leads assigned to themselves
+// (whatsapp-send resolves the connection from the signed-in caller), so this
+// is naturally scoped per-agent rather than a global sender. Failures per
+// recipient (e.g. a lead assigned to a different, unconnected agent) are
+// reported individually rather than blocking the whole batch.
+function BroadcastDialog({
+  open,
+  onOpenChange,
+  leads,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  leads: Lead[];
+  onDone: () => void;
+}) {
+  const send = useSendWhatsapp();
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [results, setResults] = useState<{ name: string; ok: boolean; error?: string }[] | null>(null);
+
+  async function handleSend() {
+    if (!message.trim()) return;
+    setSending(true);
+    const out: { name: string; ok: boolean; error?: string }[] = [];
+    for (const l of leads) {
+      if (!l.phone) { out.push({ name: l.full_name, ok: false, error: "No phone number" }); continue; }
+      try {
+        await send.mutateAsync({ lead_id: l.id, to: l.phone, message: message.trim() });
+        out.push({ name: l.full_name, ok: true });
+      } catch (e) {
+        out.push({ name: l.full_name, ok: false, error: (e as Error).message });
+      }
+    }
+    setResults(out);
+    setSending(false);
+  }
+
+  return (
+    <DialogShell open={open} onOpenChange={(v) => { if (!sending) { onOpenChange(v); if (!v) { setMessage(""); setResults(null); } } }} widthClassName="max-w-lg" ariaLabel="WhatsApp broadcast">
+      <div className="p-5">
+        <h3 className="text-base font-semibold">WhatsApp Broadcast</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Sends via each recipient's assigned agent's own WhatsApp Business connection - there is no shared sender.
+          Sending only succeeds for leads assigned to your own connected number.
+        </p>
+        <p className="mt-2 text-xs font-medium">{leads.length} recipient{leads.length === 1 ? "" : "s"} selected</p>
+
+        {!results ? (
+          <>
+            <textarea
+              className="mt-3 h-28 w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm"
+              placeholder="Message (respect Meta's 24h/template rules for first contact)..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button size="sm" disabled={sending || !message.trim()} onClick={handleSend}>{sending ? "Sending..." : "Send"}</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <ul className="mt-3 max-h-60 space-y-1 overflow-y-auto text-xs">
+              {results.map((r, i) => (
+                <li key={i} className="flex items-center justify-between rounded-md border border-border px-2 py-1">
+                  <span>{r.name}</span>
+                  <span className={r.ok ? "text-foreground" : "text-destructive"}>{r.ok ? "Sent" : r.error}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" onClick={() => { onOpenChange(false); onDone(); }}>Done</Button>
+            </div>
+          </>
+        )}
+      </div>
+    </DialogShell>
+  );
+}

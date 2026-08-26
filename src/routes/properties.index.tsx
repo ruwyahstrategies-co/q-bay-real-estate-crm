@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, LayoutGrid, Rows3, Building2, Pencil, Archive, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, Rows3, Building2, Pencil, Archive, Trash2, Upload, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -8,11 +8,14 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui-primitives";
 import { PropertyDrawer } from "@/components/property-drawer";
+import { PropertyImporter } from "@/components/property-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useProperties, useArchiveProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
+import { downloadCsv } from "@/lib/csv-export";
+import { openPropertyPdf } from "@/lib/property-pdf";
 import { fmtMoney, type Property } from "@/lib/db";
 
 export const Route = createFileRoute("/properties/")({
@@ -29,6 +32,7 @@ function PropertiesPage() {
   const [type, setType] = useState<string | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
+  const [importerOpen, setImporterOpen] = useState(false);
   const { data: properties = [], isLoading } = useProperties({ search, type });
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
   const archive = useArchiveProperty();
@@ -46,11 +50,46 @@ function PropertiesPage() {
         title="Properties"
         description="Centralised property inventory for matching with buyer intent."
         actions={
-          canCreate ? (
-            <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" /> Add Property
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadCsv(
+                  `properties-${new Date().toISOString().slice(0, 10)}.csv`,
+                  properties,
+                  [
+                    { key: "title", label: "Title" },
+                    { key: "reference_code", label: "Reference code" },
+                    { key: "property_type", label: "Type" },
+                    { key: "purpose", label: "Purpose" },
+                    { key: "location", label: "Location" },
+                    { key: "developer", label: "Developer" },
+                    { key: "price", label: "Price" },
+                    { key: "currency", label: "Currency" },
+                    { key: "bedrooms", label: "Bedrooms" },
+                    { key: "bathrooms", label: "Bathrooms" },
+                    { key: "size", label: "Size" },
+                    { key: "availability", label: "Availability" },
+                    { key: "status", label: "Status" },
+                    { key: "is_published", label: "Published" },
+                  ],
+                )
+              }
+            >
+              <Download className="h-3.5 w-3.5" /> Export
             </Button>
-          ) : undefined
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
+                <Upload className="h-3.5 w-3.5" /> Upload Properties
+              </Button>
+            )}
+            {canCreate && (
+              <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
+                <Plus className="h-3.5 w-3.5" /> Add Property
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -113,6 +152,7 @@ function PropertiesPage() {
               <td className="px-4 py-3 text-xs capitalize">{p.availability}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
+                  <button className="rounded-md p-1.5 hover:bg-muted" title="Download PDF" onClick={() => openPropertyPdf(p, thumbnails[p.id])}><FileText className="h-3.5 w-3.5" /></button>
                   {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>}
                   {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setConfirmArchive(p)}><Archive className="h-3.5 w-3.5" /></button>}
                   {canDelete && <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setConfirmDelete(p)}><Trash2 className="h-3.5 w-3.5" /></button>}
@@ -147,6 +187,7 @@ function PropertiesPage() {
         </div>
       )}
 
+      <PropertyImporter open={importerOpen} onOpenChange={setImporterOpen} />
       <PropertyDrawer
         open={open}
         onOpenChange={setOpen}

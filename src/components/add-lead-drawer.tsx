@@ -9,7 +9,8 @@ import { useTeamMembers } from "@/hooks/use-team";
 import { useProperties } from "@/hooks/use-properties";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
-import type { Lead } from "@/lib/db";
+import { useDevelopments } from "@/hooks/use-developments";
+import { LEAD_CLASSIFICATIONS, LEAD_WORKFLOWS, type Lead } from "@/lib/db";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -47,6 +48,7 @@ export function AddLeadDrawer({
   const update = useUpdateLead();
   const { data: team = [] } = useTeamMembers();
   const { data: properties = [] } = useProperties({ status: "active" });
+  const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
@@ -75,6 +77,11 @@ export function AddLeadDrawer({
     lead_source: lead?.lead_source ?? "",
     pipeline_stage: lead?.pipeline_stage ?? "new_lead",
     assigned_agent_id: lead?.assigned_agent_id ?? null,
+    classification: lead?.classification ?? "buyer",
+    workflow: lead?.workflow ?? "sales",
+    development_id: lead?.development_id ?? null,
+    telesales_outcome: lead?.telesales_outcome ?? "",
+    telesales_qualified: lead?.telesales_qualified ?? false,
     notes: lead?.notes ?? "",
   }));
 
@@ -136,6 +143,11 @@ export function AddLeadDrawer({
       lead_source: form.lead_source || null,
       pipeline_stage: form.pipeline_stage || "new_lead",
       assigned_agent_id: form.assigned_agent_id || null,
+      classification: form.classification || "buyer",
+      workflow: form.workflow || "sales",
+      development_id: form.development_id || null,
+      telesales_outcome: form.workflow === "telesales" ? (form.telesales_outcome || null) : null,
+      telesales_qualified: form.workflow === "telesales" ? !!form.telesales_qualified : false,
       notes: form.notes || null,
     };
     try {
@@ -177,6 +189,35 @@ export function AddLeadDrawer({
         <Field label="Phone number">
           <input className={inputCls} placeholder="+974..." value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
         </Field>
+        <Field label="Classification">
+          <select className={inputCls} value={form.classification ?? "buyer"} onChange={(e) => set("classification", e.target.value)}>
+            {LEAD_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Workflow">
+          <select className={inputCls} value={form.workflow ?? "sales"} onChange={(e) => set("workflow", e.target.value)}>
+            {LEAD_WORKFLOWS.map((w) => <option key={w} value={w}>{w}</option>)}
+          </select>
+        </Field>
+        <Field label="Development (optional)">
+          <select className={inputCls} value={form.development_id ?? ""} onChange={(e) => set("development_id", e.target.value || null)}>
+            <option value="">-</option>
+            {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </Field>
+        {form.workflow === "telesales" && (
+          <>
+            <Field label="Telesales outcome">
+              <input className={inputCls} placeholder="e.g. callback requested" value={form.telesales_outcome ?? ""} onChange={(e) => set("telesales_outcome", e.target.value)} />
+            </Field>
+            <Field label="Qualified for transfer">
+              <label className="flex h-9 items-center gap-2 text-xs">
+                <input type="checkbox" checked={!!form.telesales_qualified} onChange={(e) => set("telesales_qualified", e.target.checked)} />
+                Ready to transfer to a sales agent
+              </label>
+            </Field>
+          </>
+        )}
         <Field label="Lead source">
           <input className={inputCls} placeholder="Website, referral..." value={form.lead_source ?? ""} onChange={(e) => set("lead_source", e.target.value)} />
         </Field>

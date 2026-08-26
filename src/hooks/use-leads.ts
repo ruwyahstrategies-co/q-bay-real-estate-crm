@@ -12,15 +12,21 @@ export function useLeads(opts?: {
   stage?: string | null;
   agent?: string | null;
   status?: "active" | "archived" | "all";
+  classification?: string | null;
+  workflow?: string | null;
+  developmentId?: string | null;
 }) {
-  const { search = "", stage = null, agent = null, status = "active" } = opts ?? {};
+  const { search = "", stage = null, agent = null, status = "active", classification = null, workflow = null, developmentId = null } = opts ?? {};
   return useQuery({
-    queryKey: leadsKeys.list({ search, stage, agent, status }),
+    queryKey: leadsKeys.list({ search, stage, agent, status, classification, workflow, developmentId }),
     queryFn: async (): Promise<Lead[]> => {
       let q = sb.from("leads").select("*").order("created_at", { ascending: false });
       if (status !== "all") q = q.eq("status", status);
       if (stage) q = q.eq("pipeline_stage", stage);
       if (agent) q = q.eq("assigned_agent_id", agent);
+      if (classification) q = q.eq("classification", classification);
+      if (workflow) q = q.eq("workflow", workflow);
+      if (developmentId) q = q.eq("development_id", developmentId);
       if (search.trim()) {
         const term = `%${search.trim()}%`;
         q = q.or(`full_name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);

@@ -5,7 +5,11 @@ import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { cn } from "@/lib/utils";
 import { useCreateProperty, useUpdateProperty } from "@/hooks/use-properties";
-import type { Property } from "@/lib/db";
+import { useCountries, useAreas } from "@/hooks/use-locations";
+import { useDevelopments } from "@/hooks/use-developments";
+import { useOwners } from "@/hooks/use-owners";
+import { useTeamMembers } from "@/hooks/use-team";
+import { PROPERTY_PURPOSES, type Property } from "@/lib/db";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -38,6 +42,20 @@ function initialForm(property: Property | null | undefined): FormState {
     availability: property?.availability ?? "available",
     description: property?.description ?? "",
     amenities_str: (property?.amenities ?? []).join(", "),
+    purpose: property?.purpose ?? "sale",
+    country_id: property?.country_id ?? null,
+    area_id: property?.area_id ?? null,
+    development_id: property?.development_id ?? null,
+    owner_id: property?.owner_id ?? null,
+    assigned_agent_id: property?.assigned_agent_id ?? null,
+    hero_image_url: property?.hero_image_url ?? "",
+    hero_video_url: property?.hero_video_url ?? "",
+    tour_360_url: property?.tour_360_url ?? "",
+    latitude: property?.latitude ?? null,
+    longitude: property?.longitude ?? null,
+    seo_title: property?.seo_title ?? "",
+    seo_description: property?.seo_description ?? "",
+    is_published: property?.is_published ?? false,
   };
 }
 
@@ -55,8 +73,13 @@ export function PropertyDrawer({
   const create = useCreateProperty();
   const update = useUpdateProperty();
   const isEdit = !!property?.id;
+  const { data: countries = [] } = useCountries();
+  const { data: developments = [] } = useDevelopments();
+  const { data: owners = [] } = useOwners();
+  const { data: team = [] } = useTeamMembers();
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
+  const { data: areas = [] } = useAreas(form.country_id || undefined);
 
   // The drawer shell stays mounted through its close animation, so reset the
   // form explicitly whenever a different record (or a fresh "add") opens.
@@ -99,6 +122,20 @@ export function PropertyDrawer({
       availability: form.availability || "available",
       description: form.description || null,
       amenities: amenities.length ? amenities : null,
+      purpose: form.purpose || "sale",
+      country_id: form.country_id || null,
+      area_id: form.area_id || null,
+      development_id: form.development_id || null,
+      owner_id: form.owner_id || null,
+      assigned_agent_id: form.assigned_agent_id || null,
+      hero_image_url: form.hero_image_url || null,
+      hero_video_url: form.hero_video_url || null,
+      tour_360_url: form.tour_360_url || null,
+      latitude: form.latitude ? Number(form.latitude) : null,
+      longitude: form.longitude ? Number(form.longitude) : null,
+      seo_title: form.seo_title || null,
+      seo_description: form.seo_description || null,
+      is_published: !!form.is_published,
     };
     try {
       if (isEdit && property) {
@@ -166,6 +203,76 @@ export function PropertyDrawer({
             <option>EUR</option>
             <option>GBP</option>
           </select>
+        </Field>
+
+        <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Classification & location</p>
+        </div>
+        <Field label="Purpose">
+          <select className={inputCls} value={form.purpose ?? "sale"} onChange={(e) => set("purpose", e.target.value)}>
+            {PROPERTY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </Field>
+        <Field label="Country">
+          <select className={inputCls} value={form.country_id ?? ""} onChange={(e) => { set("country_id", e.target.value || null); set("area_id", null); }}>
+            <option value="">-</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Area">
+          <select className={inputCls} value={form.area_id ?? ""} onChange={(e) => set("area_id", e.target.value || null)} disabled={!form.country_id}>
+            <option value="">-</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Development">
+          <select className={inputCls} value={form.development_id ?? ""} onChange={(e) => set("development_id", e.target.value || null)}>
+            <option value="">-</option>
+            {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Owner">
+          <select className={inputCls} value={form.owner_id ?? ""} onChange={(e) => set("owner_id", e.target.value || null)}>
+            <option value="">-</option>
+            {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Assigned agent">
+          <select className={inputCls} value={form.assigned_agent_id ?? ""} onChange={(e) => set("assigned_agent_id", e.target.value || null)}>
+            <option value="">-</option>
+            {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+          </select>
+        </Field>
+        <Field label="Latitude">
+          <input className={inputCls} type="number" step="any" value={form.latitude ?? ""} onChange={(e) => set("latitude", e.target.value ? Number(e.target.value) : null)} />
+        </Field>
+        <Field label="Longitude">
+          <input className={inputCls} type="number" step="any" value={form.longitude ?? ""} onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)} />
+        </Field>
+
+        <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Website & publishing</p>
+        </div>
+        <Field label="Hero image URL" full>
+          <input className={inputCls} value={form.hero_image_url ?? ""} onChange={(e) => set("hero_image_url", e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="Hero video URL">
+          <input className={inputCls} value={form.hero_video_url ?? ""} onChange={(e) => set("hero_video_url", e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="360 tour URL">
+          <input className={inputCls} value={form.tour_360_url ?? ""} onChange={(e) => set("tour_360_url", e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="SEO title">
+          <input className={inputCls} value={form.seo_title ?? ""} onChange={(e) => set("seo_title", e.target.value)} />
+        </Field>
+        <Field label="SEO description">
+          <input className={inputCls} value={form.seo_description ?? ""} onChange={(e) => set("seo_description", e.target.value)} />
+        </Field>
+        <Field label="Website publication" full>
+          <label className="flex h-9 items-center gap-2 text-xs">
+            <input type="checkbox" checked={!!form.is_published} onChange={(e) => set("is_published", e.target.checked)} />
+            Publish this listing to the future public website
+          </label>
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">

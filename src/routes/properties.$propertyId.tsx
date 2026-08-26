@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2, FileText, Sparkles } from "lucide-react";
+import { useProspectsForProperty, useSimilarProperties } from "@/hooks/use-matching";
+import { openPropertyPdf } from "@/lib/property-pdf";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -82,11 +84,16 @@ function PropertyDetailPage() {
             </p>
             <p className="mt-3 text-2xl font-semibold">{fmtMoney(property.price, property.currency)}</p>
           </div>
-          {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-3.5 w-3.5" /> Edit
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openPropertyPdf(property)}>
+              <FileText className="h-3.5 w-3.5" /> PDF
             </Button>
-          )}
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -169,6 +176,7 @@ function PropertyDetailPage() {
       )}
 
       <PropertyReferences propertyId={propertyId} />
+      <PropertyMatches propertyId={propertyId} />
 
       <PropertyDrawer open={editOpen} onOpenChange={setEditOpen} property={property} />
       </PermissionGate>
@@ -220,6 +228,52 @@ function PropertyReferences({ propertyId }: { propertyId: string }) {
         )}
       </Card>
     </div>
+  );
+}
+
+function PropertyMatches({ propertyId }: { propertyId: string }) {
+  const { data: prospects = [] } = useProspectsForProperty(propertyId);
+  const { data: similar = [] } = useSimilarProperties(propertyId);
+  if (prospects.length === 0 && similar.length === 0) return null;
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+      {prospects.length > 0 && (
+        <Card>
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-3.5 w-3.5" /> Matching prospects</h4>
+          <p className="mt-1 text-[11px] text-muted-foreground">Deterministic match on purpose, location, type, budget and development - no AI required.</p>
+          <ul className="mt-3 space-y-2">
+            {prospects.map((p) => (
+              <MatchRowLead key={p.lead_id} leadId={p.lead_id} score={p.score} reasons={p.reasons} />
+            ))}
+          </ul>
+        </Card>
+      )}
+      {similar.length > 0 && (
+        <Card>
+          <h4 className="text-sm font-semibold">Similar properties</h4>
+          <ul className="mt-3 space-y-2">
+            {similar.map((s) => (
+              <li key={s.property_id} className="rounded-md border border-border p-2 text-xs">
+                <Link to="/properties/$propertyId" params={{ propertyId: s.property_id }} className="hover:underline font-medium">View property</Link>
+                <p className="mt-1 text-[11px] text-muted-foreground">{s.reasons.join(", ")}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function MatchRowLead({ leadId, score, reasons }: { leadId: string; score: number; reasons: string[] }) {
+  return (
+    <li className="rounded-md border border-border p-2 text-xs">
+      <div className="flex items-center justify-between">
+        <Link to="/leads/$leadId" params={{ leadId }} className="hover:underline font-medium">Open lead</Link>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">score {score}</span>
+      </div>
+      {reasons.length > 0 && <p className="mt-1 text-[11px] text-muted-foreground">{reasons.join(", ")}</p>}
+    </li>
   );
 }
 

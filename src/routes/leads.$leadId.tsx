@@ -26,13 +26,16 @@ import { useLeadReferences } from "@/hooks/use-references";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
+import { usePropertyMatchesForLead } from "@/hooks/use-matching";
+import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
+import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),
   component: LeadProfilePage,
 });
 
-const tabs = ["Overview", "Conversations", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
+const tabs = ["Overview", "Conversations", "Viewings", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
 
 
 function LeadProfilePage() {
@@ -179,6 +182,7 @@ function LeadProfilePage() {
               <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{lead.notes}</p>
             </Card>
           )}
+          <LeadPropertyMatches leadId={lead.id} />
         </div>
       )}
 
@@ -190,6 +194,7 @@ function LeadProfilePage() {
             </div>
           )}
           <CallTranscriptCard lead={lead} />
+          {canCreateInteraction && <WhatsappSendBox leadId={lead.id} phone={lead.phone} />}
           {interactions.length === 0 ? (
             <EmptyState compact title="No interactions yet" description="Log a call, WhatsApp message, meeting or note." />
           ) : (
@@ -225,6 +230,8 @@ function LeadProfilePage() {
           )}
         </div>
       )}
+
+      {tab === "Viewings" && <ViewingsTab leadId={lead.id} />}
 
       {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
 
@@ -385,6 +392,124 @@ function ActivityTimeline({
           <span className="text-xs text-muted-foreground">{fmtDate(e.ts)}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function LeadPropertyMatches({ leadId }: { leadId: string }) {
+  const { data: matches = [] } = usePropertyMatchesForLead(leadId);
+  if (matches.length === 0) return null;
+  return (
+    <Card className="md:col-span-2">
+      <h4 className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-3.5 w-3.5" /> Recommended properties</h4>
+      <p className="mt-1 text-[11px] text-muted-foreground">Deterministic match on purpose, location, type, budget and development.</p>
+      <ul className="mt-3 space-y-2">
+        {matches.map((m) => (
+          <li key={m.property_id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
+            <Link to="/properties/$propertyId" params={{ propertyId: m.property_id }} className="hover:underline">
+              View property {m.reasons.length ? `- ${m.reasons.join(", ")}` : ""}
+            </Link>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">score {m.score}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | null }) {
+  const send = useSendWhatsapp();
+  const [message, setMessage] = useState("");
+  if (!phone) return null;
+  return (
+    <Card>
+      <h4 className="text-sm font-semibold">Send via your WhatsApp Business connection</h4>
+      <p className="mt-1 text-[11px] text-muted-foreground">Uses your own connected WhatsApp Business number (Settings). Logged as a conversation on this lead.</p>
+      <div className="mt-2 flex gap-2">
+        <input
+          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm"
+          placeholder="Type a message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <Button
+          size="sm"
+          disabled={send.isPending || !message.trim()}
+          onClick={async () => {
+            try {
+              await send.mutateAsync({ lead_id: leadId, to: phone, message: message.trim() });
+              setMessage("");
+              toast.success("Message sent");
+            } catch (e) { toast.error((e as Error).message); }
+          }}
+        >
+          Send
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function ViewingsTab({ leadId }: { leadId: string }) {
+  const { data: viewings = [] } = useLeadViewings(leadId);
+  const create = useCreateViewing();
+  const complete = useCompleteViewing();
+  const { can } = usePermissions();
+  const { data: team = [] } = useTeamMembers();
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [agentId, setAgentId] = useState("");
+  const canCreate = can("viewings", "create");
+
+  return (
+    <div className="space-y-3">
+      {canCreate && (
+        <Card>
+          <h4 className="text-sm font-semibold">Schedule a viewing</h4>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              Date & time
+              <input type="datetime-local" className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              Agent
+              <select className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+                <option value="">-</option>
+                {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+              </select>
+            </label>
+            <Button
+              size="sm"
+              disabled={!scheduledAt || create.isPending}
+              onClick={async () => {
+                try {
+                  await create.mutateAsync({ lead_id: leadId, scheduled_at: new Date(scheduledAt).toISOString(), assigned_agent_id: agentId || null });
+                  setScheduledAt(""); setAgentId("");
+                  toast.success("Viewing scheduled");
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+            >
+              Schedule
+            </Button>
+          </div>
+        </Card>
+      )}
+      {viewings.length === 0 ? (
+        <EmptyState compact title="No viewings scheduled" />
+      ) : (
+        <div className="space-y-2">
+          {viewings.map((v) => (
+            <Card key={v.id} className="flex items-center justify-between gap-3 py-3">
+              <div>
+                <p className="text-sm font-medium">{fmtDateTime(v.scheduled_at)}</p>
+                <p className="text-xs text-muted-foreground capitalize">{v.status.replace(/_/g, " ")}</p>
+              </div>
+              {v.status !== "completed" && v.status !== "cancelled" && (
+                <Button size="sm" variant="outline" onClick={() => complete.mutate({ id: v.id })}>Mark completed</Button>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

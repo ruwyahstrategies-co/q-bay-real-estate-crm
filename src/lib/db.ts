@@ -32,6 +32,7 @@ export type Country = Tables["countries"]["Row"];
 export type CountryInsert = Tables["countries"]["Insert"];
 export type Area = Tables["areas"]["Row"];
 export type AreaInsert = Tables["areas"]["Insert"];
+export type AreaUpdate = Tables["areas"]["Update"];
 export type Owner = Tables["owners"]["Row"];
 export type OwnerInsert = Tables["owners"]["Insert"];
 export type OwnerUpdate = Tables["owners"]["Update"];

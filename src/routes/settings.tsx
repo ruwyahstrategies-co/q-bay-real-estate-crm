@@ -9,7 +9,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { PipelineStagesManager } from "@/components/pipeline-stages-manager";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { sb } from "@/lib/db";
+import { sb, type Area, type AreaUpdate } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 import { useMyWhatsappConnection, useSaveWhatsappConnection, useVerifyWhatsapp, useDisconnectWhatsapp } from "@/hooks/use-whatsapp";
 import { useCountries, useAreas, useCreateCountry, useUpdateCountry, useCreateArea, useUpdateArea } from "@/hooks/use-locations";
@@ -280,6 +280,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
   const createArea = useCreateArea();
   const updateArea = useUpdateArea();
   const [newArea, setNewArea] = useState("");
+  const [editingArea, setEditingArea] = useState<string | null>(null);
 
   return (
     <div className="mt-4 max-w-2xl space-y-5 text-sm">
@@ -320,15 +321,23 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
           <h4 className="mb-2 font-semibold">Areas in {countries.find((c) => c.id === selectedCountry)?.name}</h4>
           <div className="space-y-1.5">
             {areas.map((a) => (
-              <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5">
-                <span className="text-xs">{a.name}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled={!canManage}
-                    onClick={() => updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })}
-                    className={cn("rounded-full px-2 py-0.5 text-[11px]", a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
-                  >{a.is_active ? "Active" : "Inactive"}</button>
+              <div key={a.id} className="rounded-lg border border-border bg-background px-3 py-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs">{a.name}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={!canManage}
+                      onClick={() => updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })}
+                      className={cn("rounded-full px-2 py-0.5 text-[11px]", a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
+                    >{a.is_active ? "Active" : "Inactive"}</button>
+                    {canManage && (
+                      <button className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEditingArea(editingArea === a.id ? null : a.id)}>
+                        {editingArea === a.id ? "Close" : "Website content"}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {editingArea === a.id && <AreaContentEditor area={a} onSave={(patch) => updateArea.mutate({ id: a.id, patch })} />}
               </div>
             ))}
           </div>
@@ -347,6 +356,39 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function AreaContentEditor({ area, onSave }: { area: Area; onSave: (patch: AreaUpdate) => void }) {
+  const [tagline, setTagline] = useState(area.tagline ?? "");
+  const [lifestyle, setLifestyle] = useState(area.lifestyle ?? "");
+  const [blurb, setBlurb] = useState(area.blurb ?? "");
+  const [about, setAbout] = useState(area.about ?? "");
+  const [heroImageUrl, setHeroImageUrl] = useState(area.hero_image_url ?? "");
+
+  return (
+    <div className="mt-2 space-y-2 border-t border-border pt-2">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        Shown on the public website's area page. Leave blank to fall back to neutral copy.
+      </p>
+      <input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Tagline (e.g. Qatar's city of the future)" />
+      <input className={inputCls} value={lifestyle} onChange={(e) => setLifestyle(e.target.value)} placeholder="Lifestyle tag (e.g. Waterfront - New-build)" />
+      <textarea className={cn(inputCls, "min-h-16")} value={blurb} onChange={(e) => setBlurb(e.target.value)} placeholder="Short blurb (1-2 sentences)" />
+      <textarea className={cn(inputCls, "min-h-24")} value={about} onChange={(e) => setAbout(e.target.value)} placeholder="About this area (longer editorial copy, one paragraph per line)" />
+      <input className={inputCls} value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Hero image URL" />
+      <Button
+        size="sm"
+        onClick={() => onSave({
+          tagline: tagline || null,
+          lifestyle: lifestyle || null,
+          blurb: blurb || null,
+          about: about || null,
+          hero_image_url: heroImageUrl || null,
+        })}
+      >
+        Save
+      </Button>
     </div>
   );
 }

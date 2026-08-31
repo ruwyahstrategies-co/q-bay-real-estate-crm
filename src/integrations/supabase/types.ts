@@ -186,33 +186,48 @@ export type Database = {
       }
       areas: {
         Row: {
+          about: string | null
+          blurb: string | null
           country_id: string
           created_at: string
           display_order: number
+          hero_image_url: string | null
           id: string
           is_active: boolean
+          lifestyle: string | null
           name: string
           slug: string
+          tagline: string | null
           updated_at: string
         }
         Insert: {
+          about?: string | null
+          blurb?: string | null
           country_id: string
           created_at?: string
           display_order?: number
+          hero_image_url?: string | null
           id?: string
           is_active?: boolean
+          lifestyle?: string | null
           name: string
           slug: string
+          tagline?: string | null
           updated_at?: string
         }
         Update: {
+          about?: string | null
+          blurb?: string | null
           country_id?: string
           created_at?: string
           display_order?: number
+          hero_image_url?: string | null
           id?: string
           is_active?: boolean
+          lifestyle?: string | null
           name?: string
           slug?: string
+          tagline?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -3,6 +3,7 @@ import { X, Dices, KeyRound, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
+import { SelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import {
   useCreateTeamMember,
@@ -229,25 +230,31 @@ export function TeamMemberDrawer({
             <input className={inputCls} value={phone ?? ""} onChange={(e) => setPhone(e.target.value)} />
           </Field>
           <Field label="Job title / role preset">
-            <select className={inputCls} value={rolePreset} onChange={(e) => applyRolePreset(e.target.value as RolePresetKey)}>
-              {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                <option key={key} value={key}>{preset.label}</option>
-              ))}
-            </select>
+            <SelectField
+              value={rolePreset}
+              onChange={(v) => applyRolePreset((v ?? "sales_agent") as RolePresetKey)}
+              options={Object.entries(ROLE_PRESETS).map(([key, preset]) => ({ value: key, label: preset.label }))}
+              allowClear={false}
+            />
           </Field>
           <Field label="Status">
-            <select className={inputCls} value={isActive ? "yes" : "no"} onChange={(e) => setIsActive(e.target.value === "yes")}>
-              <option value="yes">Active</option>
-              <option value="no">Inactive</option>
-            </select>
+            <SelectField
+              value={isActive ? "yes" : "no"}
+              onChange={(v) => setIsActive(v === "yes")}
+              options={[
+                { value: "yes", label: "Active" },
+                { value: "no", label: "Inactive" },
+              ]}
+              allowClear={false}
+            />
           </Field>
           <Field label="Team">
-            <select className={inputCls} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              <option value="">No team</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+            <SelectField
+              value={teamId}
+              onChange={(v) => setTeamId(v ?? "")}
+              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+              emptyLabel="No team"
+            />
           </Field>
         </div>
 

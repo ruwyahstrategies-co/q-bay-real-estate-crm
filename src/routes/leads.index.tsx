@@ -16,6 +16,7 @@ import { LeadImporter } from "@/components/lead-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PipelineStageBadge, IntentScore } from "@/components/status-badge";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { cn } from "@/lib/utils";
@@ -148,38 +149,43 @@ function LeadsPage() {
             className="h-9 w-full rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
-        <select
-          value={stage ?? ""}
-          onChange={(e) => setStage(e.target.value || null)}
-          className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs"
-        >
-          <option value="">All stages</option>
-          {stages.map((s) => (
-            <option key={s.id} value={s.stage_key}>{s.name}</option>
-          ))}
-        </select>
-        <select
-          value={agent ?? ""}
-          onChange={(e) => setAgent(e.target.value || null)}
-          className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs"
-        >
-          <option value="">All agents</option>
-          {team.map((m) => (
-            <option key={m.id} value={m.id}>{m.full_name}</option>
-          ))}
-        </select>
-        <select value={classification ?? ""} onChange={(e) => setClassification(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">All types</option>
-          {LEAD_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={workflow ?? ""} onChange={(e) => setWorkflow(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">Sales + Telesales</option>
-          {LEAD_WORKFLOWS.map((w) => <option key={w} value={w}>{w}</option>)}
-        </select>
-        <select value={developmentId ?? ""} onChange={(e) => setDevelopmentId(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">All developments</option>
-          {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <SelectField
+          value={stage}
+          onChange={(v) => setStage(v)}
+          options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
+          emptyLabel="All stages"
+          className="w-auto min-w-[130px] text-xs"
+        />
+        <SearchableSelectField
+          value={agent}
+          onChange={(v) => setAgent(v)}
+          options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+          emptyLabel="All agents"
+          searchPlaceholder="Search agents..."
+          className="w-auto min-w-[130px] text-xs"
+        />
+        <SelectField
+          value={classification}
+          onChange={(v) => setClassification(v)}
+          options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: c }))}
+          emptyLabel="All types"
+          className="w-auto min-w-[110px] text-xs"
+        />
+        <SelectField
+          value={workflow}
+          onChange={(v) => setWorkflow(v)}
+          options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: w }))}
+          emptyLabel="Sales + Telesales"
+          className="w-auto min-w-[140px] text-xs"
+        />
+        <SearchableSelectField
+          value={developmentId}
+          onChange={(v) => setDevelopmentId(v)}
+          options={developments.map((d) => ({ value: d.id, label: d.name }))}
+          emptyLabel="All developments"
+          searchPlaceholder="Search developments..."
+          className="w-auto min-w-[150px] text-xs"
+        />
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
           <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "table" && "bg-canvas")} onClick={() => setView("table")} aria-label="Table view">
             <Rows3 className="h-3.5 w-3.5" />
@@ -259,17 +265,14 @@ function LeadsPage() {
                   <td className="px-4 py-3"><PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} /></td>
                   <td className="px-4 py-3 text-xs">
                     {canAssign ? (
-                      <select
-                        value={l.assigned_agent_id ?? ""}
-                        onChange={(e) => assignAgent(l.id, e.target.value || null)}
-                        className="h-8 max-w-[150px] rounded-lg border border-border bg-canvas px-2 text-xs"
+                      <SelectField
+                        value={l.assigned_agent_id}
+                        onChange={(v) => assignAgent(l.id, v)}
+                        options={team.filter((m) => m.is_active !== false).map((m) => ({ value: m.id, label: m.full_name }))}
+                        emptyLabel="Unassigned"
+                        className="h-8 max-w-[150px] text-xs"
                         aria-label={`Assign agent for ${l.full_name}`}
-                      >
-                        <option value="">Unassigned</option>
-                        {team.filter((m) => m.is_active !== false).map((m) => (
-                          <option key={m.id} value={m.id}>{m.full_name}</option>
-                        ))}
-                      </select>
+                      />
                     ) : (
                       agentName(l.assigned_agent_id)
                     )}

@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
+import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -190,20 +191,29 @@ export function AddLeadDrawer({
           <input className={inputCls} placeholder="+974..." value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
         </Field>
         <Field label="Classification">
-          <select className={inputCls} value={form.classification ?? "buyer"} onChange={(e) => set("classification", e.target.value)}>
-            {LEAD_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <SelectField
+            value={form.classification ?? "buyer"}
+            onChange={(v) => set("classification", (v ?? "buyer") as FormState["classification"])}
+            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: c }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Workflow">
-          <select className={inputCls} value={form.workflow ?? "sales"} onChange={(e) => set("workflow", e.target.value)}>
-            {LEAD_WORKFLOWS.map((w) => <option key={w} value={w}>{w}</option>)}
-          </select>
+          <SelectField
+            value={form.workflow ?? "sales"}
+            onChange={(v) => set("workflow", (v ?? "sales") as FormState["workflow"])}
+            options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: w }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Development (optional)">
-          <select className={inputCls} value={form.development_id ?? ""} onChange={(e) => set("development_id", e.target.value || null)}>
-            <option value="">-</option>
-            {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          <SearchableSelectField
+            value={form.development_id}
+            onChange={(v) => set("development_id", v)}
+            options={developments.map((d) => ({ value: d.id, label: d.name }))}
+            placeholder="Select development"
+            searchPlaceholder="Search developments..."
+          />
         </Field>
         {form.workflow === "telesales" && (
           <>
@@ -250,19 +260,22 @@ export function AddLeadDrawer({
           </div>
         </Field>
         <Field label="Assigned agent">
-          <select className={inputCls} value={form.assigned_agent_id ?? ""} onChange={(e) => set("assigned_agent_id", e.target.value || null)}>
-            <option value="">Unassigned</option>
-            {team.map((m) => (
-              <option key={m.id} value={m.id}>{m.full_name}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.assigned_agent_id}
+            onChange={(v) => set("assigned_agent_id", v)}
+            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+            placeholder="Select agent"
+            emptyLabel="Unassigned"
+            searchPlaceholder="Search agents..."
+          />
         </Field>
         <Field label="Pipeline stage">
-          <select className={inputCls} value={form.pipeline_stage ?? "new_lead"} onChange={(e) => set("pipeline_stage", e.target.value)}>
-            {stages.map((s) => (
-              <option key={s.id} value={s.stage_key}>{s.name}</option>
-            ))}
-          </select>
+          <SelectField
+            value={form.pipeline_stage ?? "new_lead"}
+            onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
+            options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Notes / follow-up" full>
           <textarea className={cn(inputCls, "h-20 py-2")} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
@@ -275,13 +288,12 @@ export function AddLeadDrawer({
           <input className={inputCls} type="email" placeholder="jane@..." value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
         </Field>
         <Field label="Currency">
-          <select className={inputCls} value={form.currency ?? "QAR"} onChange={(e) => set("currency", e.target.value)}>
-            <option>QAR</option>
-            <option>AED</option>
-            <option>USD</option>
-            <option>EUR</option>
-            <option>GBP</option>
-          </select>
+          <SelectField
+            value={form.currency ?? "QAR"}
+            onChange={(v) => set("currency", v ?? "QAR")}
+            options={["QAR", "AED", "USD", "EUR", "GBP"].map((c) => ({ value: c, label: c }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Nationality">
           <input className={inputCls} value={form.nationality ?? ""} onChange={(e) => set("nationality", e.target.value)} />
@@ -293,31 +305,28 @@ export function AddLeadDrawer({
           <input className={inputCls} value={form.preferred_locations_str ?? ""} onChange={(e) => set("preferred_locations_str", e.target.value)} />
         </Field>
         <Field label="Purchase purpose">
-          <select className={inputCls} value={form.purchase_purpose ?? ""} onChange={(e) => set("purchase_purpose", e.target.value)}>
-            <option value="">-</option>
-            <option>Primary residence</option>
-            <option>Investment</option>
-            <option>Holiday home</option>
-          </select>
+          <SelectField
+            value={form.purchase_purpose}
+            onChange={(v) => set("purchase_purpose", v ?? "")}
+            options={["Primary residence", "Investment", "Holiday home"].map((v) => ({ value: v, label: v }))}
+            placeholder="Select purpose"
+          />
         </Field>
         <Field label="Buying timeline">
-          <select className={inputCls} value={form.buying_timeline ?? ""} onChange={(e) => set("buying_timeline", e.target.value)}>
-            <option value="">-</option>
-            <option>Immediate</option>
-            <option>1-3 months</option>
-            <option>3-6 months</option>
-            <option>6-12 months</option>
-            <option>Exploring</option>
-          </select>
+          <SelectField
+            value={form.buying_timeline}
+            onChange={(v) => set("buying_timeline", v ?? "")}
+            options={["Immediate", "1-3 months", "3-6 months", "6-12 months", "Exploring"].map((v) => ({ value: v, label: v }))}
+            placeholder="Select timeline"
+          />
         </Field>
         <Field label="Financing status">
-          <select className={inputCls} value={form.financing_status ?? ""} onChange={(e) => set("financing_status", e.target.value)}>
-            <option value="">-</option>
-            <option>Cash</option>
-            <option>Mortgage approved</option>
-            <option>Mortgage pending</option>
-            <option>Undecided</option>
-          </select>
+          <SelectField
+            value={form.financing_status}
+            onChange={(v) => set("financing_status", v ?? "")}
+            options={["Cash", "Mortgage approved", "Mortgage pending", "Undecided"].map((v) => ({ value: v, label: v }))}
+            placeholder="Select status"
+          />
         </Field>
 
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">

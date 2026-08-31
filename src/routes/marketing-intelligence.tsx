@@ -16,6 +16,7 @@ import { useCreateTask, useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { fmtDate, type Task } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 
 export const Route = createFileRoute("/marketing-intelligence")({
   head: () => ({
@@ -100,14 +101,10 @@ function MarketingIntelligencePage() {
         <h4 className="text-sm font-semibold">Focus</h4>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <Field label="Primary objective">
-            <select value={objective} onChange={(e) => setObjective(e.target.value)} className={selectCls}>
-              {OBJECTIVES.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
+            <SelectField value={objective} onChange={(v) => setObjective(v ?? "customer_reach")} options={OBJECTIVES.map((o) => ({ value: o.v, label: o.l }))} allowClear={false} />
           </Field>
           <Field label="Analysis period">
-            <select value={periodKind} onChange={(e) => setPeriodKind(e.target.value as any)} className={selectCls}>
-              {PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
-            </select>
+            <SelectField value={periodKind} onChange={(v) => setPeriodKind((v ?? "month") as any)} options={PERIODS.map((p) => ({ value: p.v, label: p.l }))} allowClear={false} />
           </Field>
           {objective === "custom" && (
             <Field label="Custom objective" className="md:col-span-2">
@@ -168,7 +165,6 @@ function MarketingIntelligencePage() {
   );
 }
 
-const selectCls = "w-full h-9 rounded-lg border border-border bg-canvas px-2 text-sm";
 const inputCls = "w-full h-9 rounded-lg border border-border bg-canvas px-2 text-sm";
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
@@ -592,13 +588,13 @@ function ExecutionTasksPanel({ reportId }: { reportId: string }) {
                 <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize", STATUS_TONE[status])}>{status.replace("_", " ")}</span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <select
-                  className="h-7 rounded-md border border-border bg-background px-2 text-[11px]"
+                <SelectField
+                  className="h-7 w-40 text-[11px]"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as MarketingStatus)}
-                >
-                  {MARKETING_STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-                </select>
+                  onChange={(v) => setStatus((v ?? "proposed") as MarketingStatus)}
+                  options={MARKETING_STATUSES.map((s) => ({ value: s, label: s.replace("_", " ") }))}
+                  allowClear={false}
+                />
                 {refs?.lead_ids?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {refs.lead_ids.slice(0, 3).map((id: string) => (

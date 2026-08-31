@@ -11,6 +11,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
 import { MapboxPicker } from "@/components/mapbox-picker";
+import { HeroImageField } from "@/components/hero-image-field";
+import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useOwners } from "@/hooks/use-owners";
@@ -210,39 +212,32 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Owner</span>
-          <select className={inputCls} value={ownerId ?? ""} onChange={(e) => setOwnerId(e.target.value)}>
-            <option value="">-</option>
-            {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
+          <SearchableSelectField value={ownerId} onChange={(v) => setOwnerId(v ?? "")} options={owners.map((o) => ({ value: o.id, label: o.name }))} placeholder="Select owner" searchPlaceholder="Search owners..." />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Country</span>
-          <select className={inputCls} value={countryId ?? ""} onChange={(e) => { setCountryId(e.target.value); setAreaId(""); }}>
-            <option value="">-</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <SelectField value={countryId} onChange={(v) => { setCountryId(v ?? ""); setAreaId(""); }} options={countries.map((c) => ({ value: c.id, label: c.name }))} placeholder="Select country" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Area</span>
-          <select className={inputCls} value={areaId ?? ""} onChange={(e) => setAreaId(e.target.value)} disabled={!countryId}>
-            <option value="">-</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <SelectField value={areaId} onChange={(v) => setAreaId(v ?? "")} options={areas.map((a) => ({ value: a.id, label: a.name }))} placeholder="Select area" disabled={!countryId} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Assigned agent</span>
-          <select className={inputCls} value={agentId ?? ""} onChange={(e) => setAgentId(e.target.value)}>
-            <option value="">-</option>
-            {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-          </select>
+          <SearchableSelectField value={agentId} onChange={(v) => setAgentId(v ?? "")} options={team.map((m) => ({ value: m.id, label: m.full_name }))} placeholder="Select agent" searchPlaceholder="Search agents..." />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
-          <select className={inputCls} value={status ?? "off_plan"} onChange={(e) => setStatus(e.target.value)}>
-            <option value="off_plan">Off-plan</option>
-            <option value="under_construction">Under construction</option>
-            <option value="ready">Ready</option>
-          </select>
+          <SelectField
+            value={status ?? "off_plan"}
+            onChange={(v) => setStatus(v ?? "off_plan")}
+            options={[
+              { value: "off_plan", label: "Off-plan" },
+              { value: "under_construction", label: "Under construction" },
+              { value: "ready", label: "Ready" },
+            ]}
+            allowClear={false}
+          />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Price from</span>
@@ -254,13 +249,16 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Currency</span>
-          <select className={inputCls} value={currency ?? "QAR"} onChange={(e) => setCurrency(e.target.value)}>
-            <option>QAR</option><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option>
-          </select>
+          <SelectField
+            value={currency ?? "QAR"}
+            onChange={(v) => setCurrency(v ?? "QAR")}
+            options={["QAR", "AED", "USD", "EUR", "GBP"].map((c) => ({ value: c, label: c }))}
+            allowClear={false}
+          />
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Hero image URL</span>
-          <input className={inputCls} value={heroImage ?? ""} onChange={(e) => setHeroImage(e.target.value)} placeholder="https://..." />
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Hero image</span>
+          <HeroImageField value={heroImage} onChange={(url) => setHeroImage(url ?? "")} categoryKey="development_media" label="hero image" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Hero video URL</span>

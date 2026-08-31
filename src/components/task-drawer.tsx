@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
+import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useLeads } from "@/hooks/use-leads";
@@ -116,42 +117,50 @@ export function TaskDrawer({
           <input className={inputCls} type="datetime-local" value={dueValue} onChange={(e) => set("due_at", e.target.value || null)} />
         </Field>
         <Field label="Priority">
-          <select className={inputCls} value={form.priority ?? "medium"} onChange={(e) => set("priority", e.target.value)}>
-            {PRIORITIES.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
+          <SelectField
+            value={form.priority ?? "medium"}
+            onChange={(v) => set("priority", (v ?? "medium") as Task["priority"])}
+            options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Assigned to">
-          <select className={inputCls} value={form.assigned_to ?? ""} onChange={(e) => set("assigned_to", e.target.value || null)}>
-            <option value="">Unassigned</option>
-            {team.map((m) => (
-              <option key={m.id} value={m.id}>{m.full_name}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.assigned_to}
+            onChange={(v) => set("assigned_to", v)}
+            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+            placeholder="Select team member"
+            emptyLabel="Unassigned"
+            searchPlaceholder="Search team..."
+          />
         </Field>
         <Field label="Lead">
-          <select className={inputCls} value={form.lead_id ?? ""} onChange={(e) => set("lead_id", e.target.value || null)}>
-            <option value="">- None -</option>
-            {leads.map((l) => (
-              <option key={l.id} value={l.id}>{l.full_name}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.lead_id}
+            onChange={(v) => set("lead_id", v)}
+            options={leads.map((l) => ({ value: l.id, label: l.full_name }))}
+            placeholder="Select lead"
+            emptyLabel="- None -"
+            searchPlaceholder="Search leads..."
+          />
         </Field>
         <Field label="Property">
-          <select className={inputCls} value={form.property_id ?? ""} onChange={(e) => set("property_id", e.target.value || null)}>
-            <option value="">- None -</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>{p.title}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.property_id}
+            onChange={(v) => set("property_id", v)}
+            options={properties.map((p) => ({ value: p.id, label: p.title }))}
+            placeholder="Select property"
+            emptyLabel="- None -"
+            searchPlaceholder="Search properties..."
+          />
         </Field>
         <Field label="Status">
-          <select className={inputCls} value={form.status ?? "pending"} onChange={(e) => set("status", e.target.value)}>
-            {TASK_STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-            ))}
-          </select>
+          <SelectField
+            value={form.status ?? "pending"}
+            onChange={(v) => set("status", (v ?? "pending") as Task["status"])}
+            options={TASK_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Description" full>
           <textarea className={cn(inputCls, "h-24 py-2")} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />

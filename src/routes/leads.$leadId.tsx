@@ -11,6 +11,7 @@ import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { cn } from "@/lib/utils";
 import { useLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -474,10 +475,13 @@ function ViewingsTab({ leadId }: { leadId: string }) {
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Agent
-              <select className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-                <option value="">-</option>
-                {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-              </select>
+              <SearchableSelectField
+                value={agentId || null}
+                onChange={(v) => setAgentId(v ?? "")}
+                options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+                placeholder="Select agent"
+                searchPlaceholder="Search agents..."
+              />
             </label>
             <Button
               size="sm"
@@ -537,10 +541,13 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Property
-              <select className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
-                <option value="">-</option>
-                {interests.map((i) => <option key={i.property_id} value={i.property_id}>{i.properties?.title ?? i.property_id}</option>)}
-              </select>
+              <SearchableSelectField
+                value={propertyId || null}
+                onChange={(v) => setPropertyId(v ?? "")}
+                options={interests.map((i) => ({ value: i.property_id, label: i.properties?.title ?? i.property_id }))}
+                placeholder="Select property"
+                searchPlaceholder="Search properties..."
+              />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Amount (QAR)
@@ -585,13 +592,13 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
                 {o.notes && <p className="text-xs text-muted-foreground mt-1">{o.notes}</p>}
               </div>
               {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
-                <select
-                  className="h-8 rounded-md border border-border bg-canvas px-2 text-xs"
+                <SelectField
+                  className="h-8 w-36 text-xs"
                   value={o.status}
-                  onChange={(e) => update.mutate({ id: o.id, patch: { status: e.target.value } })}
-                >
-                  {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                </select>
+                  onChange={(v) => update.mutate({ id: o.id, patch: { status: v ?? o.status } })}
+                  options={OFFER_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+                  allowClear={false}
+                />
               )}
             </Card>
           ))}

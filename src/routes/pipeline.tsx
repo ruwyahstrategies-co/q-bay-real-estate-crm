@@ -18,6 +18,7 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
@@ -95,10 +96,13 @@ function PipelinePage() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <select value={agent ?? ""} onChange={(e) => setAgent(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">All agents</option>
-          {team.map((m) => (<option key={m.id} value={m.id}>{m.full_name}</option>))}
-        </select>
+        <SelectField
+          value={agent}
+          onChange={(v) => setAgent(v)}
+          options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+          emptyLabel="All agents"
+          className="w-44"
+        />
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
           <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "board" && "bg-canvas")} onClick={() => setView("board")} aria-label="Board view">
             <LayoutGrid className="h-3.5 w-3.5" />

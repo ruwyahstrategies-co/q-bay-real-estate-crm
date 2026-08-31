@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
 import { PermissionGate } from "@/components/permission-gate";
 import { PipelineStagesManager } from "@/components/pipeline-stages-manager";
+import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { sb, type Area, type AreaUpdate } from "@/lib/db";
@@ -95,13 +96,13 @@ function SettingsPage() {
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Default currency</span>
-                <select className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)} disabled={!canManage}>
-                  <option>QAR</option>
-                  <option>AED</option>
-                  <option>USD</option>
-                  <option>EUR</option>
-                  <option>GBP</option>
-                </select>
+                <SelectField
+                  value={currency}
+                  onChange={(v) => setCurrency(v ?? "QAR")}
+                  options={["QAR", "AED", "USD", "EUR", "GBP"].map((c) => ({ value: c, label: c }))}
+                  allowClear={false}
+                  disabled={!canManage}
+                />
               </label>
               {canManage ? (
                 <Button size="sm" onClick={saveOrganisation} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>

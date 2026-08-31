@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Handshake, Check, X as XIcon } from "lucide-react";
+import { FileSignature, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -8,6 +8,7 @@ import { Card, Button } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useOffers, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { fmtDateTime } from "@/lib/db";
@@ -61,10 +62,13 @@ function OffersPage() {
 
         <Card className="mb-4">
           <div className="flex flex-wrap items-center gap-3">
-            <select className="h-8 rounded-md border border-border bg-canvas px-2 text-xs" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All statuses</option>
-              {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-            </select>
+            <SelectField
+              className="h-8 w-44 text-xs"
+              value={status || null}
+              onChange={(v) => setStatus(v ?? "")}
+              options={OFFER_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+              emptyLabel="All statuses"
+            />
             {(can("offers", "view_all") || can("offers", "view_team")) && (
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> My offers only
@@ -75,7 +79,7 @@ function OffersPage() {
 
         <DataTable
           columns={["Date", "Lead", "Property / Development", "Amount", "Status", "Actions"]}
-          empty={<EmptyState icon={<Handshake className="h-4 w-4" />} title="No offers yet" description="Offers are logged from a lead's profile during negotiation." />}
+          empty={<EmptyState icon={<FileSignature className="h-4 w-4" />} title="No offers yet" description="Offers are logged from a lead's profile during negotiation." />}
         >
           {offers.map((o) => (
             <tr key={o.id} className="border-b border-border last:border-0 hover:bg-background/60">

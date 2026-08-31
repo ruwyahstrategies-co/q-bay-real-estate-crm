@@ -9,6 +9,7 @@ import { LeadImporter } from "@/components/lead-importer";
 import { Card, Button } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
+import { SearchableSelectField } from "@/components/select-field";
 import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
@@ -30,9 +31,6 @@ const categoryItems: { key: UploadCategoryKey; description: string }[] = [
   { key: "brochures", description: "Sales collateral and plans." },
   { key: "general_documents", description: "Contracts, offers, notes." },
 ];
-
-const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 function UploadsPage() {
   const [leadId, setLeadId] = useState<string>("");
@@ -67,21 +65,23 @@ function UploadsPage() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Associate with lead</span>
-            <select className={inputCls} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-              <option value="">None</option>
-              {leads.map((l) => (
-                <option key={l.id} value={l.id}>{l.full_name}</option>
-              ))}
-            </select>
+            <SearchableSelectField
+              value={leadId || null}
+              onChange={(v) => setLeadId(v ?? "")}
+              options={leads.map((l) => ({ value: l.id, label: l.full_name }))}
+              placeholder="None"
+              searchPlaceholder="Search leads..."
+            />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Associate with property</span>
-            <select className={inputCls} value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
-              <option value="">None</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
+            <SearchableSelectField
+              value={propertyId || null}
+              onChange={(v) => setPropertyId(v ?? "")}
+              options={properties.map((p) => ({ value: p.id, label: p.title }))}
+              placeholder="None"
+              searchPlaceholder="Search properties..."
+            />
           </label>
         </div>
       </Card>

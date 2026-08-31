@@ -47,7 +47,7 @@ function useAutoFocusFirstField(visible: boolean, containerRef: RefObject<HTMLEl
   useEffect(() => {
     if (!visible) return;
     const el = containerRef.current?.querySelector<HTMLElement>(
-      "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])",
+      'input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button[role="combobox"]:not([disabled])',
     );
     el?.focus({ preventScroll: true });
   }, [visible, containerRef]);

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card, Button } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
+import { SelectField } from "@/components/select-field";
 import { useProperties } from "@/hooks/use-properties";
 import {
   usePropertyEvents,
@@ -252,11 +253,13 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
       {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-8 rounded-md border border-border bg-canvas px-2 text-xs">
-        {options.map((o) => (
-          <option key={o || "all"} value={o}>{o ? o : "All"}</option>
-        ))}
-      </select>
+      <SelectField
+        value={value || null}
+        onChange={(v) => onChange(v ?? "")}
+        options={options.filter((o) => o).map((o) => ({ value: o, label: o }))}
+        emptyLabel="All"
+        className="h-8 w-40 text-xs"
+      />
     </label>
   );
 }

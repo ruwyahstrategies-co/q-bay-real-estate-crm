@@ -2,11 +2,9 @@ import { useState } from "react";
 import { Plus, Trash2, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
+import { SelectField } from "./select-field";
 import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/hooks/use-teams";
 import { useTeamMembers } from "@/hooks/use-team";
-
-const inputCls =
-  "h-8 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function TeamsManager() {
   const { data: teams = [] } = useTeams();
@@ -44,16 +42,13 @@ export function TeamsManager() {
               <span className="text-[11px] text-muted-foreground">({teamMembers.length} member{teamMembers.length === 1 ? "" : "s"})</span>
               <div className="ml-auto flex items-center gap-2">
                 <Crown className="h-3.5 w-3.5 text-muted-foreground" />
-                <select
-                  className={inputCls}
-                  value={t.leader_id ?? ""}
-                  onChange={(e) => update.mutate({ id: t.id, patch: { leader_id: e.target.value || null } })}
-                >
-                  <option value="">No leader</option>
-                  {teamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.full_name}</option>
-                  ))}
-                </select>
+                <SelectField
+                  className="h-8 w-40 text-xs"
+                  value={t.leader_id}
+                  onChange={(v) => update.mutate({ id: t.id, patch: { leader_id: v } })}
+                  options={teamMembers.map((m) => ({ value: m.id, label: m.full_name }))}
+                  emptyLabel="No leader"
+                />
                 <button
                   className="rounded-md p-1.5 text-destructive hover:bg-muted"
                   onClick={async () => {

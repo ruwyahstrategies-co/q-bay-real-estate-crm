@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "./ui-primitives";
 import { DialogShell } from "./overlay";
+import { SelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { sb } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
@@ -178,9 +179,13 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
           {step === "sheet" && (
             <div className="space-y-3">
               <p className="text-sm">Select the worksheet to import from <strong>{file?.name}</strong>:</p>
-              <select className={cn(inputCls, "h-10 w-full text-sm")} value={selectedSheet} onChange={(e) => setSelectedSheet(e.target.value)}>
-                {sheets.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <SelectField
+                value={selectedSheet}
+                onChange={(v) => setSelectedSheet(v ?? "")}
+                options={sheets.map((s) => ({ value: s, label: s }))}
+                allowClear={false}
+                className="h-10 w-full text-sm"
+              />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setStep("file")}>Back</Button>
                 <Button size="sm" onClick={loadSheet}>Continue</Button>
@@ -194,10 +199,12 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
                 {PROPERTY_FIELDS.map((f) => (
                   <label key={f.key} className="flex flex-col gap-1">
                     <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{f.label}</span>
-                    <select className={inputCls} value={mapping[f.key] ?? ""} onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}>
-                      <option value="">- Skip -</option>
-                      {headers.map((h) => <option key={h} value={h}>{h}</option>)}
-                    </select>
+                    <SelectField
+                      value={mapping[f.key]}
+                      onChange={(v) => setMapping((m) => ({ ...m, [f.key]: v ?? "" }))}
+                      options={headers.map((h) => ({ value: h, label: h }))}
+                      emptyLabel="Skip"
+                    />
                   </label>
                 ))}
               </div>

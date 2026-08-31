@@ -8,6 +8,7 @@ import { Card } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useWebsiteEnquiries, useAssignWebsiteEnquiry } from "@/hooks/use-website-enquiries";
 import { useSubmissions, useReviewSubmission, useConvertSubmission } from "@/hooks/use-submissions";
@@ -62,15 +63,14 @@ function EnquiriesTab() {
           </td>
           <td className="max-w-xs px-4 py-3 text-xs truncate">{e.message ?? "-"}</td>
           <td className="px-4 py-3 text-xs">
-            <select
-              className="h-7 rounded-md border border-border bg-canvas px-2 text-xs"
+            <SelectField
+              className="h-7 w-40 text-xs"
               disabled={!canAssign}
-              value={e.assigned_agent_id ?? ""}
-              onChange={(ev) => assign.mutate({ id: e.id, assigned_agent_id: ev.target.value })}
-            >
-              <option value="">Unassigned</option>
-              {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-            </select>
+              value={e.assigned_agent_id}
+              onChange={(v) => assign.mutate({ id: e.id, assigned_agent_id: v ?? "" })}
+              options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+              emptyLabel="Unassigned"
+            />
           </td>
         </tr>
       ))}

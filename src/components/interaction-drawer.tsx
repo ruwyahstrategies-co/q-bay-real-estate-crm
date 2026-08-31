@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
+import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { useCreateInteraction, useUpdateInteraction } from "@/hooks/use-interactions";
 import { useLeads } from "@/hooks/use-leads";
@@ -108,34 +109,40 @@ export function InteractionDrawer({
       </div>
       <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
         <Field label="Type *">
-          <select className={inputCls} value={form.interaction_type ?? ""} onChange={(e) => set("interaction_type", e.target.value)}>
-            {INTERACTION_TYPES.map((t) => (
-              <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-            ))}
-          </select>
+          <SelectField
+            value={form.interaction_type}
+            onChange={(v) => set("interaction_type", (v ?? "manual_note") as Interaction["interaction_type"])}
+            options={INTERACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Direction">
-          <select className={inputCls} value={form.direction ?? ""} onChange={(e) => set("direction", e.target.value)}>
-            {DIRECTIONS.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
+          <SelectField
+            value={form.direction}
+            onChange={(v) => set("direction", (v ?? "inbound") as Interaction["direction"])}
+            options={DIRECTIONS.map((d) => ({ value: d, label: d }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Lead">
-          <select className={inputCls} value={form.lead_id ?? ""} onChange={(e) => set("lead_id", e.target.value || null)}>
-            <option value="">None</option>
-            {leads.map((l) => (
-              <option key={l.id} value={l.id}>{l.full_name}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.lead_id}
+            onChange={(v) => set("lead_id", v)}
+            options={leads.map((l) => ({ value: l.id, label: l.full_name }))}
+            placeholder="Select lead"
+            emptyLabel="None"
+            searchPlaceholder="Search leads..."
+          />
         </Field>
         <Field label="Property (optional)">
-          <select className={inputCls} value={form.property_id ?? ""} onChange={(e) => set("property_id", e.target.value || null)}>
-            <option value="">None</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>{p.title}</option>
-            ))}
-          </select>
+          <SearchableSelectField
+            value={form.property_id}
+            onChange={(v) => set("property_id", v)}
+            options={properties.map((p) => ({ value: p.id, label: p.title }))}
+            placeholder="Select property"
+            emptyLabel="None"
+            searchPlaceholder="Search properties..."
+          />
         </Field>
         <Field label="Date & time">
           <input className={inputCls} type="datetime-local" value={dateValue} onChange={(e) => set("interaction_date", e.target.value)} />

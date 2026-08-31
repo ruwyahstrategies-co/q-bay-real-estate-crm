@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { MapboxPicker } from "./mapbox-picker";
+import { HeroImageField } from "./hero-image-field";
+import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { useCreateProperty, useUpdateProperty } from "@/hooks/use-properties";
 import { useCountries, useAreas } from "@/hooks/use-locations";
@@ -11,6 +13,20 @@ import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import { PROPERTY_PURPOSES, type Property } from "@/lib/db";
+
+const PROPERTY_TYPE_OPTIONS = ["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map((v) => ({ value: v, label: v }));
+const AVAILABILITY_OPTIONS = [
+  { value: "available", label: "Available" },
+  { value: "reserved", label: "Reserved" },
+  { value: "sold", label: "Sold" },
+  { value: "off_market", label: "Off market" },
+];
+const CURRENCY_OPTIONS = ["QAR", "AED", "USD", "EUR", "GBP"].map((v) => ({ value: v, label: v }));
+const SIZE_UNIT_OPTIONS = [
+  { value: "sqm", label: "sqm" },
+  { value: "sqft", label: "sqft" },
+];
+const COMPLETION_STATUS_OPTIONS = ["Ready", "Off-plan", "Under construction"].map((v) => ({ value: v, label: v }));
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -173,14 +189,7 @@ export function PropertyDrawer({
           <input className={inputCls} value={form.location ?? ""} onChange={(e) => set("location", e.target.value)} />
         </Field>
         <Field label="Property type">
-          <select className={inputCls} value={form.property_type ?? ""} onChange={(e) => set("property_type", e.target.value)}>
-            <option>Apartment</option>
-            <option>Villa</option>
-            <option>Townhouse</option>
-            <option>Penthouse</option>
-            <option>Plot</option>
-            <option>Commercial</option>
-          </select>
+          <SelectField value={form.property_type} onChange={(v) => set("property_type", v ?? "")} options={PROPERTY_TYPE_OPTIONS} allowClear={false} placeholder="Select type" />
         </Field>
         <Field label="Price">
           <input className={inputCls} type="number" value={form.price ?? ""} onChange={(e) => set("price", e.target.value ? Number(e.target.value) : null)} />
@@ -189,60 +198,66 @@ export function PropertyDrawer({
           <input className={inputCls} type="number" value={form.bedrooms ?? ""} onChange={(e) => set("bedrooms", e.target.value ? Number(e.target.value) : null)} />
         </Field>
         <Field label="Availability">
-          <select className={inputCls} value={form.availability ?? "available"} onChange={(e) => set("availability", e.target.value)}>
-            <option value="available">Available</option>
-            <option value="reserved">Reserved</option>
-            <option value="sold">Sold</option>
-            <option value="off_market">Off market</option>
-          </select>
+          <SelectField value={form.availability ?? "available"} onChange={(v) => set("availability", v ?? "available")} options={AVAILABILITY_OPTIONS} allowClear={false} />
         </Field>
         <Field label="Currency">
-          <select className={inputCls} value={form.currency ?? "QAR"} onChange={(e) => set("currency", e.target.value)}>
-            <option>QAR</option>
-            <option>AED</option>
-            <option>USD</option>
-            <option>EUR</option>
-            <option>GBP</option>
-          </select>
+          <SelectField value={form.currency ?? "QAR"} onChange={(v) => set("currency", v ?? "QAR")} options={CURRENCY_OPTIONS} allowClear={false} />
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Classification & location</p>
         </div>
         <Field label="Purpose">
-          <select className={inputCls} value={form.purpose ?? "sale"} onChange={(e) => set("purpose", e.target.value)}>
-            {PROPERTY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+          <SelectField
+            value={form.purpose ?? "sale"}
+            onChange={(v) => set("purpose", (v ?? "sale") as FormState["purpose"])}
+            options={PROPERTY_PURPOSES.map((p) => ({ value: p, label: p }))}
+            allowClear={false}
+          />
         </Field>
         <Field label="Country">
-          <select className={inputCls} value={form.country_id ?? ""} onChange={(e) => { set("country_id", e.target.value || null); set("area_id", null); }}>
-            <option value="">-</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <SelectField
+            value={form.country_id}
+            onChange={(v) => { set("country_id", v); set("area_id", null); }}
+            options={countries.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="Select country"
+          />
         </Field>
         <Field label="Area">
-          <select className={inputCls} value={form.area_id ?? ""} onChange={(e) => set("area_id", e.target.value || null)} disabled={!form.country_id}>
-            <option value="">-</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <SelectField
+            value={form.area_id}
+            onChange={(v) => set("area_id", v)}
+            options={areas.map((a) => ({ value: a.id, label: a.name }))}
+            placeholder="Select area"
+            disabled={!form.country_id}
+          />
         </Field>
         <Field label="Development">
-          <select className={inputCls} value={form.development_id ?? ""} onChange={(e) => set("development_id", e.target.value || null)}>
-            <option value="">-</option>
-            {developments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          <SearchableSelectField
+            value={form.development_id}
+            onChange={(v) => set("development_id", v)}
+            options={developments.map((d) => ({ value: d.id, label: d.name }))}
+            placeholder="Select development"
+            searchPlaceholder="Search developments..."
+          />
         </Field>
         <Field label="Owner">
-          <select className={inputCls} value={form.owner_id ?? ""} onChange={(e) => set("owner_id", e.target.value || null)}>
-            <option value="">-</option>
-            {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
+          <SearchableSelectField
+            value={form.owner_id}
+            onChange={(v) => set("owner_id", v)}
+            options={owners.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder="Select owner"
+            searchPlaceholder="Search owners..."
+          />
         </Field>
         <Field label="Assigned agent">
-          <select className={inputCls} value={form.assigned_agent_id ?? ""} onChange={(e) => set("assigned_agent_id", e.target.value || null)}>
-            <option value="">-</option>
-            {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-          </select>
+          <SearchableSelectField
+            value={form.assigned_agent_id}
+            onChange={(v) => set("assigned_agent_id", v)}
+            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+            placeholder="Select agent"
+            searchPlaceholder="Search agents..."
+          />
         </Field>
         <Field label="Latitude">
           <input className={inputCls} type="number" step="any" value={form.latitude ?? ""} onChange={(e) => set("latitude", e.target.value ? Number(e.target.value) : null)} />
@@ -262,8 +277,14 @@ export function PropertyDrawer({
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Website & publishing</p>
         </div>
-        <Field label="Hero image URL" full>
-          <input className={inputCls} value={form.hero_image_url ?? ""} onChange={(e) => set("hero_image_url", e.target.value)} placeholder="https://..." />
+        <Field label="Hero image" full>
+          <HeroImageField
+            value={form.hero_image_url}
+            onChange={(url) => set("hero_image_url", url ?? "")}
+            categoryKey="property_media"
+            propertyId={property?.id}
+            label="hero image"
+          />
         </Field>
         <Field label="Hero video URL">
           <input className={inputCls} value={form.hero_video_url ?? ""} onChange={(e) => set("hero_video_url", e.target.value)} placeholder="https://..." />
@@ -294,18 +315,10 @@ export function PropertyDrawer({
           <input className={inputCls} type="number" value={form.size ?? ""} onChange={(e) => set("size", e.target.value ? Number(e.target.value) : null)} />
         </Field>
         <Field label="Size unit">
-          <select className={inputCls} value={form.size_unit ?? "sqm"} onChange={(e) => set("size_unit", e.target.value)}>
-            <option value="sqm">sqm</option>
-            <option value="sqft">sqft</option>
-          </select>
+          <SelectField value={form.size_unit ?? "sqm"} onChange={(v) => set("size_unit", v ?? "sqm")} options={SIZE_UNIT_OPTIONS} allowClear={false} />
         </Field>
         <Field label="Completion status">
-          <select className={inputCls} value={form.completion_status ?? ""} onChange={(e) => set("completion_status", e.target.value)}>
-            <option value="">-</option>
-            <option>Ready</option>
-            <option>Off-plan</option>
-            <option>Under construction</option>
-          </select>
+          <SelectField value={form.completion_status} onChange={(v) => set("completion_status", v ?? "")} options={COMPLETION_STATUS_OPTIONS} placeholder="Select status" />
         </Field>
         <Field label="Developer" full>
           <input className={inputCls} value={form.developer ?? ""} onChange={(e) => set("developer", e.target.value)} />

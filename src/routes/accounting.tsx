@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DrawerShell } from "@/components/overlay";
+import { SelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTransactions, useCreateTransaction, useDeleteTransaction } from "@/hooks/use-transactions";
 import { useProperties } from "@/hooks/use-properties";
@@ -165,38 +166,37 @@ function TransactionDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
       <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Type</span>
-          <select className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
-            {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, " ")}</option>)}
-          </select>
+          <SelectField
+            value={type}
+            onChange={(v) => setType(v ?? "sale")}
+            options={TRANSACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+            allowClear={false}
+          />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
-          <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="pending">Pending</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <SelectField
+            value={status}
+            onChange={(v) => setStatus(v ?? "pending")}
+            options={[
+              { value: "pending", label: "Pending" },
+              { value: "closed", label: "Closed" },
+              { value: "cancelled", label: "Cancelled" },
+            ]}
+            allowClear={false}
+          />
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Property</span>
-          <select className={inputCls} value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
-            <option value="">-</option>
-            {properties.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
-          </select>
+          <SelectField value={propertyId || null} onChange={(v) => setPropertyId(v ?? "")} options={properties.map((p) => ({ value: p.id, label: p.title }))} placeholder="Select property" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Lead / client</span>
-          <select className={inputCls} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-            <option value="">-</option>
-            {leads.map((l) => <option key={l.id} value={l.id}>{l.full_name}</option>)}
-          </select>
+          <SelectField value={leadId || null} onChange={(v) => setLeadId(v ?? "")} options={leads.map((l) => ({ value: l.id, label: l.full_name }))} placeholder="Select lead" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Agent</span>
-          <select className={inputCls} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-            <option value="">-</option>
-            {team.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-          </select>
+          <SelectField value={agentId || null} onChange={(v) => setAgentId(v ?? "")} options={team.map((m) => ({ value: m.id, label: m.full_name }))} placeholder="Select agent" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Transaction value</span>

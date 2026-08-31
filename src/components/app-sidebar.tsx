@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutGrid,
@@ -10,7 +11,7 @@ import {
   KanbanSquare,
   UserCog,
   CalendarCheck2,
-  Handshake,
+  FileSignature,
   Contact2,
   Newspaper,
   Inbox,
@@ -21,6 +22,8 @@ import {
   BarChart3,
   LineChart,
   Megaphone,
+  Globe,
+  ChevronRight,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -30,42 +33,94 @@ import { BrandMark } from "./brand-mark";
 import { usePermissions, useCurrentUser, signOut } from "@/hooks/use-auth";
 import type { ModuleKey } from "@/lib/permissions";
 
-type NavItem = {
-  to: string;
+type NavLeaf = { to: string; label: string; icon: typeof LayoutGrid; module: ModuleKey };
+
+type NavGroup = {
+  key: string;
   label: string;
   icon: typeof LayoutGrid;
-  module: ModuleKey;
+  /** Present when the group has its own destination (Overview, Leads, Properties...). */
+  to?: string;
+  /** Gates the group's own page. Pure parents (Website) omit this and are visible via their children. */
+  module?: ModuleKey;
+  children?: NavLeaf[];
 };
 
-const navItems: NavItem[] = [
-  { to: "/overview", label: "Overview", icon: LayoutGrid, module: "overview" },
-  { to: "/leads", label: "Leads", icon: Users, module: "leads" },
-  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, module: "pipeline" },
-  { to: "/conversations", label: "Conversations", icon: MessagesSquare, module: "conversations" },
-  { to: "/properties", label: "Properties", icon: Building2, module: "properties" },
-  { to: "/developments", label: "Developments", icon: Building, module: "developments" },
-  { to: "/viewings", label: "Viewings", icon: CalendarCheck2, module: "viewings" },
-  { to: "/offers", label: "Offers", icon: Handshake, module: "offers" },
-  { to: "/property-demand", label: "Property Demand", icon: BarChart3, module: "property_demand" },
-  { to: "/owners", label: "Owners", icon: Contact2, module: "owners" },
-  { to: "/marketing-intelligence", label: "Marketing Intelligence", icon: Megaphone, module: "marketing_intelligence" },
-  { to: "/ai-insights", label: "AI Insights", icon: Sparkles, module: "ai_insights" },
-  { to: "/journal", label: "Journal", icon: Newspaper, module: "journal" },
-  { to: "/website-enquiries", label: "Website Enquiries", icon: Inbox, module: "website_enquiries" },
-  { to: "/analytics", label: "Analytics", icon: LineChart, module: "analytics" },
-  { to: "/accounting", label: "Accounting", icon: Wallet, module: "accounting" },
-  { to: "/team", label: "Team", icon: UserCog, module: "team" },
-  { to: "/staff-activity", label: "Staff Activity", icon: Radar, module: "staff_activity" },
-  { to: "/uploads", label: "Uploads", icon: Upload, module: "uploads" },
-  { to: "/settings", label: "Settings", icon: Settings, module: "settings" },
+const navGroups: NavGroup[] = [
+  { key: "overview", to: "/overview", label: "Overview", icon: LayoutGrid, module: "overview" },
+  {
+    key: "leads",
+    to: "/leads",
+    label: "Leads",
+    icon: Users,
+    module: "leads",
+    children: [
+      { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, module: "pipeline" },
+      { to: "/conversations", label: "Conversations", icon: MessagesSquare, module: "conversations" },
+    ],
+  },
+  {
+    key: "properties",
+    to: "/properties",
+    label: "Properties",
+    icon: Building2,
+    module: "properties",
+    children: [
+      { to: "/developments", label: "Developments", icon: Building, module: "developments" },
+      { to: "/viewings", label: "Viewings", icon: CalendarCheck2, module: "viewings" },
+      { to: "/offers", label: "Offers", icon: FileSignature, module: "offers" },
+      { to: "/property-demand", label: "Property Demand", icon: BarChart3, module: "property_demand" },
+      { to: "/owners", label: "Owners", icon: Contact2, module: "owners" },
+      { to: "/marketing-intelligence", label: "Marketing Intelligence", icon: Megaphone, module: "marketing_intelligence" },
+    ],
+  },
+  { key: "ai-insights", to: "/ai-insights", label: "AI Insights", icon: Sparkles, module: "ai_insights" },
+  {
+    key: "website",
+    label: "Website",
+    icon: Globe,
+    children: [
+      { to: "/journal", label: "Journal", icon: Newspaper, module: "journal" },
+      { to: "/website-enquiries", label: "Website Enquiries", icon: Inbox, module: "website_enquiries" },
+    ],
+  },
+  {
+    key: "accounting",
+    to: "/accounting",
+    label: "Accounting",
+    icon: Wallet,
+    module: "accounting",
+    children: [{ to: "/analytics", label: "Analytics", icon: LineChart, module: "analytics" }],
+  },
+  {
+    key: "team",
+    to: "/team",
+    label: "Team",
+    icon: UserCog,
+    module: "team",
+    children: [{ to: "/staff-activity", label: "Staff Activity", icon: Radar, module: "staff_activity" }],
+  },
+  { key: "uploads", to: "/uploads", label: "Uploads", icon: Upload, module: "uploads" },
+  { key: "settings", to: "/settings", label: "Settings", icon: Settings, module: "settings" },
 ];
 
 export const SIDEBAR_WIDTH_COLLAPSED = 80;
 export const SIDEBAR_WIDTH_EXPANDED = 248;
 
-function useVisibleNavItems() {
+function isActivePath(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(to + "/");
+}
+
+/** Resolves each group's own-page + permission-filtered children, dropping groups nobody can see. */
+function useVisibleGroups() {
   const { can } = usePermissions();
-  return navItems.filter((item) => can(item.module, "view"));
+  return navGroups
+    .map((group) => {
+      const ownPageVisible = !!group.module && can(group.module, "view");
+      const children = (group.children ?? []).filter((c) => can(c.module, "view"));
+      return { group, ownPageVisible, children };
+    })
+    .filter(({ ownPageVisible, children }) => ownPageVisible || children.length > 0);
 }
 
 export function AppSidebar({
@@ -76,10 +131,29 @@ export function AppSidebar({
   onToggle: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = useVisibleNavItems();
+  const visibleGroups = useVisibleGroups();
   const { displayName, roleLabel } = useCurrentUser();
   const navigate = useNavigate();
   const initials = displayName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "-";
+
+  const activeGroupKey =
+    visibleGroups.find(
+      ({ group, ownPageVisible, children }) =>
+        (ownPageVisible && group.to && isActivePath(pathname, group.to)) ||
+        children.some((c) => isActivePath(pathname, c.to)),
+    )?.group.key ?? null;
+
+  const [openKey, setOpenKey] = useState<string | null>(activeGroupKey);
+
+  // Whenever navigation lands inside a group (its own page or a child route),
+  // that group becomes the one open submenu - closing whatever was open before.
+  useEffect(() => {
+    if (activeGroupKey) setOpenKey(activeGroupKey);
+  }, [activeGroupKey]);
+
+  function toggleGroup(key: string) {
+    setOpenKey((prev) => (prev === key ? null : key));
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -105,29 +179,134 @@ export function AppSidebar({
         )}
       </div>
 
-      <nav className={cn("mt-8 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-dark", collapsed ? "items-center px-2" : "px-3")}>
-        {items.map((item) => {
-          const active = pathname === item.to || pathname.startsWith(item.to + "/");
-          const Icon = item.icon;
+      <nav className={cn("mt-8 flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden scrollbar-dark", collapsed ? "items-center px-2" : "px-3")}>
+        {visibleGroups.map(({ group, ownPageVisible, children }) => {
+          const Icon = group.icon;
+          const isOpen = openKey === group.key && children.length > 0;
+          const ownActive = ownPageVisible && !!group.to && isActivePath(pathname, group.to);
+          const childActive = children.some((c) => isActivePath(pathname, c.to));
+          const active = ownActive || childActive;
+          const hasChildren = children.length > 0;
+
+          if (collapsed) {
+            return (
+              <div key={group.key} className="group relative">
+                {ownPageVisible && group.to ? (
+                  <Link
+                    to={group.to}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
+                      active ? "bg-pastel-cream text-foreground" : "text-white/55 hover:bg-white/5 hover:text-white",
+                    )}
+                    aria-label={group.label}
+                  >
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+                  </Link>
+                ) : (
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-lg text-sm",
+                      active ? "bg-pastel-cream text-foreground" : "text-white/55",
+                    )}
+                    aria-label={group.label}
+                  >
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+                  </div>
+                )}
+                <div className="pointer-events-none absolute left-full top-0 z-40 ml-3 hidden min-w-[190px] rounded-lg border border-white/10 bg-foreground p-1.5 shadow-lg group-hover:pointer-events-auto group-hover:block">
+                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/60">{group.label}</p>
+                  {hasChildren ? (
+                    <div className="flex flex-col gap-0.5">
+                      {children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const childIsActive = isActivePath(pathname, child.to);
+                        return (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
+                              childIsActive ? "bg-white/15 text-primary-foreground" : "text-primary-foreground/80 hover:bg-white/10",
+                            )}
+                          >
+                            <ChildIcon className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.9} />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "group relative flex h-10 items-center rounded-lg text-sm transition-colors",
-                collapsed ? "w-10 justify-center" : "w-full gap-3 px-3",
-                active ? "bg-pastel-cream text-foreground" : "text-white/55 hover:bg-white/5 hover:text-white",
+            <div key={group.key}>
+              <div
+                className={cn(
+                  "flex h-10 items-center rounded-lg text-sm transition-colors",
+                  active ? "bg-pastel-cream text-foreground" : "text-white/55 hover:bg-white/5 hover:text-white",
+                )}
+              >
+                {ownPageVisible && group.to ? (
+                  <Link to={group.to} className="flex h-full min-w-0 flex-1 items-center gap-3 px-3" aria-label={group.label}>
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+                    <span className="truncate">{group.label}</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    className="flex h-full min-w-0 flex-1 items-center gap-3 px-3 text-left"
+                    aria-label={group.label}
+                  >
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+                    <span className="truncate">{group.label}</span>
+                  </button>
+                )}
+                {hasChildren && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    className="flex h-full w-8 flex-shrink-0 items-center justify-center"
+                    aria-label={isOpen ? `Collapse ${group.label}` : `Expand ${group.label}`}
+                    aria-expanded={isOpen}
+                  >
+                    <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-90")} />
+                  </button>
+                )}
+              </div>
+
+              {hasChildren && (
+                <div
+                  className="grid overflow-hidden transition-[grid-template-rows] duration-200 ease-out"
+                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                >
+                  <div className="min-h-0">
+                    <div className="ml-[19px] mt-1 flex flex-col gap-0.5 border-l border-white/10 pl-3">
+                      {children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const childActiveOne = isActivePath(pathname, child.to);
+                        return (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            className={cn(
+                              "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+                              childActiveOne ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white",
+                            )}
+                          >
+                            <ChildIcon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.9} />
+                            <span className="truncate">{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               )}
-              aria-label={item.label}
-            >
-              <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-              {collapsed && (
-                <span className="pointer-events-none absolute left-full ml-3 z-40 hidden whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-primary-foreground group-hover:block">
-                  {item.label}
-                </span>
-              )}
-            </Link>
+            </div>
           );
         })}
       </nav>
@@ -175,12 +354,20 @@ export function AppSidebar({
 
 export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = useVisibleNavItems().slice(0, 5);
+  const visibleGroups = useVisibleGroups();
+  const items = visibleGroups
+    .map(({ group, ownPageVisible, children }) => {
+      if (ownPageVisible && group.to) return { to: group.to, label: group.label, icon: group.icon };
+      const first = children[0];
+      return first ? { to: first.to, label: group.label, icon: group.icon } : null;
+    })
+    .filter((x): x is { to: string; label: string; icon: typeof LayoutGrid } => !!x)
+    .slice(0, 5);
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border bg-sidebar px-2 py-2 md:hidden">
       {items.map((item) => {
-        const active =
-          pathname === item.to || pathname.startsWith(item.to + "/");
+        const active = isActivePath(pathname, item.to);
         const Icon = item.icon;
         return (
           <Link

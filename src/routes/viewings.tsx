@@ -8,6 +8,7 @@ import { Card, Button } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useViewings, useUpdateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { fmtDateTime } from "@/lib/db";
@@ -48,10 +49,13 @@ function ViewingsPage() {
 
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <select className="h-8 rounded-md border border-border bg-canvas px-2 text-xs" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">All statuses</option>
-            {VIEWING_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-          </select>
+          <SelectField
+            className="h-8 w-44 text-xs"
+            value={status || null}
+            onChange={(v) => setStatus(v ?? "")}
+            options={VIEWING_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+            emptyLabel="All statuses"
+          />
           {(can("viewings", "view_all") || can("viewings", "view_team")) && (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> My viewings only

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button, Card } from "@/components/ui-primitives";
 import { InteractionDrawer } from "@/components/interaction-drawer";
+import { SelectField } from "@/components/select-field";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
 import { fmtDateTime, INTERACTION_TYPES, type Interaction } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
@@ -57,12 +58,13 @@ function ConversationsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <select value={type ?? ""} onChange={(e) => setType(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">All types</option>
-          {INTERACTION_TYPES.map((t) => (
-            <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-          ))}
-        </select>
+        <SelectField
+          value={type}
+          onChange={(v) => setType(v)}
+          options={INTERACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+          emptyLabel="All types"
+          className="w-44"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[280px_1fr]">

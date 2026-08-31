@@ -8,6 +8,7 @@ import { Card } from "@/components/ui-primitives";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -127,16 +128,14 @@ function AnalyticsPage() {
           title="Analytics"
           description="Live sales performance built from your leads, agents, properties and tasks."
           actions={
-            <select
+            <SelectField
               value={range}
-              onChange={(e) => setRange(e.target.value as typeof range)}
-              className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs"
-              aria-label="Date range"
-            >
-              {RANGES.map((r) => (
-                <option key={r.key} value={r.key}>{r.label}</option>
-              ))}
-            </select>
+              onChange={(v) => setRange((v ?? "90") as typeof range)}
+              options={RANGES.map((r) => ({ value: r.key, label: r.label }))}
+              allowClear={false}
+              className="w-44"
+              id="analytics-range"
+            />
           }
         />
 

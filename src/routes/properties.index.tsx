@@ -11,6 +11,7 @@ import { PropertyDrawer } from "@/components/property-drawer";
 import { PropertyImporter } from "@/components/property-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
+import { SelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useProperties, useArchiveProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
@@ -101,15 +102,13 @@ function PropertiesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <select value={type ?? ""} onChange={(e) => setType(e.target.value || null)} className="h-9 rounded-lg border border-border bg-canvas px-3 text-xs">
-          <option value="">All types</option>
-          <option>Apartment</option>
-          <option>Villa</option>
-          <option>Townhouse</option>
-          <option>Penthouse</option>
-          <option>Plot</option>
-          <option>Commercial</option>
-        </select>
+        <SelectField
+          value={type}
+          onChange={(v) => setType(v)}
+          options={["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map((t) => ({ value: t, label: t }))}
+          emptyLabel="All types"
+          className="w-44"
+        />
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
           <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "table" && "bg-canvas")} onClick={() => setView("table")} aria-label="Table view">
             <Rows3 className="h-3.5 w-3.5" />

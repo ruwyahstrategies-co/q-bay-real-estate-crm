@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { useDevelopment, useDevelopmentProperties } from "@/hooks/use-developments";
 import { BrochureExtractionCard } from "@/components/brochure-extraction-card";
+import { MapboxPicker } from "@/components/mapbox-picker";
 import { fmtMoney, fmtDate } from "@/lib/db";
 import { sb } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +66,11 @@ function DevelopmentDetailPage() {
               ))}
             </ul>
           )}
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <h3 className="mb-2 text-sm font-semibold">Location</h3>
+          <MapboxPicker latitude={development.latitude} longitude={development.longitude} readOnly className="h-48" />
         </Card>
 
         <div className="lg:col-span-3">

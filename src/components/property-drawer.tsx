@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
+import { MapboxPicker } from "./mapbox-picker";
 import { cn } from "@/lib/utils";
 import { useCreateProperty, useUpdateProperty } from "@/hooks/use-properties";
 import { useCountries, useAreas } from "@/hooks/use-locations";
@@ -249,6 +250,14 @@ export function PropertyDrawer({
         <Field label="Longitude">
           <input className={inputCls} type="number" step="any" value={form.longitude ?? ""} onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)} />
         </Field>
+        <div className="sm:col-span-2">
+          <MapboxPicker
+            latitude={form.latitude ?? null}
+            longitude={form.longitude ?? null}
+            onChange={(lat, lng) => { set("latitude", lat); set("longitude", lng); }}
+            className="h-56"
+          />
+        </div>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Website & publishing</p>

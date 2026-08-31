@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
+import { MapboxPicker } from "@/components/mapbox-picker";
 import { usePermissions } from "@/hooks/use-auth";
 import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useOwners } from "@/hooks/use-owners";
@@ -138,6 +139,8 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
   const [heroVideo, setHeroVideo] = useState(development?.hero_video_url ?? "");
   const [tour360, setTour360] = useState(development?.tour_360_url ?? "");
   const [description, setDescription] = useState(development?.description ?? "");
+  const [latitude, setLatitude] = useState<number | null>(development?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(development?.longitude ?? null);
 
   useEffect(() => {
     if (!open) return;
@@ -155,6 +158,8 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
     setHeroVideo(development?.hero_video_url ?? "");
     setTour360(development?.tour_360_url ?? "");
     setDescription(development?.description ?? "");
+    setLatitude(development?.latitude ?? null);
+    setLongitude(development?.longitude ?? null);
   }, [open, development?.id]);
 
   const pending = create.isPending || update.isPending;
@@ -178,6 +183,8 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
       hero_video_url: heroVideo || null,
       tour_360_url: tour360 || null,
       description: description || null,
+      latitude,
+      longitude,
     };
     try {
       if (isEdit && development) { await update.mutateAsync({ id: development.id, patch: payload }); toast.success("Development updated"); }
@@ -267,6 +274,22 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Description</span>
           <textarea className={cn(inputCls, "h-24 py-2")} value={description ?? ""} onChange={(e) => setDescription(e.target.value)} />
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Latitude</span>
+          <input className={inputCls} type="number" step="any" value={latitude ?? ""} onChange={(e) => setLatitude(e.target.value ? Number(e.target.value) : null)} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Longitude</span>
+          <input className={inputCls} type="number" step="any" value={longitude ?? ""} onChange={(e) => setLongitude(e.target.value ? Number(e.target.value) : null)} />
+        </label>
+        <div className="sm:col-span-2">
+          <MapboxPicker
+            latitude={latitude}
+            longitude={longitude}
+            onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+            className="h-56"
+          />
+        </div>
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving..." : isEdit ? "Save changes" : "Save Development"}</Button>

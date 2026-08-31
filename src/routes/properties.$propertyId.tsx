@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { PropertyDrawer } from "@/components/property-drawer";
+import { MapboxPicker } from "@/components/mapbox-picker";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { useProperty, usePropertyMedia } from "@/hooks/use-properties";
 import { sb, fmtMoney } from "@/lib/db";
@@ -127,6 +128,10 @@ function PropertyDetailPage() {
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{property.description}</p>
           </Card>
         )}
+        <Card className="md:col-span-2">
+          <h4 className="text-sm font-semibold">Location</h4>
+          <MapboxPicker latitude={property.latitude} longitude={property.longitude} readOnly className="mt-3 h-48" />
+        </Card>
       </div>
 
       <div className="mt-6">

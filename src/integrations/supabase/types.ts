@@ -243,6 +243,7 @@ export type Database = {
       blog_posts: {
         Row: {
           author_id: string | null
+          category: string | null
           content: string | null
           created_at: string
           excerpt: string | null
@@ -258,6 +259,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          category?: string | null
           content?: string | null
           created_at?: string
           excerpt?: string | null
@@ -273,6 +275,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          category?: string | null
           content?: string | null
           created_at?: string
           excerpt?: string | null
@@ -2696,6 +2699,7 @@ export type Database = {
         Row: {
           author_avatar: string | null
           author_name: string | null
+          category: string | null
           content: string | null
           excerpt: string | null
           featured_image: string | null
@@ -2726,6 +2730,7 @@ export type Database = {
           delivery_timeline: string | null
           description: string | null
           developer: string | null
+          has_brochure: boolean | null
           hero_image_url: string | null
           hero_video_url: string | null
           id: string | null

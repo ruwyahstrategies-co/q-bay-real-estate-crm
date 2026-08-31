@@ -100,6 +100,7 @@ function BlogDrawer({ open, onOpenChange, post }: { open: boolean; onOpenChange:
   const update = useUpdateBlogPost();
   const isEdit = !!post?.id;
   const [title, setTitle] = useState(post?.title ?? "");
+  const [category, setCategory] = useState(post?.category ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
   const [featuredImage, setFeaturedImage] = useState(post?.featured_image ?? "");
@@ -109,6 +110,7 @@ function BlogDrawer({ open, onOpenChange, post }: { open: boolean; onOpenChange:
   useEffect(() => {
     if (!open) return;
     setTitle(post?.title ?? "");
+    setCategory(post?.category ?? "");
     setExcerpt(post?.excerpt ?? "");
     setContent(post?.content ?? "");
     setFeaturedImage(post?.featured_image ?? "");
@@ -123,6 +125,7 @@ function BlogDrawer({ open, onOpenChange, post }: { open: boolean; onOpenChange:
     if (!title.trim()) return toast.error("Title is required");
     const payload = {
       title: title.trim(),
+      category: category || null,
       excerpt: excerpt || null,
       content: content || null,
       featured_image: featuredImage || null,
@@ -146,6 +149,10 @@ function BlogDrawer({ open, onOpenChange, post }: { open: boolean; onOpenChange:
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Title *</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} required />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Category</span>
+          <input className={inputCls} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Market Insights, Area Guide, Design, Investment" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Featured image URL</span>

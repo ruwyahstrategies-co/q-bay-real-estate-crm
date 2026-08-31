@@ -28,6 +28,8 @@ function generatePassword(): string {
   return "Qb-" + Array.from(bytes).map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 20);
 }
 
+// Mirrors src/lib/permissions.ts MODULES exactly (every module, every
+// action) — keep the two in sync whenever a module/action is added there.
 const FULL_ACCESS = {
   overview: ["view"],
   leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign"],
@@ -36,6 +38,7 @@ const FULL_ACCESS = {
   owners: ["view", "create", "edit", "delete"],
   locations: ["view", "manage"],
   viewings: ["view", "view_team", "view_all", "create", "edit", "complete"],
+  offers: ["view", "view_team", "view_all", "create", "edit", "delete"],
   pipeline: ["view", "move"],
   conversations: ["view", "view_team", "view_all", "create", "edit", "delete"],
   uploads: ["view", "upload", "delete"],

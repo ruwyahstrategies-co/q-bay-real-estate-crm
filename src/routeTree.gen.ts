@@ -19,6 +19,7 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-intelligence'
+import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OverviewRouteImport } from './routes/overview'
 import { Route as OwnersRouteImport } from './routes/owners'
 import { Route as PipelineRouteImport } from './routes/pipeline'
@@ -84,6 +85,11 @@ const LoginRoute = LoginRouteImport.update({
 const MarketingIntelligenceRoute = MarketingIntelligenceRouteImport.update({
   id: '/marketing-intelligence',
   path: '/marketing-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverviewRoute = OverviewRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
+  '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRoute
   '/pipeline': typeof PipelineRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
+  '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRoute
   '/pipeline': typeof PipelineRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
+  '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRoute
   '/pipeline': typeof PipelineRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/login'
     | '/marketing-intelligence'
+    | '/offers'
     | '/overview'
     | '/owners'
     | '/pipeline'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/login'
     | '/marketing-intelligence'
+    | '/offers'
     | '/overview'
     | '/owners'
     | '/pipeline'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/login'
     | '/marketing-intelligence'
+    | '/offers'
     | '/overview'
     | '/owners'
     | '/pipeline'
@@ -347,6 +359,7 @@ export interface RootRouteChildren {
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRoute
   MarketingIntelligenceRoute: typeof MarketingIntelligenceRoute
+  OffersRoute: typeof OffersRoute
   OverviewRoute: typeof OverviewRoute
   OwnersRoute: typeof OwnersRoute
   PipelineRoute: typeof PipelineRoute
@@ -430,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/marketing-intelligence'
       fullPath: '/marketing-intelligence'
       preLoaderRoute: typeof MarketingIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/overview': {
@@ -596,6 +616,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRoute,
   MarketingIntelligenceRoute: MarketingIntelligenceRoute,
+  OffersRoute: OffersRoute,
   OverviewRoute: OverviewRoute,
   OwnersRoute: OwnersRoute,
   PipelineRoute: PipelineRoute,

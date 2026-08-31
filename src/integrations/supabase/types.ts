@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -58,6 +58,13 @@ export type Database = {
           webhook_verify_token_secret_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_whatsapp_connections_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: true
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_whatsapp_connections_team_member_id_fkey"
             columns: ["team_member_id"]
@@ -269,6 +276,13 @@ export type Database = {
             foreignKeyName: "blog_posts_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -306,6 +320,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      development_media: {
+        Row: {
+          created_at: string
+          development_id: string
+          display_order: number
+          id: string
+          media_type: string | null
+          organisation_id: string | null
+          upload_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          development_id: string
+          display_order?: number
+          id?: string
+          media_type?: string | null
+          organisation_id?: string | null
+          upload_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          development_id?: string
+          display_order?: number
+          id?: string
+          media_type?: string | null
+          organisation_id?: string | null
+          upload_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_media_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_media_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_media_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_media_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       developments: {
         Row: {
@@ -413,6 +486,13 @@ export type Database = {
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
             referencedColumns: ["id"]
           },
           {
@@ -602,6 +682,13 @@ export type Database = {
             referencedColumns: ["property_id"]
           },
           {
+            foreignKeyName: "interactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "interactions_upload_id_fkey"
             columns: ["upload_id"]
             isOneToOne: false
@@ -672,6 +759,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "lead_property_interests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -792,6 +886,13 @@ export type Database = {
             foreignKeyName: "leads_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -800,6 +901,13 @@ export type Database = {
             columns: ["development_id"]
             isOneToOne: false
             referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
             referencedColumns: ["id"]
           },
           {
@@ -876,6 +984,127 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      offers: {
+        Row: {
+          agent_id: string | null
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          decided_at: string | null
+          development_id: string | null
+          expiry_date: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          offer_date: string
+          organisation_id: string | null
+          property_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          decided_at?: string | null
+          development_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          offer_date?: string
+          organisation_id?: string | null
+          property_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          decided_at?: string | null
+          development_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          offer_date?: string
+          organisation_id?: string | null
+          property_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "offers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organisations: {
         Row: {
@@ -1180,6 +1409,13 @@ export type Database = {
             foreignKeyName: "properties_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -1195,6 +1431,13 @@ export type Database = {
             columns: ["development_id"]
             isOneToOne: false
             referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
             referencedColumns: ["id"]
           },
           {
@@ -1272,6 +1515,13 @@ export type Database = {
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
           },
+          {
+            foreignKeyName: "property_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
         ]
       }
       property_leases: {
@@ -1338,6 +1588,13 @@ export type Database = {
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
           },
+          {
+            foreignKeyName: "property_leases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
         ]
       }
       property_media: {
@@ -1389,6 +1646,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_media_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "property_media_upload_id_fkey"
@@ -1507,10 +1771,24 @@ export type Database = {
             referencedColumns: ["property_id"]
           },
           {
+            foreignKeyName: "property_submissions_converted_property_id_fkey"
+            columns: ["converted_property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "property_submissions_country_id_fkey"
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
             referencedColumns: ["id"]
           },
           {
@@ -1583,6 +1861,20 @@ export type Database = {
             referencedColumns: ["property_id"]
           },
           {
+            foreignKeyName: "staff_activity_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_activity_events_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "staff_activity_events_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
@@ -1633,6 +1925,13 @@ export type Database = {
           team_member_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "staff_sessions_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "staff_sessions_team_member_id_fkey"
             columns: ["team_member_id"]
@@ -1711,6 +2010,13 @@ export type Database = {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -1748,6 +2054,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1850,6 +2163,13 @@ export type Database = {
             foreignKeyName: "teams_leader_id_fkey"
             columns: ["leader_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -1922,6 +2242,13 @@ export type Database = {
             foreignKeyName: "transactions_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -1952,6 +2279,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2045,6 +2379,13 @@ export type Database = {
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
           },
+          {
+            foreignKeyName: "uploads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
+          },
         ]
       }
       viewings: {
@@ -2095,6 +2436,13 @@ export type Database = {
             foreignKeyName: "viewings_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewings_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -2118,6 +2466,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "viewings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2166,6 +2521,13 @@ export type Database = {
             foreignKeyName: "website_enquiries_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -2174,6 +2536,13 @@ export type Database = {
             columns: ["development_id"]
             isOneToOne: false
             referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
             referencedColumns: ["id"]
           },
           {
@@ -2196,6 +2565,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "website_enquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "public_properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2247,6 +2623,13 @@ export type Database = {
             foreignKeyName: "whatsapp_webhook_routes_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_webhook_routes_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
@@ -2272,6 +2655,201 @@ export type Database = {
           views: number | null
         }
         Relationships: []
+      }
+      public_agents: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          role: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          role?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      public_blog_posts: {
+        Row: {
+          author_avatar: string | null
+          author_name: string | null
+          content: string | null
+          excerpt: string | null
+          featured_image: string | null
+          id: string | null
+          published_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      public_developments: {
+        Row: {
+          amenities: string[] | null
+          area_id: string | null
+          area_name: string | null
+          area_slug: string | null
+          assigned_agent_avatar: string | null
+          assigned_agent_id: string | null
+          assigned_agent_name: string | null
+          completion_status: string | null
+          country_id: string | null
+          country_name: string | null
+          country_slug: string | null
+          created_at: string | null
+          currency: string | null
+          delivery_timeline: string | null
+          description: string | null
+          developer: string | null
+          hero_image_url: string | null
+          hero_video_url: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          payment_plan: Json | null
+          price_from: number | null
+          price_to: number | null
+          property_types: string[] | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string | null
+          status: string | null
+          tour_360_url: string | null
+          unit_mix: Json | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developments_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_properties: {
+        Row: {
+          amenities: string[] | null
+          area_id: string | null
+          area_name: string | null
+          area_slug: string | null
+          assigned_agent_avatar: string | null
+          assigned_agent_id: string | null
+          assigned_agent_name: string | null
+          availability: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          completion_status: string | null
+          country_id: string | null
+          country_name: string | null
+          country_slug: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          developer: string | null
+          development_id: string | null
+          development_name: string | null
+          development_slug: string | null
+          hero_image_url: string | null
+          hero_video_url: string | null
+          highlights: string[] | null
+          id: string | null
+          last_refreshed_at: string | null
+          latitude: number | null
+          listing_source: string | null
+          location: string | null
+          longitude: number | null
+          plot_size: number | null
+          price: number | null
+          property_type: string | null
+          purpose: string | null
+          reference_code: string | null
+          seo_description: string | null
+          seo_title: string | null
+          size: number | null
+          size_unit: string | null
+          slug: string | null
+          title: string | null
+          tour_360_url: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "public_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "public_developments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

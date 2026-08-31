@@ -28,6 +28,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePropertyMatchesForLead } from "@/hooks/use-matching";
 import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
+import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 
 export const Route = createFileRoute("/leads/$leadId")({
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/leads/$leadId")({
   component: LeadProfilePage,
 });
 
-const tabs = ["Overview", "Conversations", "Viewings", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
+const tabs = ["Overview", "Conversations", "Viewings", "Offers", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
 
 
 function LeadProfilePage() {
@@ -232,6 +233,7 @@ function LeadProfilePage() {
       )}
 
       {tab === "Viewings" && <ViewingsTab leadId={lead.id} />}
+      {tab === "Offers" && <OffersTab leadId={lead.id} developmentId={lead.development_id} />}
 
       {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
 
@@ -505,6 +507,91 @@ function ViewingsTab({ leadId }: { leadId: string }) {
               </div>
               {v.status !== "completed" && v.status !== "cancelled" && (
                 <Button size="sm" variant="outline" onClick={() => complete.mutate({ id: v.id })}>Mark completed</Button>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: string | null }) {
+  const { data: offers = [] } = useLeadOffers(leadId);
+  const { data: refs } = useLeadReferences(leadId);
+  const create = useCreateOffer();
+  const update = useUpdateOffer();
+  const { can } = usePermissions();
+  const [propertyId, setPropertyId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const canCreate = can("offers", "create");
+  const canEdit = can("offers", "edit");
+  const interests = ((refs?.interests ?? []) as any[]);
+
+  return (
+    <div className="space-y-3">
+      {canCreate && (
+        <Card>
+          <h4 className="text-sm font-semibold">Log an offer</h4>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              Property
+              <select className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
+                <option value="">-</option>
+                {interests.map((i) => <option key={i.property_id} value={i.property_id}>{i.properties?.title ?? i.property_id}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              Amount (QAR)
+              <input type="number" className="h-9 w-32 rounded-lg border border-border bg-canvas px-3 text-sm" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </label>
+            <label className="flex flex-1 min-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground">
+              Notes
+              <input className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+            <Button
+              size="sm"
+              disabled={create.isPending}
+              onClick={async () => {
+                try {
+                  await create.mutateAsync({
+                    lead_id: leadId,
+                    property_id: propertyId || null,
+                    development_id: propertyId ? null : (developmentId ?? null),
+                    amount: amount ? Number(amount) : null,
+                    notes: notes || null,
+                    status: "submitted",
+                  });
+                  setPropertyId(""); setAmount(""); setNotes("");
+                  toast.success("Offer logged");
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+            >
+              Log offer
+            </Button>
+          </div>
+        </Card>
+      )}
+      {offers.length === 0 ? (
+        <EmptyState compact title="No offers logged" />
+      ) : (
+        <div className="space-y-2">
+          {offers.map((o) => (
+            <Card key={o.id} className="flex items-center justify-between gap-3 py-3">
+              <div>
+                <p className="text-sm font-medium">{o.amount ? `${o.currency ?? "QAR"} ${o.amount.toLocaleString()}` : "Offer"}</p>
+                <p className="text-xs text-muted-foreground capitalize">{o.status.replace(/_/g, " ")} · {fmtDate(o.offer_date)}</p>
+                {o.notes && <p className="text-xs text-muted-foreground mt-1">{o.notes}</p>}
+              </div>
+              {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
+                <select
+                  className="h-8 rounded-md border border-border bg-canvas px-2 text-xs"
+                  value={o.status}
+                  onChange={(e) => update.mutate({ id: o.id, patch: { status: e.target.value } })}
+                >
+                  {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                </select>
               )}
             </Card>
           ))}

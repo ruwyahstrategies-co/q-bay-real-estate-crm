@@ -6,6 +6,7 @@ import { Card } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { useDevelopment, useDevelopmentProperties } from "@/hooks/use-developments";
+import { BrochureExtractionCard } from "@/components/brochure-extraction-card";
 import { fmtMoney, fmtDate } from "@/lib/db";
 import { sb } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +66,10 @@ function DevelopmentDetailPage() {
             </ul>
           )}
         </Card>
+
+        <div className="lg:col-span-3">
+          <BrochureExtractionCard development={development} />
+        </div>
 
         <Card className="lg:col-span-3">
           <h3 className="mb-2 text-sm font-semibold">Connected Enquiries ({enquiries.length})</h3>

@@ -1,36 +1,20 @@
 import { useMemo, useState } from "react";
-import { Mic, Loader2, FileAudio, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { toast } from "sonner";
+import { Mic, FileAudio, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button, Card } from "@/components/ui-primitives";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { useUploads } from "@/hooks/use-uploads";
 import { useInteractions } from "@/hooks/use-interactions";
-import { useTranscribeCall } from "@/hooks/use-transcription";
 import { fmtDateTime, fmtSize, type Lead } from "@/lib/db";
 
 export function CallTranscriptCard({ lead }: { lead: Lead }) {
   const { data: uploads = [] } = useUploads({ leadId: lead.id, category: "call_recordings" });
   const { data: interactions = [] } = useInteractions({ leadId: lead.id });
-  const transcribe = useTranscribeCall();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const transcripts = useMemo(
     () => interactions.filter((i) => (i as any).transcript),
     [interactions],
   );
-
-  const handleTranscribe = async (uploadId: string) => {
-    try {
-      const r = await transcribe.mutateAsync({ upload_id: uploadId, lead_id: lead.id });
-      if (r?.ok) {
-        toast.success("Transcribed and analysed");
-      } else if (r?.error) {
-        toast.error(r.error);
-      }
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
 
   return (
     <Card>
@@ -56,8 +40,6 @@ export function CallTranscriptCard({ lead }: { lead: Lead }) {
           <ul className="mt-1 space-y-1.5">
             {uploads.slice(0, 8).map((u) => {
               const linked = transcripts.find((i) => (i as any).upload_id === u.id);
-              const isProcessing = u.processing_status === "processing"
-                || (transcribe.isPending && transcribe.variables?.upload_id === u.id);
               return (
                 <li key={u.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-xs">
                   <div className="min-w-0 flex-1">
@@ -74,9 +56,9 @@ export function CallTranscriptCard({ lead }: { lead: Lead }) {
                       <CheckCircle2 className="h-3 w-3" /> Transcribed
                     </span>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => handleTranscribe(u.id)} disabled={isProcessing}>
-                      {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
-                      Transcribe
+                    <Button size="sm" variant="outline" disabled title="Automatic transcription is not connected yet - add a manual note via Conversations instead">
+                      <Mic className="h-3.5 w-3.5" />
+                      Not available
                     </Button>
                   )}
                 </li>

@@ -34,6 +34,7 @@ import { Route as WebsiteEnquiriesRouteImport } from './routes/website-enquiries
 import { Route as DevelopmentsDevelopmentIdRouteImport } from './routes/developments.$developmentId'
 import { Route as LeadsIndexRouteImport } from './routes/leads.index'
 import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
+import { Route as OwnersOwnerIdRouteImport } from './routes/owners.$ownerId'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as PropertiesPropertyIdRouteImport } from './routes/properties.$propertyId'
 
@@ -163,6 +164,11 @@ const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
   path: '/$leadId',
   getParentRoute: () => LeadsRoute,
 } as any)
+const OwnersOwnerIdRoute = OwnersOwnerIdRouteImport.update({
+  id: '/$ownerId',
+  path: '/$ownerId',
+  getParentRoute: () => OwnersRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -187,7 +193,7 @@ export interface FileRoutesByFullPath {
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
-  '/owners': typeof OwnersRoute
+  '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/website-enquiries': typeof WebsiteEnquiriesRoute
   '/developments/$developmentId': typeof DevelopmentsDevelopmentIdRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
+  '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
   '/leads/': typeof LeadsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
@@ -215,7 +222,7 @@ export interface FileRoutesByTo {
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
-  '/owners': typeof OwnersRoute
+  '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/property-demand': typeof PropertyDemandRoute
   '/settings': typeof SettingsRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/website-enquiries': typeof WebsiteEnquiriesRoute
   '/developments/$developmentId': typeof DevelopmentsDevelopmentIdRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
+  '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
   '/leads': typeof LeadsIndexRoute
   '/properties': typeof PropertiesIndexRoute
@@ -244,7 +252,7 @@ export interface FileRoutesById {
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
-  '/owners': typeof OwnersRoute
+  '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/website-enquiries': typeof WebsiteEnquiriesRoute
   '/developments/$developmentId': typeof DevelopmentsDevelopmentIdRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
+  '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
   '/leads/': typeof LeadsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
@@ -287,6 +296,7 @@ export interface FileRouteTypes {
     | '/website-enquiries'
     | '/developments/$developmentId'
     | '/leads/$leadId'
+    | '/owners/$ownerId'
     | '/properties/$propertyId'
     | '/leads/'
     | '/properties/'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/website-enquiries'
     | '/developments/$developmentId'
     | '/leads/$leadId'
+    | '/owners/$ownerId'
     | '/properties/$propertyId'
     | '/leads'
     | '/properties'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/website-enquiries'
     | '/developments/$developmentId'
     | '/leads/$leadId'
+    | '/owners/$ownerId'
     | '/properties/$propertyId'
     | '/leads/'
     | '/properties/'
@@ -361,7 +373,7 @@ export interface RootRouteChildren {
   MarketingIntelligenceRoute: typeof MarketingIntelligenceRoute
   OffersRoute: typeof OffersRoute
   OverviewRoute: typeof OverviewRoute
-  OwnersRoute: typeof OwnersRoute
+  OwnersRoute: typeof OwnersRouteWithChildren
   PipelineRoute: typeof PipelineRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   PropertyDemandRoute: typeof PropertyDemandRoute
@@ -550,6 +562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsLeadIdRouteImport
       parentRoute: typeof LeadsRoute
     }
+    '/owners/$ownerId': {
+      id: '/owners/$ownerId'
+      path: '/$ownerId'
+      fullPath: '/owners/$ownerId'
+      preLoaderRoute: typeof OwnersOwnerIdRouteImport
+      parentRoute: typeof OwnersRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -591,6 +610,17 @@ const LeadsRouteChildren: LeadsRouteChildren = {
 
 const LeadsRouteWithChildren = LeadsRoute._addFileChildren(LeadsRouteChildren)
 
+interface OwnersRouteChildren {
+  OwnersOwnerIdRoute: typeof OwnersOwnerIdRoute
+}
+
+const OwnersRouteChildren: OwnersRouteChildren = {
+  OwnersOwnerIdRoute: OwnersOwnerIdRoute,
+}
+
+const OwnersRouteWithChildren =
+  OwnersRoute._addFileChildren(OwnersRouteChildren)
+
 interface PropertiesRouteChildren {
   PropertiesPropertyIdRoute: typeof PropertiesPropertyIdRoute
   PropertiesIndexRoute: typeof PropertiesIndexRoute
@@ -618,7 +648,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketingIntelligenceRoute: MarketingIntelligenceRoute,
   OffersRoute: OffersRoute,
   OverviewRoute: OverviewRoute,
-  OwnersRoute: OwnersRoute,
+  OwnersRoute: OwnersRouteWithChildren,
   PipelineRoute: PipelineRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   PropertyDemandRoute: PropertyDemandRoute,

@@ -6,16 +6,17 @@ export const taskKeys = {
   list: (filters?: Record<string, unknown>) => ["tasks", "list", filters ?? {}] as const,
 };
 
-export function useTasks(opts?: { leadId?: string; status?: string | null }) {
-  const { leadId, status } = opts ?? {};
+export function useTasks(opts?: { leadId?: string; ownerId?: string; status?: string | null }) {
+  const { leadId, ownerId, status } = opts ?? {};
   return useQuery({
-    queryKey: taskKeys.list({ leadId, status }),
+    queryKey: taskKeys.list({ leadId, ownerId, status }),
     queryFn: async (): Promise<Task[]> => {
       let q = sb
         .from("tasks")
         .select("*, leads(full_name), team_members(full_name)")
         .order("due_at", { ascending: true, nullsFirst: false });
       if (leadId) q = q.eq("lead_id", leadId);
+      if (ownerId) q = q.eq("owner_id", ownerId);
       if (status) q = q.eq("status", status);
       const { data, error } = await q;
       if (error) throw error;

@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
 import { MapboxPicker } from "@/components/mapbox-picker";
+import { GoogleMapsLinkField } from "@/components/google-maps-link-field";
 import { HeroImageField } from "@/components/hero-image-field";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
@@ -280,6 +281,9 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Longitude</span>
           <input className={inputCls} type="number" step="any" value={longitude ?? ""} onChange={(e) => setLongitude(e.target.value ? Number(e.target.value) : null)} />
         </label>
+        <div className="sm:col-span-2">
+          <GoogleMapsLinkField onResolved={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} />
+        </div>
         <div className="sm:col-span-2">
           <MapboxPicker
             latitude={latitude}

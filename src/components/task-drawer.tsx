@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
+import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import type { Task } from "@/lib/db";
 import { PRIORITIES, TASK_STATUSES } from "@/lib/db";
@@ -24,7 +25,7 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
-function initialForm(task: Task | null | undefined, defaultLeadId: string | null | undefined): Partial<Task> {
+function initialForm(task: Task | null | undefined, defaultLeadId: string | null | undefined, defaultOwnerId: string | null | undefined): Partial<Task> {
   return {
     title: task?.title ?? "",
     description: task?.description ?? "",
@@ -35,6 +36,7 @@ function initialForm(task: Task | null | undefined, defaultLeadId: string | null
     lead_id: task?.lead_id ?? defaultLeadId ?? null,
     property_id: task?.property_id ?? null,
     assigned_to: task?.assigned_to ?? null,
+    owner_id: task?.owner_id ?? defaultOwnerId ?? null,
   };
 }
 
@@ -43,25 +45,28 @@ export function TaskDrawer({
   onOpenChange,
   task,
   defaultLeadId,
+  defaultOwnerId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   task?: Task | null;
   defaultLeadId?: string | null;
+  defaultOwnerId?: string | null;
 }) {
   const create = useCreateTask();
   const update = useUpdateTask();
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: properties = [] } = useProperties({ status: "all" });
+  const { data: owners = [] } = useOwners();
   const { data: team = [] } = useTeamMembers();
   const isEdit = !!task?.id;
 
-  const [form, setForm] = useState<Partial<Task>>(() => initialForm(task, defaultLeadId));
+  const [form, setForm] = useState<Partial<Task>>(() => initialForm(task, defaultLeadId, defaultOwnerId));
 
   useEffect(() => {
-    if (open) setForm(initialForm(task, defaultLeadId));
+    if (open) setForm(initialForm(task, defaultLeadId, defaultOwnerId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, task?.id, defaultLeadId]);
+  }, [open, task?.id, defaultLeadId, defaultOwnerId]);
 
   function set<K extends keyof Task>(k: K, v: Task[K]) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -84,6 +89,7 @@ export function TaskDrawer({
       lead_id: form.lead_id || null,
       property_id: form.property_id || null,
       assigned_to: form.assigned_to || null,
+      owner_id: form.owner_id || null,
     };
     try {
       if (isEdit && task) {
@@ -152,6 +158,16 @@ export function TaskDrawer({
             placeholder="Select property"
             emptyLabel="- None -"
             searchPlaceholder="Search properties..."
+          />
+        </Field>
+        <Field label="Owner">
+          <SearchableSelectField
+            value={form.owner_id}
+            onChange={(v) => set("owner_id", v)}
+            options={owners.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder="Select owner"
+            emptyLabel="- None -"
+            searchPlaceholder="Search owners..."
           />
         </Field>
         <Field label="Status">

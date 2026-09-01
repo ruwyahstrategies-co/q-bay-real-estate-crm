@@ -12,6 +12,7 @@ export function UploadDropzone({
   categoryKey,
   leadId,
   propertyId,
+  ownerId,
   onUploaded,
 }: {
   title: string;
@@ -19,6 +20,7 @@ export function UploadDropzone({
   categoryKey: UploadCategoryKey;
   leadId?: string | null;
   propertyId?: string | null;
+  ownerId?: string | null;
   onUploaded?: (uploadId: string) => void;
 }) {
   const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -30,7 +32,7 @@ export function UploadDropzone({
     if (!files || !files.length) return;
     for (const file of Array.from(files)) {
       try {
-        const row = await upload.mutateAsync({ file, categoryKey, leadId, propertyId });
+        const row = await upload.mutateAsync({ file, categoryKey, leadId, propertyId, ownerId });
         toast.success(`Uploaded ${file.name}`);
         onUploaded?.(row.id);
       } catch (err) {

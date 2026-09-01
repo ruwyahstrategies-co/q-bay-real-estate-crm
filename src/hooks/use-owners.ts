@@ -44,6 +44,38 @@ export function useOwnerProperties(ownerId: string | undefined) {
   });
 }
 
+export function useOwnerDevelopments(ownerId: string | undefined) {
+  return useQuery({
+    queryKey: ["owners", "developments", ownerId ?? "none"],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data, error } = await sb.from("developments").select("id, name, slug, status, is_published").eq("owner_id", ownerId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useOwnerTransactions(ownerId: string | undefined) {
+  return useQuery({
+    queryKey: ["owners", "transactions", ownerId ?? "none"],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data: props, error: propsErr } = await sb.from("properties").select("id").eq("owner_id", ownerId!);
+      if (propsErr) throw propsErr;
+      const propertyIds = (props ?? []).map((p) => p.id);
+      if (propertyIds.length === 0) return [];
+      const { data, error } = await sb
+        .from("transactions")
+        .select("*, properties(title, reference_code)")
+        .in("property_id", propertyIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useCreateOwner() {
   const qc = useQueryClient();
   return useMutation({

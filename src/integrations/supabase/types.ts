@@ -598,6 +598,7 @@ export type Database = {
           lead_id: string | null
           metadata: Json
           organisation_id: string | null
+          owner_id: string | null
           property_id: string | null
           subject: string | null
           transcript: string | null
@@ -617,6 +618,7 @@ export type Database = {
           lead_id?: string | null
           metadata?: Json
           organisation_id?: string | null
+          owner_id?: string | null
           property_id?: string | null
           subject?: string | null
           transcript?: string | null
@@ -636,6 +638,7 @@ export type Database = {
           lead_id?: string | null
           metadata?: Json
           organisation_id?: string | null
+          owner_id?: string | null
           property_id?: string | null
           subject?: string | null
           transcript?: string | null
@@ -655,6 +658,13 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
           {
@@ -1079,36 +1089,56 @@ export type Database = {
       }
       owners: {
         Row: {
+          address: string | null
+          assigned_agent_id: string | null
+          code: string | null
           company: string | null
           created_at: string
           email: string | null
           id: string
+          is_developer: boolean
           name: string
           notes: string | null
           phone: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          assigned_agent_id?: string | null
+          code?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_developer?: boolean
           name: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          assigned_agent_id?: string | null
+          code?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_developer?: boolean
           name?: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "owners_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipeline_history: {
         Row: {
@@ -1569,6 +1599,24 @@ export type Database = {
           },
         ]
       }
+      property_reference_counters: {
+        Row: {
+          last_value: number
+          prefix: string
+          updated_at: string
+        }
+        Insert: {
+          last_value?: number
+          prefix: string
+          updated_at?: string
+        }
+        Update: {
+          last_value?: number
+          prefix?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       property_submissions: {
         Row: {
           area_id: string | null
@@ -1824,6 +1872,7 @@ export type Database = {
           lead_id: string | null
           marketing_report_id: string | null
           organisation_id: string | null
+          owner_id: string | null
           priority: string
           property_id: string | null
           refs: Json
@@ -1845,6 +1894,7 @@ export type Database = {
           lead_id?: string | null
           marketing_report_id?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           priority?: string
           property_id?: string | null
           refs?: Json
@@ -1866,6 +1916,7 @@ export type Database = {
           lead_id?: string | null
           marketing_report_id?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           priority?: string
           property_id?: string | null
           refs?: Json
@@ -1906,6 +1957,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -1924,6 +1982,7 @@ export type Database = {
       team_members: {
         Row: {
           avatar_url: string | null
+          code: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -1940,6 +1999,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          code?: string | null
           created_at?: string
           email?: string | null
           full_name: string
@@ -1956,6 +2016,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          code?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
@@ -2137,6 +2198,7 @@ export type Database = {
           metadata: Json
           mime_type: string | null
           organisation_id: string | null
+          owner_id: string | null
           processing_error: string | null
           processing_status: string
           property_id: string | null
@@ -2157,6 +2219,7 @@ export type Database = {
           metadata?: Json
           mime_type?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           processing_error?: string | null
           processing_status?: string
           property_id?: string | null
@@ -2177,6 +2240,7 @@ export type Database = {
           metadata?: Json
           mime_type?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           processing_error?: string | null
           processing_status?: string
           property_id?: string | null
@@ -2199,6 +2263,13 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
           {
@@ -2445,6 +2516,10 @@ export type Database = {
       }
     }
     Functions: {
+      assign_two_letter_code: {
+        Args: { _seed: string; _table: string }
+        Returns: string
+      }
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
@@ -2471,6 +2546,10 @@ export type Database = {
           reasons: string[]
           score: number
         }[]
+      }
+      preview_property_reference: {
+        Args: { _agent_id: string; _owner_id: string }
+        Returns: string
       }
       public_agents: {
         Args: never

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Contact2, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,8 @@ import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
 import { usePermissions } from "@/hooks/use-auth";
 import { useOwners, useCreateOwner, useUpdateOwner, useDeleteOwner, useOwnerProperties } from "@/hooks/use-owners";
+import { useTeamMembers } from "@/hooks/use-team";
+import { SearchableSelectField } from "@/components/select-field";
 import type { Owner } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +49,7 @@ function OwnersPage() {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search owners..." className={cn(inputCls, "w-full max-w-xs")} />
       </div>
       <DataTable
-        columns={["Name", "Company", "Phone", "Email", "Actions"]}
+        columns={["Code", "Name", "Type", "Company", "Phone", "Email", "Actions"]}
         empty={<EmptyState icon={<Contact2 className="h-4 w-4" />} title="No owners yet" description="Add a property or development owner." />}
       >
         {owners.map((o) => (
@@ -80,10 +82,12 @@ function OwnerRow({ owner, canEdit, canDelete, onEdit, onDelete }: { owner: Owne
   const { data: properties = [] } = useOwnerProperties(owner.id);
   return (
     <tr className="border-b border-border last:border-0 hover:bg-background/60">
+      <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{owner.code ?? "-"}</td>
       <td className="px-4 py-3 text-sm font-medium">
-        {owner.name}
+        <Link to="/owners/$ownerId" params={{ ownerId: owner.id }} className="hover:underline">{owner.name}</Link>
         {properties.length > 0 && <span className="ml-2 text-xs text-muted-foreground">({properties.length} propert{properties.length === 1 ? "y" : "ies"})</span>}
       </td>
+      <td className="px-4 py-3 text-xs">{owner.is_developer ? "Developer" : "Individual"}</td>
       <td className="px-4 py-3 text-xs">{owner.company ?? "-"}</td>
       <td className="px-4 py-3 text-xs">{owner.phone ?? "-"}</td>
       <td className="px-4 py-3 text-xs">{owner.email ?? "-"}</td>
@@ -101,10 +105,14 @@ function OwnerDrawer({ open, onOpenChange, owner }: { open: boolean; onOpenChang
   const create = useCreateOwner();
   const update = useUpdateOwner();
   const isEdit = !!owner?.id;
+  const { data: team = [] } = useTeamMembers();
   const [name, setName] = useState(owner?.name ?? "");
   const [company, setCompany] = useState(owner?.company ?? "");
   const [phone, setPhone] = useState(owner?.phone ?? "");
   const [email, setEmail] = useState(owner?.email ?? "");
+  const [address, setAddress] = useState(owner?.address ?? "");
+  const [isDeveloper, setIsDeveloper] = useState(owner?.is_developer ?? false);
+  const [assignedAgentId, setAssignedAgentId] = useState(owner?.assigned_agent_id ?? "");
   const [notes, setNotes] = useState(owner?.notes ?? "");
 
   useEffect(() => {
@@ -113,6 +121,9 @@ function OwnerDrawer({ open, onOpenChange, owner }: { open: boolean; onOpenChang
     setCompany(owner?.company ?? "");
     setPhone(owner?.phone ?? "");
     setEmail(owner?.email ?? "");
+    setAddress(owner?.address ?? "");
+    setIsDeveloper(owner?.is_developer ?? false);
+    setAssignedAgentId(owner?.assigned_agent_id ?? "");
     setNotes(owner?.notes ?? "");
   }, [open, owner?.id]);
 
@@ -121,7 +132,16 @@ function OwnerDrawer({ open, onOpenChange, owner }: { open: boolean; onOpenChang
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return toast.error("Name is required");
-    const payload = { name: name.trim(), company: company || null, phone: phone || null, email: email || null, notes: notes || null };
+    const payload = {
+      name: name.trim(),
+      company: company || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      is_developer: isDeveloper,
+      assigned_agent_id: assignedAgentId || null,
+      notes: notes || null,
+    };
     try {
       if (isEdit && owner) { await update.mutateAsync({ id: owner.id, patch: payload }); toast.success("Owner updated"); }
       else { await create.mutateAsync(payload); toast.success("Owner added"); }
@@ -151,6 +171,18 @@ function OwnerDrawer({ open, onOpenChange, owner }: { open: boolean; onOpenChang
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Email</span>
           <input className={inputCls} type="email" value={email ?? ""} onChange={(e) => setEmail(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Address</span>
+          <input className={inputCls} value={address ?? ""} onChange={(e) => setAddress(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Assigned agent</span>
+          <SearchableSelectField value={assignedAgentId} onChange={(v) => setAssignedAgentId(v ?? "")} options={team.map((m) => ({ value: m.id, label: m.full_name }))} placeholder="Select agent" searchPlaceholder="Search agents..." />
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={isDeveloper} onChange={(e) => setIsDeveloper(e.target.checked)} />
+          This owner is a developer company
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Notes</span>

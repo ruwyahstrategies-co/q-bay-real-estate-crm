@@ -59,7 +59,13 @@ export type PropertyLeaseInsert = Tables["property_leases"]["Insert"];
 
 export const LEAD_CLASSIFICATIONS = ["buyer", "renter", "investor", "commercial"] as const;
 export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;
-export const PROPERTY_PURPOSES = ["sale", "rent", "commercial"] as const;
+export const PROPERTY_PURPOSES = ["sale", "rent", "commercial", "off_plan_resale"] as const;
+export const PROPERTY_PURPOSE_LABELS: Record<string, string> = {
+  sale: "Sale",
+  rent: "Rent",
+  commercial: "Commercial",
+  off_plan_resale: "Off-Plan Resale",
+};
 export const VIEWING_STATUSES = ["scheduled", "confirmed", "completed", "cancelled", "no_show"] as const;
 export const SUBMISSION_STATUSES = ["draft", "submitted", "under_review", "approved", "rejected", "published"] as const;
 export const TRANSACTION_TYPES = ["sale", "rental", "commission_only"] as const;

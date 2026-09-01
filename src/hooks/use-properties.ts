@@ -133,6 +133,19 @@ export function useArchiveProperty() {
   });
 }
 
+/** Live preview of the reference code a new/edited property will get once saved (owner+agent both selected). Purely informational - the real value is reserved server-side on insert/update. */
+export function usePropertyReferencePreview(ownerId: string | null | undefined, agentId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["properties", "reference-preview", ownerId ?? "none", agentId ?? "none"],
+    enabled: !!ownerId && !!agentId,
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await sb.rpc("preview_property_reference", { _owner_id: ownerId!, _agent_id: agentId! });
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
 export function useDeleteProperty() {
   const qc = useQueryClient();
   return useMutation({

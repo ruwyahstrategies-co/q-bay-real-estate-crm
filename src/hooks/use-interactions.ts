@@ -7,16 +7,17 @@ export const interactionKeys = {
   byLead: (leadId: string) => ["interactions", "lead", leadId] as const,
 };
 
-export function useInteractions(opts?: { leadId?: string; search?: string; type?: string | null }) {
-  const { leadId, search = "", type = null } = opts ?? {};
+export function useInteractions(opts?: { leadId?: string; ownerId?: string; search?: string; type?: string | null }) {
+  const { leadId, ownerId, search = "", type = null } = opts ?? {};
   return useQuery({
-    queryKey: interactionKeys.list({ leadId, search, type }),
+    queryKey: interactionKeys.list({ leadId, ownerId, search, type }),
     queryFn: async (): Promise<Interaction[]> => {
       let q = sb
         .from("interactions")
         .select("*, leads(full_name), properties(title)")
         .order("interaction_date", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);
+      if (ownerId) q = q.eq("owner_id", ownerId);
       if (type) q = q.eq("interaction_type", type);
       if (search.trim()) {
         const term = `%${search.trim()}%`;

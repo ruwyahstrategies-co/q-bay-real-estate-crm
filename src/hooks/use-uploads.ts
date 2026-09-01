@@ -8,14 +8,15 @@ export const uploadKeys = {
   byProperty: (propertyId: string) => ["uploads", "property", propertyId] as const,
 };
 
-export function useUploads(opts?: { leadId?: string; propertyId?: string; category?: string | null }) {
-  const { leadId, propertyId, category } = opts ?? {};
+export function useUploads(opts?: { leadId?: string; propertyId?: string; ownerId?: string; category?: string | null }) {
+  const { leadId, propertyId, ownerId, category } = opts ?? {};
   return useQuery({
-    queryKey: uploadKeys.list({ leadId, propertyId, category }),
+    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, category }),
     queryFn: async (): Promise<Upload[]> => {
       let q = sb.from("uploads").select("*").order("created_at", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);
       if (propertyId) q = q.eq("property_id", propertyId);
+      if (ownerId) q = q.eq("owner_id", ownerId);
       if (category) q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
@@ -47,12 +48,14 @@ export function useUploadFile() {
       categoryKey,
       leadId,
       propertyId,
+      ownerId,
       uploadedBy,
     }: {
       file: File;
       categoryKey: UploadCategoryKey;
       leadId?: string | null;
       propertyId?: string | null;
+      ownerId?: string | null;
       uploadedBy?: string | null;
     }): Promise<Upload> => {
       const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -106,6 +109,7 @@ export function useUploadFile() {
         file_size: file.size,
         lead_id: leadId ?? null,
         property_id: propertyId ?? null,
+        owner_id: ownerId ?? null,
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,

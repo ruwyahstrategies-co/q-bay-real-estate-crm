@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useCreateInteraction, useUpdateInteraction } from "@/hooks/use-interactions";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
+import { useOwners } from "@/hooks/use-owners";
 import type { Interaction } from "@/lib/db";
 import { INTERACTION_TYPES, DIRECTIONS } from "@/lib/db";
 
@@ -23,7 +24,7 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
-function initialForm(interaction: Interaction | null | undefined, defaultLeadId: string | null | undefined): Partial<Interaction> {
+function initialForm(interaction: Interaction | null | undefined, defaultLeadId: string | null | undefined, defaultOwnerId: string | null | undefined): Partial<Interaction> {
   return {
     interaction_type: interaction?.interaction_type ?? "manual_note",
     direction: interaction?.direction ?? "inbound",
@@ -33,6 +34,7 @@ function initialForm(interaction: Interaction | null | undefined, defaultLeadId:
     duration_seconds: interaction?.duration_seconds ?? null,
     lead_id: interaction?.lead_id ?? defaultLeadId ?? null,
     property_id: interaction?.property_id ?? null,
+    owner_id: interaction?.owner_id ?? defaultOwnerId ?? null,
   };
 }
 
@@ -41,24 +43,27 @@ export function InteractionDrawer({
   onOpenChange,
   interaction,
   defaultLeadId,
+  defaultOwnerId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   interaction?: Interaction | null;
   defaultLeadId?: string | null;
+  defaultOwnerId?: string | null;
 }) {
   const create = useCreateInteraction();
   const update = useUpdateInteraction();
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: properties = [] } = useProperties({ status: "all" });
+  const { data: owners = [] } = useOwners();
   const isEdit = !!interaction?.id;
 
-  const [form, setForm] = useState<Partial<Interaction>>(() => initialForm(interaction, defaultLeadId));
+  const [form, setForm] = useState<Partial<Interaction>>(() => initialForm(interaction, defaultLeadId, defaultOwnerId));
 
   useEffect(() => {
-    if (open) setForm(initialForm(interaction, defaultLeadId));
+    if (open) setForm(initialForm(interaction, defaultLeadId, defaultOwnerId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, interaction?.id, defaultLeadId]);
+  }, [open, interaction?.id, defaultLeadId, defaultOwnerId]);
 
   function set<K extends keyof Interaction>(k: K, v: Interaction[K]) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -82,6 +87,7 @@ export function InteractionDrawer({
       duration_seconds: form.duration_seconds ? Number(form.duration_seconds) : null,
       lead_id: form.lead_id || null,
       property_id: form.property_id || null,
+      owner_id: form.owner_id || null,
     };
     try {
       if (isEdit && interaction) {
@@ -142,6 +148,16 @@ export function InteractionDrawer({
             placeholder="Select property"
             emptyLabel="None"
             searchPlaceholder="Search properties..."
+          />
+        </Field>
+        <Field label="Owner (optional)">
+          <SearchableSelectField
+            value={form.owner_id}
+            onChange={(v) => set("owner_id", v)}
+            options={owners.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder="Select owner"
+            emptyLabel="None"
+            searchPlaceholder="Search owners..."
           />
         </Field>
         <Field label="Date & time">

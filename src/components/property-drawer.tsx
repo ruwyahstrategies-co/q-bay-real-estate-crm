@@ -4,15 +4,16 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { MapboxPicker } from "./mapbox-picker";
+import { GoogleMapsLinkField } from "./google-maps-link-field";
 import { HeroImageField } from "./hero-image-field";
 import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
-import { useCreateProperty, useUpdateProperty } from "@/hooks/use-properties";
+import { useCreateProperty, useUpdateProperty, usePropertyReferencePreview } from "@/hooks/use-properties";
 import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
-import { PROPERTY_PURPOSES, type Property } from "@/lib/db";
+import { PROPERTY_PURPOSES, PROPERTY_PURPOSE_LABELS, type Property } from "@/lib/db";
 
 const PROPERTY_TYPE_OPTIONS = ["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map((v) => ({ value: v, label: v }));
 const AVAILABILITY_OPTIONS = [
@@ -97,6 +98,14 @@ export function PropertyDrawer({
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
   const { data: areas = [] } = useAreas(form.country_id || undefined);
+  const { data: referencePreview } = usePropertyReferencePreview(form.owner_id, form.assigned_agent_id);
+
+  const selectedDevelopment = developments.find((d) => d.id === form.development_id) ?? null;
+  const developerOwnerId = selectedDevelopment?.owner_id ?? null;
+  const ownerOptions = owners.map((o) => ({
+    value: o.id,
+    label: o.id === developerOwnerId || o.is_developer ? `Developer: ${o.name}` : o.name,
+  }));
 
   // The drawer shell stays mounted through its close animation, so reset the
   // form explicitly whenever a different record (or a fresh "add") opens.
@@ -183,7 +192,13 @@ export function PropertyDrawer({
           <input className={inputCls} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} required />
         </Field>
         <Field label="Reference code">
-          <input className={inputCls} value={form.reference_code ?? ""} onChange={(e) => set("reference_code", e.target.value)} />
+          <div className={cn(inputCls, "flex items-center text-muted-foreground")}>
+            {form.reference_code
+              ? form.reference_code
+              : referencePreview
+                ? <span title="Provisional - the final code is reserved when you save">{referencePreview} (preview)</span>
+                : "Select an owner and agent to generate"}
+          </div>
         </Field>
         <Field label="Location">
           <input className={inputCls} value={form.location ?? ""} onChange={(e) => set("location", e.target.value)} />
@@ -211,7 +226,7 @@ export function PropertyDrawer({
           <SelectField
             value={form.purpose ?? "sale"}
             onChange={(v) => set("purpose", (v ?? "sale") as FormState["purpose"])}
-            options={PROPERTY_PURPOSES.map((p) => ({ value: p, label: p }))}
+            options={PROPERTY_PURPOSES.map((p) => ({ value: p, label: PROPERTY_PURPOSE_LABELS[p] ?? p }))}
             allowClear={false}
           />
         </Field>
@@ -235,7 +250,13 @@ export function PropertyDrawer({
         <Field label="Development">
           <SearchableSelectField
             value={form.development_id}
-            onChange={(v) => set("development_id", v)}
+            onChange={(v) => {
+              set("development_id", v);
+              const dev = developments.find((d) => d.id === v);
+              // Auto-suggest the development's developer as owner, but never
+              // clobber an owner the user already picked.
+              if (dev?.owner_id && !form.owner_id) set("owner_id", dev.owner_id);
+            }}
             options={developments.map((d) => ({ value: d.id, label: d.name }))}
             placeholder="Select development"
             searchPlaceholder="Search developments..."
@@ -245,7 +266,7 @@ export function PropertyDrawer({
           <SearchableSelectField
             value={form.owner_id}
             onChange={(v) => set("owner_id", v)}
-            options={owners.map((o) => ({ value: o.id, label: o.name }))}
+            options={ownerOptions}
             placeholder="Select owner"
             searchPlaceholder="Search owners..."
           />
@@ -265,6 +286,9 @@ export function PropertyDrawer({
         <Field label="Longitude">
           <input className={inputCls} type="number" step="any" value={form.longitude ?? ""} onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)} />
         </Field>
+        <div className="sm:col-span-2">
+          <GoogleMapsLinkField onResolved={(lat, lng) => { set("latitude", lat); set("longitude", lng); }} />
+        </div>
         <div className="sm:col-span-2">
           <MapboxPicker
             latitude={form.latitude ?? null}

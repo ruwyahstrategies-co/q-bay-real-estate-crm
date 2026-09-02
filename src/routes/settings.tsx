@@ -14,6 +14,8 @@ import { sb, type Area, type AreaUpdate } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 import { useMyWhatsappConnection, useSaveWhatsappConnection, useVerifyWhatsapp, useDisconnectWhatsapp } from "@/hooks/use-whatsapp";
 import { useCountries, useAreas, useCreateCountry, useUpdateCountry, useCreateArea, useUpdateArea } from "@/hooks/use-locations";
+import { useScheduledNotifications, useSmsProviderConfig, useSaveSmsProviderConfig, useProcessDueNotifications } from "@/hooks/use-notifications";
+import { fmtDateTime } from "@/lib/db";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings" }] }),
@@ -155,14 +157,15 @@ function SettingsPage() {
             </div>
           )}
 
-          {(active === "Lead & property fields" || active === "Notifications" || active === "Data retention") && (
+          {active === "Notifications" && <NotificationsSection canManage={canManage} />}
+
+          {(active === "Lead & property fields" || active === "Data retention") && (
             <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-border bg-background p-4">
               <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Planned for a future release</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {active === "Lead & property fields" && "Custom field configuration for leads and properties is on the roadmap. Today's fields cover the full buyer and inventory workflow."}
-                  {active === "Notifications" && "In-app and email notification preferences are on the roadmap."}
                   {active === "Data retention" && "Automated archival and retention policies are on the roadmap. Leads and properties can be archived manually today."}
                 </p>
               </div>
@@ -390,6 +393,113 @@ function AreaContentEditor({ area, onSave }: { area: Area; onSave: (patch: AreaU
       >
         Save
       </Button>
+    </div>
+  );
+}
+
+const PROVIDER_OPTIONS = [
+  { value: "twilio", label: "Twilio" },
+  { value: "vonage", label: "Vonage" },
+  { value: "other", label: "Other" },
+];
+
+function NotificationsSection({ canManage }: { canManage: boolean }) {
+  const { data: config } = useSmsProviderConfig();
+  const saveConfig = useSaveSmsProviderConfig();
+  const { data: notifications = [] } = useScheduledNotifications();
+  const processNow = useProcessDueNotifications();
+
+  const [provider, setProvider] = useState<string>(config?.provider ?? "");
+  const [senderId, setSenderId] = useState<string>(config?.sender_id ?? "");
+
+  useEffect(() => {
+    setProvider(config?.provider ?? "");
+    setSenderId(config?.sender_id ?? "");
+  }, [config]);
+
+  const pending = notifications.filter((n) => n.status === "pending").length;
+  const configured = !!provider;
+
+  return (
+    <div className="mt-4 space-y-5">
+      <div>
+        <p className="text-sm font-medium">SMS provider</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Owner contract expiry reminders and sale/rental congratulations schedule themselves automatically. They stay
+          pending until a provider is configured here - nothing is ever marked sent without an actual provider call
+          succeeding.
+        </p>
+        {!configured && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
+            <Clock className="h-3.5 w-3.5" /> No provider configured yet - {pending} notification{pending === 1 ? "" : "s"} waiting.
+          </p>
+        )}
+        <div className="mt-3 max-w-md space-y-2">
+          <SelectField value={provider || null} onChange={(v) => setProvider(v ?? "")} options={PROVIDER_OPTIONS} placeholder="Select provider" disabled={!canManage} />
+          <input className={inputCls} placeholder="Sender ID / from number" value={senderId} onChange={(e) => setSenderId(e.target.value)} disabled={!canManage} />
+          <p className="text-[11px] text-muted-foreground">
+            API keys are never entered here - they're added as an edge function secret once a provider is chosen, then wired
+            into supabase/functions/sms-send.
+          </p>
+          {canManage && (
+            <Button
+              size="sm"
+              disabled={saveConfig.isPending}
+              onClick={async () => {
+                try {
+                  await saveConfig.mutateAsync({ provider: provider || null, sender_id: senderId || null, api_key_secret_id: config?.api_key_secret_id ?? null });
+                  toast.success("Saved");
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+            >
+              Save
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Scheduled notifications</p>
+          {canManage && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={processNow.isPending}
+              onClick={async () => {
+                try {
+                  const res = await processNow.mutateAsync();
+                  toast.success(`Processed ${res.processed} - ${res.sent} sent, ${res.skipped} skipped, ${res.failed} failed`);
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+            >
+              {processNow.isPending ? "Processing..." : "Process due now"}
+            </Button>
+          )}
+        </div>
+        {notifications.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">Nothing scheduled yet.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {notifications.slice(0, 20).map((n: any) => (
+              <div key={n.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-xs">
+                <div>
+                  <p className="font-medium">{n.owners?.name ?? n.recipient_name ?? "Recipient"} · {n.event_type.replace(/_/g, " ")}</p>
+                  <p className="mt-0.5 text-muted-foreground">Scheduled {fmtDateTime(n.scheduled_for)} {n.error_message ? `· ${n.error_message}` : ""}</p>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide",
+                    n.status === "sent" ? "bg-pastel-green" : n.status === "failed" ? "bg-destructive/15 text-destructive" : n.status === "skipped" ? "bg-muted text-muted-foreground" : "bg-pastel-blue",
+                  )}
+                >
+                  {n.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

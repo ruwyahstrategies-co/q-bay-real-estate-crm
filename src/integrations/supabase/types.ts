@@ -1311,6 +1311,39 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          body_template: string
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          body_template: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          body_template?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       offers: {
         Row: {
           agent_id: string | null
@@ -2436,6 +2469,81 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_leases"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          owner_id: string | null
+          provider: string | null
+          provider_message_id: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          related_id: string | null
+          related_table: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          template_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          owner_id?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          owner_id?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_notifications_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_notifications_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["key"]
           },
         ]
       }

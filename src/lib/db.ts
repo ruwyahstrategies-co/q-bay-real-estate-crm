@@ -65,6 +65,17 @@ export type LeadNoteInsert = Tables["lead_notes"]["Insert"];
 export type LeadNoteVersion = Tables["lead_note_versions"]["Row"];
 export type MarketingRequest = Tables["marketing_requests"]["Row"];
 export type MarketingRequestUpdate = Tables["marketing_requests"]["Update"];
+export type Tenant = Tables["tenants"]["Row"];
+export type TenantInsert = Tables["tenants"]["Insert"];
+export type RentScheduleItem = Tables["rent_schedule_items"]["Row"];
+export type RentScheduleItemInsert = Tables["rent_schedule_items"]["Insert"];
+export type RentPayment = Tables["rent_payments"]["Row"];
+export type RentPaymentInsert = Tables["rent_payments"]["Insert"];
+
+export const LEASE_STATUSES = ["pending", "active", "expired", "terminated"] as const;
+export const RENEWAL_STATES = ["not_due", "pending_renewal", "renewed", "not_renewing"] as const;
+export const PAYMENT_FREQUENCIES = ["monthly", "quarterly", "biannual", "annual"] as const;
+export const RENT_SCHEDULE_STATUSES = ["due", "paid", "partial", "overdue"] as const;
 
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;

@@ -26,6 +26,7 @@ import { Route as OwnersRouteImport } from './routes/owners'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as PropertyDemandRouteImport } from './routes/property-demand'
+import { Route as PropertyManagementRouteImport } from './routes/property-management'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StaffActivityRouteImport } from './routes/staff-activity'
 import { Route as TeamRouteImport } from './routes/team'
@@ -124,6 +125,11 @@ const PropertyDemandRoute = PropertyDemandRouteImport.update({
   path: '/property-demand',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropertyManagementRoute = PropertyManagementRouteImport.update({
+  id: '/property-management',
+  path: '/property-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
+  '/property-management': typeof PropertyManagementRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/property-demand': typeof PropertyDemandRoute
+  '/property-management': typeof PropertyManagementRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
+  '/property-management': typeof PropertyManagementRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/properties'
     | '/property-demand'
+    | '/property-management'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/owners'
     | '/pipeline'
     | '/property-demand'
+    | '/property-management'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/properties'
     | '/property-demand'
+    | '/property-management'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -390,6 +402,7 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   PropertyDemandRoute: typeof PropertyDemandRoute
+  PropertyManagementRoute: typeof PropertyManagementRoute
   SettingsRoute: typeof SettingsRoute
   StaffActivityRoute: typeof StaffActivityRoute
   TeamRoute: typeof TeamRoute
@@ -517,6 +530,13 @@ declare module '@tanstack/react-router' {
       path: '/property-demand'
       fullPath: '/property-demand'
       preLoaderRoute: typeof PropertyDemandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/property-management': {
+      id: '/property-management'
+      path: '/property-management'
+      fullPath: '/property-management'
+      preLoaderRoute: typeof PropertyManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -673,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   PropertyDemandRoute: PropertyDemandRoute,
+  PropertyManagementRoute: PropertyManagementRoute,
   SettingsRoute: SettingsRoute,
   StaffActivityRoute: StaffActivityRoute,
   TeamRoute: TeamRoute,

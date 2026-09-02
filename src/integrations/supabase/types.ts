@@ -648,6 +648,7 @@ export type Database = {
           owner_id: string | null
           property_id: string | null
           subject: string | null
+          tenant_id: string | null
           transcript: string | null
           updated_at: string
           upload_id: string | null
@@ -668,6 +669,7 @@ export type Database = {
           owner_id?: string | null
           property_id?: string | null
           subject?: string | null
+          tenant_id?: string | null
           transcript?: string | null
           updated_at?: string
           upload_id?: string | null
@@ -688,6 +690,7 @@ export type Database = {
           owner_id?: string | null
           property_id?: string | null
           subject?: string | null
+          tenant_id?: string | null
           transcript?: string | null
           updated_at?: string
           upload_id?: string | null
@@ -727,6 +730,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "interactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "interactions_upload_id_fkey"
@@ -1590,6 +1600,7 @@ export type Database = {
           highlights: string[] | null
           id: string
           is_demo: boolean
+          is_managed: boolean
           is_published: boolean
           last_refreshed_at: string | null
           latitude: number | null
@@ -1636,6 +1647,7 @@ export type Database = {
           highlights?: string[] | null
           id?: string
           is_demo?: boolean
+          is_managed?: boolean
           is_published?: boolean
           last_refreshed_at?: string | null
           latitude?: number | null
@@ -1682,6 +1694,7 @@ export type Database = {
           highlights?: string[] | null
           id?: string
           is_demo?: boolean
+          is_managed?: boolean
           is_published?: boolean
           last_refreshed_at?: string | null
           latitude?: number | null
@@ -1816,14 +1829,19 @@ export type Database = {
           contract_upload_id: string | null
           created_at: string
           currency: string | null
+          deposit_amount: number | null
           id: string
           lease_end: string | null
           lease_start: string | null
           maintenance_notes: string | null
+          payment_frequency: string | null
           payment_status: string | null
           property_id: string
+          renewal_state: string
           rent_amount: number | null
+          status: string
           tenant_email: string | null
+          tenant_id: string | null
           tenant_name: string | null
           tenant_phone: string | null
           updated_at: string
@@ -1832,14 +1850,19 @@ export type Database = {
           contract_upload_id?: string | null
           created_at?: string
           currency?: string | null
+          deposit_amount?: number | null
           id?: string
           lease_end?: string | null
           lease_start?: string | null
           maintenance_notes?: string | null
+          payment_frequency?: string | null
           payment_status?: string | null
           property_id: string
+          renewal_state?: string
           rent_amount?: number | null
+          status?: string
           tenant_email?: string | null
+          tenant_id?: string | null
           tenant_name?: string | null
           tenant_phone?: string | null
           updated_at?: string
@@ -1848,14 +1871,19 @@ export type Database = {
           contract_upload_id?: string | null
           created_at?: string
           currency?: string | null
+          deposit_amount?: number | null
           id?: string
           lease_end?: string | null
           lease_start?: string | null
           maintenance_notes?: string | null
+          payment_frequency?: string | null
           payment_status?: string | null
           property_id?: string
+          renewal_state?: string
           rent_amount?: number | null
+          status?: string
           tenant_email?: string | null
+          tenant_id?: string | null
           tenant_name?: string | null
           tenant_phone?: string | null
           updated_at?: string
@@ -1874,6 +1902,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_leases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2080,6 +2115,114 @@ export type Database = {
             columns: ["website_profile_id"]
             isOneToOne: false
             referencedRelation: "website_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rent_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          method: string | null
+          notes: string | null
+          property_lease_id: string
+          received_date: string
+          rent_schedule_item_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          property_lease_id: string
+          received_date?: string
+          rent_schedule_item_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          property_lease_id?: string
+          received_date?: string
+          rent_schedule_item_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_payments_property_lease_id_fkey"
+            columns: ["property_lease_id"]
+            isOneToOne: false
+            referencedRelation: "property_leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_payments_rent_schedule_item_id_fkey"
+            columns: ["rent_schedule_item_id"]
+            isOneToOne: false
+            referencedRelation: "rent_schedule_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rent_schedule_items: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          due_date: string
+          id: string
+          payment_reference: string | null
+          property_lease_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          due_date: string
+          id?: string
+          payment_reference?: string | null
+          property_lease_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          due_date?: string
+          id?: string
+          payment_reference?: string | null
+          property_lease_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_schedule_items_property_lease_id_fkey"
+            columns: ["property_lease_id"]
+            isOneToOne: false
+            referencedRelation: "property_leases"
             referencedColumns: ["id"]
           },
         ]
@@ -2429,6 +2572,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       transactions: {
         Row: {

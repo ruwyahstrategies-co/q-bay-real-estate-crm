@@ -888,6 +888,7 @@ export type Database = {
           budget_min: number | null
           buying_timeline: string | null
           classification: string | null
+          converted_owner_id: string | null
           created_at: string
           created_by: string | null
           currency: string | null
@@ -925,6 +926,7 @@ export type Database = {
           budget_min?: number | null
           buying_timeline?: string | null
           classification?: string | null
+          converted_owner_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
@@ -962,6 +964,7 @@ export type Database = {
           budget_min?: number | null
           buying_timeline?: string | null
           classification?: string | null
+          converted_owner_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
@@ -998,6 +1001,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_converted_owner_id_fkey"
+            columns: ["converted_owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
           {
@@ -1081,6 +1091,64 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      marketing_requests: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          required_media: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          required_media?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          required_media?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+        ]
       }
       offers: {
         Row: {
@@ -1350,6 +1418,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          source_lead_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1364,6 +1433,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          source_lead_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1378,6 +1448,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          source_lead_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1386,6 +1457,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owners_source_lead_id_fkey"
+            columns: ["source_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]

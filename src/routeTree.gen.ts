@@ -18,6 +18,7 @@ import { Route as DevelopmentsRouteImport } from './routes/developments'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MarketingRouteImport } from './routes/marketing'
 import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-intelligence'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OverviewRouteImport } from './routes/overview'
@@ -81,6 +82,11 @@ const LeadsRoute = LeadsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketingIntelligenceRoute = MarketingIntelligenceRouteImport.update({
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof JournalRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
+  '/marketing': typeof MarketingRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
+  '/marketing': typeof MarketingRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
@@ -249,6 +257,7 @@ export interface FileRoutesById {
   '/journal': typeof JournalRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
+  '/marketing': typeof MarketingRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/leads'
     | '/login'
+    | '/marketing'
     | '/marketing-intelligence'
     | '/offers'
     | '/overview'
@@ -310,6 +320,7 @@ export interface FileRouteTypes {
     | '/developments'
     | '/journal'
     | '/login'
+    | '/marketing'
     | '/marketing-intelligence'
     | '/offers'
     | '/overview'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/leads'
     | '/login'
+    | '/marketing'
     | '/marketing-intelligence'
     | '/offers'
     | '/overview'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   JournalRoute: typeof JournalRoute
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MarketingRoute: typeof MarketingRoute
   MarketingIntelligenceRoute: typeof MarketingIntelligenceRoute
   OffersRoute: typeof OffersRoute
   OverviewRoute: typeof OverviewRoute
@@ -448,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/marketing-intelligence': {
@@ -645,6 +665,7 @@ const rootRouteChildren: RootRouteChildren = {
   JournalRoute: JournalRoute,
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRoute,
+  MarketingRoute: MarketingRoute,
   MarketingIntelligenceRoute: MarketingIntelligenceRoute,
   OffersRoute: OffersRoute,
   OverviewRoute: OverviewRoute,

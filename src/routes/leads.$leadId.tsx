@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, Pencil, Sparkles, ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { Phone, Mail, MessageCircle, Pencil, Sparkles, ChevronLeft, Plus, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -32,6 +32,7 @@ import { usePropertyMatchesForLead } from "@/hooks/use-matching";
 import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
+import { useConvertLeadToOwner } from "@/hooks/use-leads";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),
@@ -43,6 +44,7 @@ const tabs = ["Overview", "Notes", "Conversations", "Viewings", "Offers", "Prope
 
 function LeadProfilePage() {
   const { leadId } = Route.useParams();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
   const [editOpen, setEditOpen] = useState(false);
   const [interactionOpen, setInteractionOpen] = useState(false);
@@ -57,6 +59,7 @@ function LeadProfilePage() {
   const { data: analyses = [] } = useLeadAnalyses(leadId);
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const analyseMut = useAnalyseLead();
+  const convertToOwner = useConvertLeadToOwner();
   const deleteInteraction = useDeleteInteraction();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
@@ -81,6 +84,17 @@ function LeadProfilePage() {
       const res = await analyseMut.mutateAsync(lead.id);
       if (res.status === "completed") { toast.success("Analysis complete"); setTab("Buyer Intelligence"); }
       else toast.error(res.error || "Analysis failed");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const wonStage = stages.find((s) => s.stage_key === lead.pipeline_stage)?.is_won ?? lead.pipeline_stage === "won";
+  const canConvertToOwner = can("owners", "create");
+
+  const handleConvertToOwner = async () => {
+    try {
+      const owner = await convertToOwner.mutateAsync(lead);
+      toast.success(lead.converted_owner_id ? "Owner profile" : "Owner created");
+      navigate({ to: "/owners/$ownerId", params: { ownerId: owner.id } });
     } catch (e) { toast.error((e as Error).message); }
   };
 
@@ -135,6 +149,17 @@ function LeadProfilePage() {
               <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
                 <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing..." : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
               </Button>
+            )}
+            {wonStage && canConvertToOwner && (
+              lead.converted_owner_id ? (
+                <Link to="/owners/$ownerId" params={{ ownerId: lead.converted_owner_id }}>
+                  <Button variant="outline" size="sm"><UserPlus className="h-3.5 w-3.5" /> View Owner Profile</Button>
+                </Link>
+              ) : (
+                <Button size="sm" disabled={convertToOwner.isPending} onClick={handleConvertToOwner}>
+                  <UserPlus className="h-3.5 w-3.5" /> {convertToOwner.isPending ? "Converting..." : "Convert To Owner"}
+                </Button>
+              )
             )}
           </div>
         </div>

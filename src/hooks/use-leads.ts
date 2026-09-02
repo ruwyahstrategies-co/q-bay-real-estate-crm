@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { sb, type LeadInsert, type LeadUpdate, type Lead } from "@/lib/db";
+import { sb, type LeadInsert, type LeadUpdate, type Lead, type Owner } from "@/lib/db";
 
 export const leadsKeys = {
   all: ["leads"] as const,
@@ -123,5 +123,55 @@ export function useDeleteLead() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: leadsKeys.all }),
+  });
+}
+
+/** Converts a Won lead into an Owner, idempotently (returns the existing Owner if already converted). Links back via owners.source_lead_id / leads.converted_owner_id. */
+export function useConvertLeadToOwner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (lead: Lead): Promise<Owner> => {
+      if (lead.converted_owner_id) {
+        const { data, error } = await sb.from("owners").select("*").eq("id", lead.converted_owner_id).single();
+        if (error) throw error;
+        return data;
+      }
+
+      let developmentName: string | null = null;
+      if (lead.development_id) {
+        const { data: dev } = await sb.from("developments").select("name").eq("id", lead.development_id).maybeSingle();
+        developmentName = dev?.name ?? null;
+      }
+
+      const notesParts = [
+        `Converted from lead "${lead.full_name}" on ${new Date().toLocaleDateString()}.`,
+        developmentName ? `Interested development: ${developmentName}.` : null,
+        lead.notes ? `Lead notes: ${lead.notes}` : null,
+      ].filter(Boolean);
+
+      const { data: owner, error: insertErr } = await sb
+        .from("owners")
+        .insert({
+          name: lead.full_name,
+          phone: lead.phone,
+          email: lead.email,
+          assigned_agent_id: lead.assigned_agent_id,
+          source_lead_id: lead.id,
+          notes: notesParts.join(" "),
+        })
+        .select()
+        .single();
+      if (insertErr) throw insertErr;
+
+      const { error: updateErr } = await sb.from("leads").update({ converted_owner_id: owner.id }).eq("id", lead.id);
+      if (updateErr) throw updateErr;
+
+      return owner;
+    },
+    onSuccess: (_owner, lead) => {
+      qc.invalidateQueries({ queryKey: leadsKeys.all });
+      qc.invalidateQueries({ queryKey: leadsKeys.detail(lead.id) });
+      qc.invalidateQueries({ queryKey: ["owners"] });
+    },
   });
 }

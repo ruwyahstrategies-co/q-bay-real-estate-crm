@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarCheck2, MapPin, Check, X as XIcon } from "lucide-react";
+import { CalendarCheck2, MapPin, Check, X as XIcon, Import } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { SelectField } from "@/components/select-field";
+import { ImportViewingDialog } from "@/components/import-viewing-dialog";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useViewings, useUpdateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { fmtDateTime } from "@/lib/db";
@@ -41,6 +42,7 @@ function ViewingsPage() {
   const complete = useCompleteViewing();
   const canEdit = can("viewings", "edit");
   const canComplete = can("viewings", "complete");
+  const [importTarget, setImportTarget] = useState<(typeof viewings)[number] | null>(null);
 
   return (
     <AppShell>
@@ -120,11 +122,19 @@ function ViewingsPage() {
                     <XIcon className="h-3.5 w-3.5" />
                   </button>
                 )}
+                {v.status === "completed" && (
+                  <button className="rounded-md p-1.5 hover:bg-muted" title="Import information" onClick={() => setImportTarget(v)}>
+                    <Import className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </td>
           </tr>
         ))}
       </DataTable>
+      {importTarget && (
+        <ImportViewingDialog open={!!importTarget} onOpenChange={(v) => !v && setImportTarget(null)} viewing={importTarget} />
+      )}
       </PermissionGate>
     </AppShell>
   );

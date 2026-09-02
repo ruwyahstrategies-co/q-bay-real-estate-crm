@@ -16,6 +16,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as DevelopmentsRouteImport } from './routes/developments'
 import { Route as JournalRouteImport } from './routes/journal'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarketingRouteImport } from './routes/marketing'
@@ -73,6 +74,11 @@ const DevelopmentsRoute = DevelopmentsRouteImport.update({
 const JournalRoute = JournalRouteImport.update({
   id: '/journal',
   path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
   '/marketing': typeof MarketingRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/marketing': typeof MarketingRoute
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRoute
   '/marketing': typeof MarketingRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/conversations'
     | '/developments'
     | '/journal'
+    | '/leaderboard'
     | '/leads'
     | '/login'
     | '/marketing'
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/conversations'
     | '/developments'
     | '/journal'
+    | '/leaderboard'
     | '/login'
     | '/marketing'
     | '/marketing-intelligence'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/conversations'
     | '/developments'
     | '/journal'
+    | '/leaderboard'
     | '/leads'
     | '/login'
     | '/marketing'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   ConversationsRoute: typeof ConversationsRoute
   DevelopmentsRoute: typeof DevelopmentsRouteWithChildren
   JournalRoute: typeof JournalRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRoute
   MarketingRoute: typeof MarketingRoute
@@ -460,6 +473,13 @@ declare module '@tanstack/react-router' {
       path: '/journal'
       fullPath: '/journal'
       preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -683,6 +703,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConversationsRoute: ConversationsRoute,
   DevelopmentsRoute: DevelopmentsRouteWithChildren,
   JournalRoute: JournalRoute,
+  LeaderboardRoute: LeaderboardRoute,
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRoute,
   MarketingRoute: MarketingRoute,

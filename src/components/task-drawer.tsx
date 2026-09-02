@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
@@ -126,7 +126,7 @@ export function TaskDrawer({
           <SelectField
             value={form.priority ?? "medium"}
             onChange={(v) => set("priority", (v ?? "medium") as Task["priority"])}
-            options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+            options={PRIORITIES.map((p) => ({ value: p, label: titleCase(p) }))}
             allowClear={false}
           />
         </Field>
@@ -174,7 +174,7 @@ export function TaskDrawer({
           <SelectField
             value={form.status ?? "pending"}
             onChange={(v) => set("status", (v ?? "pending") as Task["status"])}
-            options={TASK_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+            options={TASK_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
             allowClear={false}
           />
         </Field>

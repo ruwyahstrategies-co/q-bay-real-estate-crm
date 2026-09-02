@@ -20,6 +20,7 @@ import { usePropertyReferences } from "@/hooks/use-references";
 import { fmtDate } from "@/lib/db";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
+import { titleCase } from "@/lib/utils";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),
@@ -224,7 +225,7 @@ function PropertyReferences({ propertyId }: { propertyId: string }) {
             {interactions.slice(0, 15).map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
                 <Link to="/leads/$leadId" params={{ leadId: i.lead_id }} className="hover:underline">
-                  {i.interaction_type.replace(/_/g," ")} with {i.leads?.full_name ?? "lead"}
+                  {titleCase(i.interaction_type)} with {i.leads?.full_name ?? "lead"}
                 </Link>
                 <span className="text-muted-foreground">{fmtDate(i.interaction_date)}</span>
               </li>

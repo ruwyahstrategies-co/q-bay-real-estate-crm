@@ -12,6 +12,7 @@ import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions"
 import { fmtDateTime, INTERACTION_TYPES, type Interaction } from "@/lib/db";
 import { AccessDenied } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
+import { titleCase } from "@/lib/utils";
 
 export const Route = createFileRoute("/conversations")({
   head: () => ({ meta: [{ title: "Conversations" }] }),
@@ -61,7 +62,7 @@ function ConversationsPage() {
         <SelectField
           value={type}
           onChange={(v) => setType(v)}
-          options={INTERACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+          options={INTERACTION_TYPES.map((t) => ({ value: t, label: titleCase(t) }))}
           emptyLabel="All types"
           className="w-44"
         />

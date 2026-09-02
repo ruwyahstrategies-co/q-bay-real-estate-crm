@@ -25,7 +25,7 @@ import {
   useRecordRentPayment,
 } from "@/hooks/use-property-management";
 import { fmtMoney, fmtDate, LEASE_STATUSES, RENEWAL_STATES, PAYMENT_FREQUENCIES } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 
 export const Route = createFileRoute("/property-management")({
   head: () => ({ meta: [{ title: "Property Management" }] }),
@@ -323,7 +323,7 @@ function TenanciesTab() {
                       className="h-8 w-32 text-xs"
                       value={t.status}
                       onChange={(v) => update.mutate({ id: t.id, patch: { status: v ?? t.status } })}
-                      options={LEASE_STATUSES.map((s) => ({ value: s, label: s }))}
+                      options={LEASE_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
                       allowClear={false}
                     />
                   )}
@@ -332,7 +332,7 @@ function TenanciesTab() {
                       className="h-8 w-36 text-xs"
                       value={t.renewal_state}
                       onChange={(v) => update.mutate({ id: t.id, patch: { renewal_state: v ?? t.renewal_state } })}
-                      options={RENEWAL_STATES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+                      options={RENEWAL_STATES.map((s) => ({ value: s, label: titleCase(s) }))}
                       allowClear={false}
                     />
                   )}
@@ -454,7 +454,7 @@ function TenancyDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Payment frequency</span>
-          <SelectField value={frequency} onChange={(v) => setFrequency(v ?? "monthly")} options={PAYMENT_FREQUENCIES.map((f) => ({ value: f, label: f }))} allowClear={false} />
+          <SelectField value={frequency} onChange={(v) => setFrequency(v ?? "monthly")} options={PAYMENT_FREQUENCIES.map((f) => ({ value: f, label: titleCase(f) }))} allowClear={false} />
         </label>
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -539,7 +539,7 @@ function RecordPaymentDialog({ item, onClose, onSubmit }: { item: any; onClose: 
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Method</span>
-          <SelectField value={method} onChange={(v) => setMethod(v ?? "bank_transfer")} options={["bank_transfer", "cash", "cheque", "card"].map((m) => ({ value: m, label: m.replace(/_/g, " ") }))} allowClear={false} />
+          <SelectField value={method} onChange={(v) => setMethod(v ?? "bank_transfer")} options={["bank_transfer", "cash", "cheque", "card"].map((m) => ({ value: m, label: titleCase(m) }))} allowClear={false} />
         </label>
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>

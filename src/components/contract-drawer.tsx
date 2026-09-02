@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useCreateOwnerContract, useUpdateOwnerContract, useContractTemplates } from "@/hooks/use-owner-contracts";
 import { useOwnerProperties } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -211,7 +211,7 @@ export function ContractDrawer({
           <SelectField
             value={form.status ?? "draft"}
             onChange={(v) => set("status", (v ?? "draft") as OwnerContract["status"])}
-            options={["draft", "generated", "signed", "expired", "cancelled"].map((s) => ({ value: s, label: s }))}
+            options={["draft", "generated", "signed", "expired", "cancelled"].map((s) => ({ value: s, label: titleCase(s) }))}
             allowClear={false}
           />
         </Field>

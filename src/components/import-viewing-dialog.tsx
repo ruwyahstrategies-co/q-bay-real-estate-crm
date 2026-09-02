@@ -7,7 +7,7 @@ import { DrawerShell } from "./overlay";
 import { SelectField } from "./select-field";
 import { sb, type Viewing } from "@/lib/db";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 
 const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
@@ -171,7 +171,7 @@ export function ImportViewingDialog({ open, onOpenChange, viewing }: { open: boo
             <SelectField
               value={interestLevel}
               onChange={(v) => setInterestLevel(v ?? "interested")}
-              options={["interested", "very_interested", "considering", "not_interested"].map((l) => ({ value: l, label: l.replace(/_/g, " ") }))}
+              options={["interested", "very_interested", "considering", "not_interested"].map((l) => ({ value: l, label: titleCase(l) }))}
               allowClear={false}
             />
           </label>

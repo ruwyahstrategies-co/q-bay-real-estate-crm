@@ -19,7 +19,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -167,14 +167,14 @@ function LeadsPage() {
         <SelectField
           value={classification}
           onChange={(v) => setClassification(v)}
-          options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: c }))}
+          options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: titleCase(c) }))}
           emptyLabel="All types"
           className="w-auto min-w-[110px] text-xs"
         />
         <SelectField
           value={workflow}
           onChange={(v) => setWorkflow(v)}
-          options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: w }))}
+          options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: titleCase(w) }))}
           emptyLabel="Sales + Telesales"
           className="w-auto min-w-[140px] text-xs"
         />

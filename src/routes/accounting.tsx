@@ -20,7 +20,7 @@ import { useOwners } from "@/hooks/use-owners";
 import { useLeads } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { fmtMoney, fmtDate, TRANSACTION_TYPES, INVOICE_TYPES, INVOICE_STATUSES, type TransactionRow } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 
 export const Route = createFileRoute("/accounting")({
   head: () => ({ meta: [{ title: "Accounts" }] }),
@@ -218,7 +218,7 @@ function TransactionDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
       <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Type</span>
-          <SelectField value={type} onChange={(v) => setType(v ?? "sale")} options={TRANSACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))} allowClear={false} />
+          <SelectField value={type} onChange={(v) => setType(v ?? "sale")} options={TRANSACTION_TYPES.map((t) => ({ value: t, label: titleCase(t) }))} allowClear={false} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
@@ -297,7 +297,7 @@ function InvoicesTab({ canManage, kind }: { canManage: boolean; kind: "receivabl
                     className="h-8 w-32 text-xs"
                     value={inv.status}
                     onChange={(v) => update.mutate({ id: inv.id, patch: { status: v ?? inv.status } })}
-                    options={INVOICE_STATUSES.map((s) => ({ value: s, label: s }))}
+                    options={INVOICE_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
                     allowClear={false}
                   />
                 ) : (
@@ -371,7 +371,7 @@ function InvoiceDrawer({ open, onOpenChange, defaultType }: { open: boolean; onO
       >
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Type</span>
-          <SelectField value={type} onChange={(v) => setType(v ?? "receivable")} options={INVOICE_TYPES.map((t) => ({ value: t, label: t }))} allowClear={false} />
+          <SelectField value={type} onChange={(v) => setType(v ?? "receivable")} options={INVOICE_TYPES.map((t) => ({ value: t, label: titleCase(t) }))} allowClear={false} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Amount</span>
@@ -453,7 +453,7 @@ function PaymentsTab({ canManage }: { canManage: boolean }) {
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Method</span>
-            <SelectField value={method} onChange={(v) => setMethod(v ?? "bank_transfer")} options={["bank_transfer", "cash", "cheque", "card"].map((m) => ({ value: m, label: m.replace(/_/g, " ") }))} allowClear={false} />
+            <SelectField value={method} onChange={(v) => setMethod(v ?? "bank_transfer")} options={["bank_transfer", "cash", "cheque", "card"].map((m) => ({ value: m, label: titleCase(m) }))} allowClear={false} />
           </label>
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

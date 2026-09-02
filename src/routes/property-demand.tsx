@@ -17,7 +17,7 @@ import {
 } from "@/hooks/use-property-events";
 import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/hooks/use-property-demand";
 import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
 
 export const Route = createFileRoute("/property-demand")({
@@ -582,7 +582,7 @@ function SupportingDetails({ propertyId }: { propertyId: string }) {
                     {i.leads?.full_name ?? "Lead"}
                   </Link>
                 ) : <span>Interaction</span>}
-                <span className="text-muted-foreground"> · {i.interaction_type.replace(/_/g, " ")} · {fmtDateTime(i.interaction_date)}</span>
+                <span className="text-muted-foreground"> · {titleCase(i.interaction_type)} · {fmtDateTime(i.interaction_date)}</span>
               </li>
             ))}
           </ul>

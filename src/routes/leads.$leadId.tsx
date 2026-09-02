@@ -12,7 +12,7 @@ import { TaskDrawer } from "@/components/task-drawer";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
@@ -401,7 +401,7 @@ function ActivityTimeline({
     })),
     ...interactions.map((i) => ({
       ts: i.interaction_date,
-      label: `Interaction · ${i.interaction_type.replace(/_/g, " ")}`,
+      label: `Interaction · ${titleCase(i.interaction_type)}`,
       sub: i.subject ?? undefined,
     })),
     ...tasks.map((t) => ({ ts: t.created_at, label: `Task created · ${t.title}` })),
@@ -758,7 +758,7 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
                   className="h-8 w-36 text-xs"
                   value={o.status}
                   onChange={(v) => update.mutate({ id: o.id, patch: { status: v ?? o.status } })}
-                  options={OFFER_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+                  options={OFFER_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
                   allowClear={false}
                 />
               )}

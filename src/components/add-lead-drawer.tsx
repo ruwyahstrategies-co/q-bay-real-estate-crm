@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useProperties } from "@/hooks/use-properties";
@@ -194,7 +194,7 @@ export function AddLeadDrawer({
           <SelectField
             value={form.classification ?? "buyer"}
             onChange={(v) => set("classification", (v ?? "buyer") as FormState["classification"])}
-            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: c }))}
+            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: titleCase(c) }))}
             allowClear={false}
           />
         </Field>
@@ -202,7 +202,7 @@ export function AddLeadDrawer({
           <SelectField
             value={form.workflow ?? "sales"}
             onChange={(v) => set("workflow", (v ?? "sales") as FormState["workflow"])}
-            options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: w }))}
+            options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: titleCase(w) }))}
             allowClear={false}
           />
         </Field>

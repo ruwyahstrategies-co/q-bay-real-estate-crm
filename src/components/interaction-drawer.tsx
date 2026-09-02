@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { useCreateInteraction, useUpdateInteraction } from "@/hooks/use-interactions";
 import { useLeads } from "@/hooks/use-leads";
 import { useProperties } from "@/hooks/use-properties";
@@ -118,7 +118,7 @@ export function InteractionDrawer({
           <SelectField
             value={form.interaction_type}
             onChange={(v) => set("interaction_type", (v ?? "manual_note") as Interaction["interaction_type"])}
-            options={INTERACTION_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+            options={INTERACTION_TYPES.map((t) => ({ value: t, label: titleCase(t) }))}
             allowClear={false}
           />
         </Field>
@@ -126,7 +126,7 @@ export function InteractionDrawer({
           <SelectField
             value={form.direction}
             onChange={(v) => set("direction", (v ?? "inbound") as Interaction["direction"])}
-            options={DIRECTIONS.map((d) => ({ value: d, label: d }))}
+            options={DIRECTIONS.map((d) => ({ value: d, label: titleCase(d) }))}
             allowClear={false}
           />
         </Field>

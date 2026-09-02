@@ -9,7 +9,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { PipelineStagesManager } from "@/components/pipeline-stages-manager";
 import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { sb, type Area, type AreaUpdate } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
 import { useMyWhatsappConnection, useSaveWhatsappConnection, useVerifyWhatsapp, useDisconnectWhatsapp } from "@/hooks/use-whatsapp";
@@ -484,7 +484,7 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
             {notifications.slice(0, 20).map((n: any) => (
               <div key={n.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-xs">
                 <div>
-                  <p className="font-medium">{n.owners?.name ?? n.recipient_name ?? "Recipient"} · {n.event_type.replace(/_/g, " ")}</p>
+                  <p className="font-medium">{n.owners?.name ?? n.recipient_name ?? "Recipient"} · {titleCase(n.event_type)}</p>
                   <p className="mt-0.5 text-muted-foreground">Scheduled {fmtDateTime(n.scheduled_for)} {n.error_message ? `· ${n.error_message}` : ""}</p>
                 </div>
                 <span

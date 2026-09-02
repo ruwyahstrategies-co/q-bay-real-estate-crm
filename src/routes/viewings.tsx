@@ -13,7 +13,7 @@ import { ImportViewingDialog } from "@/components/import-viewing-dialog";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useViewings, useUpdateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { fmtDateTime } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
 import { VIEWING_STATUSES } from "@/lib/db";
 
 export const Route = createFileRoute("/viewings")({
@@ -55,7 +55,7 @@ function ViewingsPage() {
             className="h-8 w-44 text-xs"
             value={status || null}
             onChange={(v) => setStatus(v ?? "")}
-            options={VIEWING_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+            options={VIEWING_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
             emptyLabel="All statuses"
           />
           {(can("viewings", "view_all") || can("viewings", "view_team")) && (

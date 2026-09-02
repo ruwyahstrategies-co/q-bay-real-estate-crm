@@ -56,6 +56,16 @@ export type StaffSession = Tables["staff_sessions"]["Row"];
 export type StaffActivityEvent = Tables["staff_activity_events"]["Row"];
 export type PropertyLease = Tables["property_leases"]["Row"];
 export type PropertyLeaseInsert = Tables["property_leases"]["Insert"];
+export type ContractTemplate = Tables["contract_templates"]["Row"];
+export type OwnerContract = Tables["owner_contracts"]["Row"];
+export type OwnerContractInsert = Tables["owner_contracts"]["Insert"];
+export type OwnerContractUpdate = Tables["owner_contracts"]["Update"];
+export type LeadNote = Tables["lead_notes"]["Row"];
+export type LeadNoteInsert = Tables["lead_notes"]["Insert"];
+export type LeadNoteVersion = Tables["lead_note_versions"]["Row"];
+
+export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
+export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;
 
 export const LEAD_CLASSIFICATIONS = ["buyer", "renter", "investor", "commercial"] as const;
 export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;

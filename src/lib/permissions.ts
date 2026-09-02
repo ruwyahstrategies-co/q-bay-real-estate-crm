@@ -37,6 +37,7 @@ export const MODULES = {
   website_enquiries: ["view", "assign"],
   submissions: ["view", "review"],
   accounting: ["view", "manage"],
+  contracts: ["view", "create", "edit", "delete", "generate", "manage_templates"],
   staff_activity: ["view", "view_team", "view_all"],
   team: ["view", "manage"],
   settings: ["view", "manage"],
@@ -69,6 +70,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   website_enquiries: "Website Enquiries",
   submissions: "Listing Submissions",
   accounting: "Accounting",
+  contracts: "Owner Contracts",
   staff_activity: "Staff Activity",
   team: "Team",
   settings: "Settings",
@@ -89,6 +91,8 @@ export const ACTION_LABELS: Record<string, string> = {
   manage: "Manage",
   publish: "Publish",
   review: "Review",
+  generate: "Generate",
+  manage_templates: "Manage templates",
 };
 
 export function fullAccessPermissions(): PermissionSet {
@@ -133,6 +137,7 @@ export const ROLE_PRESETS = {
       property_demand: ["view"],
       marketing_intelligence: ["view"],
       analytics: ["view"],
+      contracts: ["view", "create"],
       team: ["view"],
       staff_activity: ["view_team"],
     }),
@@ -160,6 +165,7 @@ export const ROLE_PRESETS = {
       website_enquiries: ["view", "assign"],
       submissions: ["view", "review"],
       accounting: ["view"],
+      contracts: ["view", "create", "edit", "generate", "manage_templates"],
       team: ["view"],
       staff_activity: ["view_all"],
       settings: ["view"],

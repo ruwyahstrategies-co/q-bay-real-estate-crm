@@ -26,7 +26,8 @@ import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
 import { useLeadReferences } from "@/hooks/use-references";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { PermissionGate } from "@/components/permission-gate";
-import { usePermissions } from "@/hooks/use-auth";
+import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
+import { useLeadNotes, useLeadNoteVersions, useCreateLeadNote, useUpdateLeadNote, useDeleteLeadNote } from "@/hooks/use-lead-notes";
 import { usePropertyMatchesForLead } from "@/hooks/use-matching";
 import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/leads/$leadId")({
   component: LeadProfilePage,
 });
 
-const tabs = ["Overview", "Conversations", "Viewings", "Offers", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
+const tabs = ["Overview", "Notes", "Conversations", "Viewings", "Offers", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
 
 
 function LeadProfilePage() {
@@ -187,6 +188,8 @@ function LeadProfilePage() {
           <LeadPropertyMatches leadId={lead.id} />
         </div>
       )}
+
+      {tab === "Notes" && <NotesTab leadId={lead.id} />}
 
       {tab === "Conversations" && (
         <div className="space-y-3">
@@ -449,6 +452,140 @@ function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | nu
           Send
         </Button>
       </div>
+    </Card>
+  );
+}
+
+function NotesTab({ leadId }: { leadId: string }) {
+  const { data: notes = [] } = useLeadNotes(leadId);
+  const { teamMember } = useCurrentUser();
+  const create = useCreateLeadNote();
+  const del = useDeleteLeadNote();
+  const { can } = usePermissions();
+  const [draft, setDraft] = useState("");
+  const canEdit = can("leads", "edit");
+  const canDelete = can("leads", "delete");
+
+  return (
+    <div className="space-y-3">
+      {canEdit && (
+        <Card>
+          <h4 className="text-sm font-semibold">Add note</h4>
+          <div className="mt-2 flex flex-col gap-2">
+            <textarea
+              className="min-h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Write a note about this lead..."
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                disabled={!draft.trim() || create.isPending}
+                onClick={async () => {
+                  try {
+                    await create.mutateAsync({ leadId, content: draft.trim(), authorId: teamMember?.id ?? null });
+                    setDraft("");
+                    toast.success("Note added");
+                  } catch (e) { toast.error((e as Error).message); }
+                }}
+              >
+                Add note
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+      {notes.length === 0 ? (
+        <EmptyState compact title="No notes yet" description="Notes preserve every edit as version history." />
+      ) : (
+        <div className="space-y-2">
+          {notes.map((n) => (
+            <NoteCard key={n.id} note={n} leadId={leadId} canEdit={canEdit} canDelete={canDelete} onDelete={() => del.mutate({ id: n.id, leadId })} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoteCard({
+  note,
+  leadId,
+  canEdit,
+  canDelete,
+  onDelete,
+}: {
+  note: { id: string; content: string; created_at: string; updated_at: string; team_members: { full_name: string } | null };
+  leadId: string;
+  canEdit: boolean;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [content, setContent] = useState(note.content);
+  const [showHistory, setShowHistory] = useState(false);
+  const update = useUpdateLeadNote();
+  const { data: versions = [] } = useLeadNoteVersions(showHistory ? note.id : undefined);
+  const wasEdited = note.updated_at !== note.created_at;
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{note.team_members?.full_name ?? "Unknown"}</span>
+            <span>{fmtDateTime(note.created_at)}</span>
+            {wasEdited && <span>· edited {fmtDateTime(note.updated_at)}</span>}
+          </div>
+          {editing ? (
+            <div className="mt-2 flex flex-col gap-2">
+              <textarea className="min-h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm" value={content} onChange={(e) => setContent(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setEditing(false); setContent(note.content); }}>Cancel</Button>
+                <Button
+                  size="sm"
+                  disabled={update.isPending || !content.trim()}
+                  onClick={async () => {
+                    try {
+                      await update.mutateAsync({ id: note.id, content: content.trim(), leadId });
+                      setEditing(false);
+                      toast.success("Note updated - previous version kept in history");
+                    } catch (e) { toast.error((e as Error).message); }
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 whitespace-pre-wrap text-sm">{note.content}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {canEdit && !editing && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /></button>}
+          {canDelete && <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></button>}
+        </div>
+      </div>
+      {wasEdited && (
+        <button className="mt-2 text-[11px] text-muted-foreground hover:underline" onClick={() => setShowHistory((v) => !v)}>
+          {showHistory ? "Hide" : "Show"} edit history
+        </button>
+      )}
+      {showHistory && (
+        <div className="mt-2 space-y-2 border-t border-border pt-2">
+          {versions.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Loading history...</p>
+          ) : (
+            versions.map((v) => (
+              <div key={v.id} className="rounded-md border border-border bg-canvas p-2 text-xs">
+                <p className="text-muted-foreground">{v.team_members?.full_name ?? "Unknown"} · {fmtDateTime(v.edited_at)}</p>
+                <p className="mt-1 whitespace-pre-wrap">{v.content}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </Card>
   );
 }

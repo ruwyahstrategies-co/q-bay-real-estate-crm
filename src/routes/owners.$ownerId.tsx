@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Phone, Mail, ChevronLeft, Plus, Trash2, Building2, FileText } from "lucide-react";
+import { Phone, Mail, ChevronLeft, Plus, Trash2, Building2, FileText, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -9,13 +9,17 @@ import { PermissionGate } from "@/components/permission-gate";
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
 import { UploadDropzone } from "@/components/upload-dropzone";
+import { ContractDrawer } from "@/components/contract-drawer";
 import { downloadUpload, useUploads, useDeleteUpload } from "@/hooks/use-uploads";
 import { useOwner, useOwnerProperties, useOwnerDevelopments, useOwnerTransactions } from "@/hooks/use-owners";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
 import { useTasks, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
+import { useOwnerContracts } from "@/hooks/use-owner-contracts";
+import { openContractPdf, contractTitle } from "@/lib/contract-pdf";
 import { useTeamMembers } from "@/hooks/use-team";
 import { usePermissions } from "@/hooks/use-auth";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/db";
+import type { OwnerContract } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/owners/$ownerId")({
@@ -33,6 +37,7 @@ function OwnerProfilePage() {
   const { data: tasks = [] } = useTasks({ ownerId });
   const { data: files = [] } = useUploads({ ownerId });
   const { data: transactions = [] } = useOwnerTransactions(ownerId);
+  const { data: contracts = [] } = useOwnerContracts(ownerId);
   const deleteInteraction = useDeleteInteraction();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
@@ -41,6 +46,8 @@ function OwnerProfilePage() {
 
   const [interactionOpen, setInteractionOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [contractOpen, setContractOpen] = useState(false);
+  const [editContract, setEditContract] = useState<OwnerContract | null>(null);
 
   if (isLoading) return <AppShell><EmptyState title="Loading..." /></AppShell>;
   if (!owner) return <AppShell><EmptyState title="Owner not found" description="This owner may have been deleted." /></AppShell>;
@@ -51,6 +58,8 @@ function OwnerProfilePage() {
   const canCreateTask = can("tasks", "create");
   const canUpload = can("uploads", "upload");
   const canDeleteUpload = can("uploads", "delete");
+  const canCreateContract = can("contracts", "create") || can("contracts", "generate");
+  const canEditContract = can("contracts", "edit") || can("contracts", "generate");
 
   const agent = team.find((t) => t.id === owner.assigned_agent_id);
   const lastContacted = interactions[0]?.interaction_date ?? null;
@@ -98,6 +107,11 @@ function OwnerProfilePage() {
               {canCreateInteraction && <Button variant="outline" size="sm" onClick={() => setInteractionOpen(true)}><Plus className="h-3.5 w-3.5" /> Log Contact</Button>}
               {canCreateTask && <Button variant="outline" size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5" /> Add Follow-Up</Button>}
               <Link to="/properties"><Button variant="outline" size="sm"><Plus className="h-3.5 w-3.5" /> Add Property</Button></Link>
+              {canCreateContract && (
+                <Button size="sm" onClick={() => { setEditContract(null); setContractOpen(true); }}>
+                  <FileDown className="h-3.5 w-3.5" /> Generate Contract
+                </Button>
+              )}
             </div>
           </div>
         </Card>
@@ -184,6 +198,41 @@ function OwnerProfilePage() {
                   </li>
                 ))}
               </ul>
+            )}
+          </Card>
+
+          <Card className="md:col-span-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">Contracts</h4>
+              {canCreateContract && (
+                <Button size="sm" variant="outline" onClick={() => { setEditContract(null); setContractOpen(true); }}>
+                  <Plus className="h-3.5 w-3.5" /> New contract
+                </Button>
+              )}
+            </div>
+            {contracts.length === 0 ? (
+              <EmptyState compact title="No contracts yet" description="Generate one from a linked property." />
+            ) : (
+              <div className="mt-3 space-y-2">
+                {contracts.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-canvas p-3">
+                    <div>
+                      <p className="text-sm font-medium capitalize">{c.purpose} contract {c.properties ? `· ${c.properties.reference_code ?? c.properties.title}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.status} · {fmtMoney(c.amount, c.currency)} {c.expiry_date ? `· expires ${fmtDate(c.expiry_date)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {c.generated_html && (
+                        <Button variant="outline" size="sm" onClick={() => openContractPdf(c.generated_html!, contractTitle(null, owner))}>View PDF</Button>
+                      )}
+                      {canEditContract && (
+                        <Button variant="outline" size="sm" onClick={() => { setEditContract(c); setContractOpen(true); }}>Edit</Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </Card>
 
@@ -294,6 +343,7 @@ function OwnerProfilePage() {
 
         <InteractionDrawer open={interactionOpen} onOpenChange={setInteractionOpen} defaultOwnerId={owner.id} />
         <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultOwnerId={owner.id} />
+        <ContractDrawer open={contractOpen} onOpenChange={setContractOpen} owner={owner} contract={editContract} />
       </PermissionGate>
     </AppShell>
   );

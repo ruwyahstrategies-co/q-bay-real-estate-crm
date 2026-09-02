@@ -77,6 +77,17 @@ export const RENEWAL_STATES = ["not_due", "pending_renewal", "renewed", "not_ren
 export const PAYMENT_FREQUENCIES = ["monthly", "quarterly", "biannual", "annual"] as const;
 export const RENT_SCHEDULE_STATUSES = ["due", "paid", "partial", "overdue"] as const;
 
+export type Invoice = Tables["invoices"]["Row"];
+export type InvoiceInsert = Tables["invoices"]["Insert"];
+export type InvoiceUpdate = Tables["invoices"]["Update"];
+export type InvoiceLineItem = Tables["invoice_line_items"]["Row"];
+export type InvoiceLineItemInsert = Tables["invoice_line_items"]["Insert"];
+export type Payment = Tables["payments"]["Row"];
+export type PaymentInsert = Tables["payments"]["Insert"];
+
+export const INVOICE_TYPES = ["receivable", "payable"] as const;
+export const INVOICE_STATUSES = ["draft", "sent", "paid", "partial", "overdue", "cancelled"] as const;
+
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;
 

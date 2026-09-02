@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { BarChart3, RefreshCw, Globe, Plus, X, ExternalLink, TrendingUp, AlertCircle, Inbox, ChevronDown, ChevronUp, Users, MessageCircle } from "lucide-react";
+import { BarChart3, RefreshCw, Globe, TrendingUp, AlertCircle, ChevronDown, ChevronUp, Users, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card, Button } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { SelectField } from "@/components/select-field";
+import { MarketResearchChat } from "@/components/market-research-chat";
 import { useProperties } from "@/hooks/use-properties";
 import {
   usePropertyEvents,
@@ -14,12 +15,6 @@ import {
   EVENT_LABELS,
   type PropertyEvent,
 } from "@/hooks/use-property-events";
-import {
-  useMarketSources,
-  useRefreshMarketData,
-  useDeleteSource,
-  useSetSourceActive,
-} from "@/hooks/use-market-sources";
 import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/hooks/use-property-demand";
 import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -241,7 +236,13 @@ function PropertyDemandPage() {
         </>
       )}
 
-      <MarketSourcesPanel />
+      <div className="mt-8">
+        <div className="mb-3 flex items-center gap-2">
+          <Globe className="h-4 w-4" />
+          <h3 className="text-[16px] font-semibold">Property Market Research</h3>
+        </div>
+        <MarketResearchChat />
+      </div>
       </PermissionGate>
     </AppShell>
   );
@@ -437,121 +438,6 @@ function PricingOpportunityCard({
         </Link>
       </div>
     </Card>
-  );
-}
-
-/* - Market sources panel - */
-
-function MarketSourcesPanel() {
-  const [query, setQuery] = useState("");
-  const [url, setUrl] = useState("");
-  const { data: sources = [], isLoading } = useMarketSources();
-  const refresh = useRefreshMarketData();
-  const del = useDeleteSource();
-  const setActive = useSetSourceActive();
-
-  return (
-    <div className="mt-8">
-      <div className="mb-3 flex items-center gap-2">
-        <Globe className="h-4 w-4" />
-        <h3 className="text-[16px] font-semibold">Market sources (online research)</h3>
-      </div>
-      <Card>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Market research query</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. Doha real estate market report 2026"
-                className="h-9 w-full rounded-md border border-border bg-canvas px-3 text-sm"
-              />
-              <Button
-                size="sm"
-                onClick={async () => {
-                  if (!query.trim()) return toast.error("Enter a query first");
-                  try {
-                    const r = await refresh.mutateAsync({ query: query.trim() });
-                    toast.success(`Imported ${r.inserted} source${r.inserted === 1 ? "" : "s"}`);
-                  } catch (e) { toast.error((e as Error).message); }
-                }}
-                disabled={refresh.isPending}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", refresh.isPending && "animate-spin")} />
-                Refresh Market Data
-              </Button>
-            </div>
-          </div>
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Or add a specific public URL</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/market-report"
-                className="h-9 w-full rounded-md border border-border bg-canvas px-3 text-sm"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  if (!/^https?:\/\//i.test(url)) return toast.error("Enter a valid URL");
-                  try {
-                    await refresh.mutateAsync({ url, query: query || undefined });
-                    setUrl("");
-                    toast.success("Source added");
-                  } catch (e) { toast.error((e as Error).message); }
-                }}
-                disabled={refresh.isPending}
-              >
-                <Plus className="h-3.5 w-3.5" /> Add URL
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          {isLoading ? (
-            <p className="text-xs text-muted-foreground">Loading sources...</p>
-          ) : sources.length === 0 ? (
-            <EmptyState compact icon={<Inbox className="h-4 w-4" />} title="No online sources cached yet" description="Run a market research query above to fetch and cache public sources." />
-          ) : (
-            <ul className="space-y-2">
-              {sources.map((s) => (
-                <li key={s.id} className={cn("rounded-lg border border-border bg-canvas p-3 text-xs", !s.active && "opacity-50")}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <a href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium hover:underline">
-                        {s.title} <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <p className="text-[10px] text-muted-foreground">
-                        {s.publisher ?? new URL(s.url).hostname} · retrieved {fmtDate(s.retrieved_at)}
-                      </p>
-                      {s.summary && <p className="mt-1 line-clamp-2 text-foreground/80">{s.summary}</p>}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="rounded-md border border-border px-2 py-1 text-[10px] hover:bg-muted"
-                        onClick={() => setActive.mutate({ id: s.id, active: !s.active })}
-                      >{s.active ? "Hide" : "Show"}</button>
-                      <button
-                        className="rounded-md border border-border px-1.5 py-1 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => del.mutate(s.id)}
-                        aria-label="Remove"
-                      ><X className="h-3 w-3" /></button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <p className="mt-3 text-[10px] text-muted-foreground">
-          Online research is triggered only when you press Refresh Market Data. Login-protected or private pages are not accessed.
-        </p>
-      </Card>
-    </div>
   );
 }
 

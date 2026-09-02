@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as AiInsightsRouteImport } from './routes/ai-insights'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as DevelopmentsRouteImport } from './routes/developments'
 import { Route as JournalRouteImport } from './routes/journal'
@@ -59,6 +60,11 @@ const AiInsightsRoute = AiInsightsRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConversationsRoute = ConversationsRouteImport.update({
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/accounting': typeof AccountingRoute
   '/ai-insights': typeof AiInsightsRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/accounting': typeof AccountingRoute
   '/ai-insights': typeof AiInsightsRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/accounting': typeof AccountingRoute
   '/ai-insights': typeof AiInsightsRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/conversations': typeof ConversationsRoute
   '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/ai-insights'
     | '/analytics'
+    | '/calendar'
     | '/conversations'
     | '/developments'
     | '/journal'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/ai-insights'
     | '/analytics'
+    | '/calendar'
     | '/conversations'
     | '/developments'
     | '/journal'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/ai-insights'
     | '/analytics'
+    | '/calendar'
     | '/conversations'
     | '/developments'
     | '/journal'
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   AccountingRoute: typeof AccountingRoute
   AiInsightsRoute: typeof AiInsightsRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CalendarRoute: typeof CalendarRoute
   ConversationsRoute: typeof ConversationsRoute
   DevelopmentsRoute: typeof DevelopmentsRouteWithChildren
   JournalRoute: typeof JournalRoute
@@ -452,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/conversations': {
@@ -700,6 +720,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountingRoute: AccountingRoute,
   AiInsightsRoute: AiInsightsRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CalendarRoute: CalendarRoute,
   ConversationsRoute: ConversationsRoute,
   DevelopmentsRoute: DevelopmentsRouteWithChildren,
   JournalRoute: JournalRoute,

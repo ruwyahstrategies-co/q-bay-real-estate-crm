@@ -11,6 +11,7 @@ import {
   KanbanSquare,
   UserCog,
   CalendarCheck2,
+  CalendarDays,
   FileSignature,
   Contact2,
   Newspaper,
@@ -51,6 +52,7 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   { key: "overview", to: "/overview", label: "Overview", icon: LayoutGrid, module: "overview" },
+  { key: "calendar", to: "/calendar", label: "Calendar", icon: CalendarDays, module: "overview" },
   {
     key: "leads",
     to: "/leads",

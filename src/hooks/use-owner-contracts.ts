@@ -34,6 +34,22 @@ export function useOwnerContracts(ownerId: string | undefined) {
   });
 }
 
+/** All contracts with an expiry date - used by the Calendar module. */
+export function useAllOwnerContracts() {
+  return useQuery({
+    queryKey: [...contractKeys.contracts, "all"],
+    queryFn: async (): Promise<(OwnerContract & { owners: { name: string } | null; properties: { title: string } | null })[]> => {
+      const { data, error } = await sb
+        .from("owner_contracts")
+        .select("*, owners(name), properties(title)")
+        .not("expiry_date", "is", null)
+        .order("expiry_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as (OwnerContract & { owners: { name: string } | null; properties: { title: string } | null })[];
+    },
+  });
+}
+
 export function useCreateOwnerContract() {
   const qc = useQueryClient();
   return useMutation({

@@ -16,11 +16,14 @@ export function MetricCard({
   value,
   icon,
   tone = "blue",
+  delta,
 }: {
   label: string;
   value: ReactNode;
   icon?: ReactNode;
   tone?: Tone;
+  /** Optional period-comparison line rendered under the value, e.g. "+12% vs previous period". */
+  delta?: ReactNode;
 }) {
   return (
     <div
@@ -47,6 +50,7 @@ export function MetricCard({
       <div className="relative mt-6 text-[26px] font-semibold tracking-tight text-foreground">
         {value}
       </div>
+      {delta ? <p className="relative mt-1 text-[11px] text-foreground/60">{delta}</p> : null}
       {icon ? (
         <div className="relative mt-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-foreground shadow-sm ring-1 ring-white/60 backdrop-blur">
           {icon}

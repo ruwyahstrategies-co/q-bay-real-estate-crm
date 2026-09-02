@@ -3174,6 +3174,20 @@ export type Database = {
           updated_at: string
         }[]
       }
+      reassign_team_member_records: {
+        Args: {
+          _from_agent_id: string
+          _to_developments?: string
+          _to_leads?: string
+          _to_offers?: string
+          _to_owners?: string
+          _to_properties?: string
+          _to_tasks?: string
+          _to_transactions?: string
+          _to_viewings?: string
+        }
+        Returns: Json
+      }
       similar_properties: {
         Args: { _limit?: number; _property_id: string }
         Returns: {

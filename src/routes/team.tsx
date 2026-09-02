@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { TeamMemberDrawer } from "@/components/team-member-drawer";
 import { TeamsManager } from "@/components/teams-manager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ReassignmentDialog } from "@/components/reassignment-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers, useDeleteTeamMember, useUpdateTeamMember } from "@/hooks/use-team";
@@ -27,6 +28,8 @@ function TeamPage() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<StaffTeamMember | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<StaffTeamMember | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<StaffTeamMember | null>(null);
+  const [pendingAction, setPendingAction] = useState<"deactivate" | "delete" | null>(null);
   const { data: team = [] } = useTeamMembers();
   const { data: leads = [] } = useLeads({ status: "active" });
   const del = useDeleteTeamMember();
@@ -133,7 +136,7 @@ function TeamPage() {
                   {canManage && (
                     <div className="flex items-center gap-1">
                       <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
-                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setConfirmDelete(m)}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setReassignTarget(m)}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
                 </td>
@@ -143,19 +146,39 @@ function TeamPage() {
       </DataTable>
 
       {canManage && <TeamMemberDrawer open={open} onOpenChange={setOpen} member={edit} />}
+      <ReassignmentDialog
+        open={!!reassignTarget}
+        onOpenChange={(v) => !v && setReassignTarget(null)}
+        member={reassignTarget}
+        onProceed={async (action) => {
+          if (!reassignTarget) return;
+          if (action === "deactivate") {
+            try {
+              await update.mutateAsync({ id: reassignTarget.id, patch: { is_active: false } });
+              toast.success("Team member deactivated");
+            } catch (e) { toast.error((e as Error).message); }
+            setReassignTarget(null);
+          } else {
+            setConfirmDelete(reassignTarget);
+            setPendingAction("delete");
+            setReassignTarget(null);
+          }
+        }}
+      />
       <ConfirmDialog
-        open={!!confirmDelete}
-        title="Delete team member?"
-        description={`Delete ${confirmDelete?.full_name}. Assigned leads will become unassigned.`}
-        confirmLabel="Delete"
+        open={!!confirmDelete && pendingAction === "delete"}
+        title="Permanently delete team member?"
+        description={`Delete ${confirmDelete?.full_name}. This cannot be undone. Any records not reassigned in the previous step are now unassigned.`}
+        confirmLabel="Delete permanently"
         destructive
         pending={del.isPending}
-        onCancel={() => setConfirmDelete(null)}
+        onCancel={() => { setConfirmDelete(null); setPendingAction(null); }}
         onConfirm={async () => {
           if (!confirmDelete) return;
           try { await del.mutateAsync(confirmDelete.id); toast.success("Team member deleted"); }
           catch (e) { toast.error((e as Error).message); }
           setConfirmDelete(null);
+          setPendingAction(null);
         }}
       />
       </PermissionGate>

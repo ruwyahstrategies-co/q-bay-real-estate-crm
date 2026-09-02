@@ -437,6 +437,7 @@ export type Database = {
           hero_image_url: string | null
           hero_video_url: string | null
           id: string
+          is_demo: boolean
           is_published: boolean
           latitude: number | null
           longitude: number | null
@@ -470,6 +471,7 @@ export type Database = {
           hero_image_url?: string | null
           hero_video_url?: string | null
           id?: string
+          is_demo?: boolean
           is_published?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -503,6 +505,7 @@ export type Database = {
           hero_image_url?: string | null
           hero_video_url?: string | null
           id?: string
+          is_demo?: boolean
           is_published?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -1414,6 +1417,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_demo: boolean
           is_developer: boolean
           name: string
           notes: string | null
@@ -1429,6 +1433,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_demo?: boolean
           is_developer?: boolean
           name: string
           notes?: string | null
@@ -1444,6 +1449,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_demo?: boolean
           is_developer?: boolean
           name?: string
           notes?: string | null
@@ -1583,6 +1589,7 @@ export type Database = {
           hero_video_url: string | null
           highlights: string[] | null
           id: string
+          is_demo: boolean
           is_published: boolean
           last_refreshed_at: string | null
           latitude: number | null
@@ -1628,6 +1635,7 @@ export type Database = {
           hero_video_url?: string | null
           highlights?: string[] | null
           id?: string
+          is_demo?: boolean
           is_published?: boolean
           last_refreshed_at?: string | null
           latitude?: number | null
@@ -1673,6 +1681,7 @@ export type Database = {
           hero_video_url?: string | null
           highlights?: string[] | null
           id?: string
+          is_demo?: boolean
           is_published?: boolean
           last_refreshed_at?: string | null
           latitude?: number | null

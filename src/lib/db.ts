@@ -71,6 +71,23 @@ export type RentScheduleItem = Tables["rent_schedule_items"]["Row"];
 export type RentScheduleItemInsert = Tables["rent_schedule_items"]["Insert"];
 export type RentPayment = Tables["rent_payments"]["Row"];
 export type RentPaymentInsert = Tables["rent_payments"]["Insert"];
+export type MaintenanceIssue = Tables["property_maintenance_issues"]["Row"];
+export type MaintenanceIssueInsert = Tables["property_maintenance_issues"]["Insert"];
+export type MaintenanceIssueUpdate = Tables["property_maintenance_issues"]["Update"];
+
+export const MAINTENANCE_CATEGORIES = [
+  "general",
+  "plumbing",
+  "electrical",
+  "hvac",
+  "appliance",
+  "structural",
+  "cleaning",
+  "security",
+] as const;
+export const MAINTENANCE_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+export const MAINTENANCE_STATUSES = ["open", "in_progress", "resolved", "cancelled"] as const;
+export const MAINTENANCE_REPORTED_BY = ["tenant", "owner", "staff", "inspection"] as const;
 
 export const LEASE_STATUSES = ["pending", "active", "expired", "terminated"] as const;
 export const RENEWAL_STATES = ["not_due", "pending_renewal", "renewed", "not_renewing"] as const;
@@ -86,7 +103,14 @@ export type Payment = Tables["payments"]["Row"];
 export type PaymentInsert = Tables["payments"]["Insert"];
 
 export const INVOICE_TYPES = ["receivable", "payable"] as const;
-export const INVOICE_STATUSES = ["draft", "sent", "paid", "partial", "overdue", "cancelled"] as const;
+export const INVOICE_STATUSES = [
+  "draft",
+  "sent",
+  "paid",
+  "partial",
+  "overdue",
+  "cancelled",
+] as const;
 
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;
@@ -100,8 +124,21 @@ export const PROPERTY_PURPOSE_LABELS: Record<string, string> = {
   commercial: "Commercial",
   off_plan_resale: "Off-Plan Resale",
 };
-export const VIEWING_STATUSES = ["scheduled", "confirmed", "completed", "cancelled", "no_show"] as const;
-export const SUBMISSION_STATUSES = ["draft", "submitted", "under_review", "approved", "rejected", "published"] as const;
+export const VIEWING_STATUSES = [
+  "scheduled",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+export const SUBMISSION_STATUSES = [
+  "draft",
+  "submitted",
+  "under_review",
+  "approved",
+  "rejected",
+  "published",
+] as const;
 export const TRANSACTION_TYPES = ["sale", "rental", "commission_only"] as const;
 
 export const PIPELINE_STAGES = [
@@ -207,6 +244,13 @@ export const UPLOAD_CATEGORIES = {
     extensions: ["pdf", "docx"],
     maxMb: 40,
   },
+  tenant_documents: {
+    title: "Tenant & tenancy documents",
+    bucket: "tenant-documents",
+    accept: ".pdf,.docx,.jpg,.jpeg,.png",
+    extensions: ["pdf", "docx", "jpg", "jpeg", "png"],
+    maxMb: 40,
+  },
   blog_images: {
     title: "Journal images",
     bucket: "blog-images",
@@ -218,11 +262,18 @@ export const UPLOAD_CATEGORIES = {
 
 export type UploadCategoryKey = keyof typeof UPLOAD_CATEGORIES;
 
-export function fmtMoney(amount: number | null | undefined, currency: string | null | undefined): string {
+export function fmtMoney(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+): string {
   if (amount == null) return "-";
   const cur = currency || "QAR";
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: cur,
+      maximumFractionDigits: 0,
+    }).format(amount);
   } catch {
     return `${cur} ${amount.toLocaleString()}`;
   }
@@ -230,12 +281,21 @@ export function fmtMoney(amount: number | null | undefined, currency: string | n
 
 export function fmtDate(d: string | null | undefined): string {
   if (!d) return "-";
-  return new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function fmtDateTime(d: string | null | undefined): string {
   if (!d) return "-";
-  return new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function fmtSize(bytes: number | null | undefined): string {

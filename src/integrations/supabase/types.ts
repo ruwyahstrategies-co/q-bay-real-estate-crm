@@ -1675,6 +1675,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          id_number: string | null
           is_demo: boolean
           is_developer: boolean
           name: string
@@ -1691,6 +1692,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          id_number?: string | null
           is_demo?: boolean
           is_developer?: boolean
           name: string
@@ -1707,6 +1709,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          id_number?: string | null
           is_demo?: boolean
           is_developer?: boolean
           name?: string
@@ -1907,6 +1910,8 @@ export type Database = {
           developer: string | null
           development_id: string | null
           expires_at: string | null
+          floor_number: string | null
+          furnishing_status: string | null
           hero_image_url: string | null
           hero_video_url: string | null
           highlights: string[] | null
@@ -1921,6 +1926,7 @@ export type Database = {
           longitude: number | null
           organisation_id: string | null
           owner_id: string | null
+          parking_spaces: number | null
           plot_size: number | null
           price: number | null
           property_type: string | null
@@ -1934,6 +1940,8 @@ export type Database = {
           status: string
           title: string
           tour_360_url: string | null
+          tower_name: string | null
+          unit_number: string | null
           updated_at: string
         }
         Insert: {
@@ -1954,6 +1962,8 @@ export type Database = {
           developer?: string | null
           development_id?: string | null
           expires_at?: string | null
+          floor_number?: string | null
+          furnishing_status?: string | null
           hero_image_url?: string | null
           hero_video_url?: string | null
           highlights?: string[] | null
@@ -1968,6 +1978,7 @@ export type Database = {
           longitude?: number | null
           organisation_id?: string | null
           owner_id?: string | null
+          parking_spaces?: number | null
           plot_size?: number | null
           price?: number | null
           property_type?: string | null
@@ -1981,6 +1992,8 @@ export type Database = {
           status?: string
           title: string
           tour_360_url?: string | null
+          tower_name?: string | null
+          unit_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -2001,6 +2014,8 @@ export type Database = {
           developer?: string | null
           development_id?: string | null
           expires_at?: string | null
+          floor_number?: string | null
+          furnishing_status?: string | null
           hero_image_url?: string | null
           hero_video_url?: string | null
           highlights?: string[] | null
@@ -2015,6 +2030,7 @@ export type Database = {
           longitude?: number | null
           organisation_id?: string | null
           owner_id?: string | null
+          parking_spaces?: number | null
           plot_size?: number | null
           price?: number | null
           property_type?: string | null
@@ -2028,6 +2044,8 @@ export type Database = {
           status?: string
           title?: string
           tour_360_url?: string | null
+          tower_name?: string | null
+          unit_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2224,6 +2242,102 @@ export type Database = {
           },
         ]
       }
+      property_maintenance_issues: {
+        Row: {
+          assigned_agent_id: string | null
+          category: string
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          id: string
+          priority: string
+          property_id: string
+          property_lease_id: string | null
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          category?: string
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          property_id: string
+          property_lease_id?: string | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          category?: string
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          property_id?: string
+          property_lease_id?: string | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_maintenance_issues_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_maintenance_issues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_maintenance_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_maintenance_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_maintenance_issues_property_lease_id_fkey"
+            columns: ["property_lease_id"]
+            isOneToOne: false
+            referencedRelation: "property_leases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_media: {
         Row: {
           created_at: string
@@ -2313,11 +2427,15 @@ export type Database = {
           description: string | null
           documents: Json
           email: string | null
+          floor_number: string | null
           full_name: string | null
+          furnishing_status: string | null
           id: string
           last_refreshed_at: string | null
           location: string | null
           media: Json
+          owner_id_number: string | null
+          parking_spaces: number | null
           phone: string | null
           price: number | null
           property_type: string | null
@@ -2327,6 +2445,8 @@ export type Database = {
           size: number | null
           status: string
           submitted_at: string | null
+          tower_name: string | null
+          unit_number: string | null
           updated_at: string
           website_profile_id: string | null
         }
@@ -2341,11 +2461,15 @@ export type Database = {
           description?: string | null
           documents?: Json
           email?: string | null
+          floor_number?: string | null
           full_name?: string | null
+          furnishing_status?: string | null
           id?: string
           last_refreshed_at?: string | null
           location?: string | null
           media?: Json
+          owner_id_number?: string | null
+          parking_spaces?: number | null
           phone?: string | null
           price?: number | null
           property_type?: string | null
@@ -2355,6 +2479,8 @@ export type Database = {
           size?: number | null
           status?: string
           submitted_at?: string | null
+          tower_name?: string | null
+          unit_number?: string | null
           updated_at?: string
           website_profile_id?: string | null
         }
@@ -2369,11 +2495,15 @@ export type Database = {
           description?: string | null
           documents?: Json
           email?: string | null
+          floor_number?: string | null
           full_name?: string | null
+          furnishing_status?: string | null
           id?: string
           last_refreshed_at?: string | null
           location?: string | null
           media?: Json
+          owner_id_number?: string | null
+          parking_spaces?: number | null
           phone?: string | null
           price?: number | null
           property_type?: string | null
@@ -2383,6 +2513,8 @@ export type Database = {
           size?: number | null
           status?: string
           submitted_at?: string | null
+          tower_name?: string | null
+          unit_number?: string | null
           updated_at?: string
           website_profile_id?: string | null
         }
@@ -2966,6 +3098,9 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          id_number: string | null
+          is_demo: boolean
+          nationality: string | null
           notes: string | null
           phone: string | null
           updated_at: string
@@ -2975,6 +3110,9 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          id_number?: string | null
+          is_demo?: boolean
+          nationality?: string | null
           notes?: string | null
           phone?: string | null
           updated_at?: string
@@ -2984,6 +3122,9 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          id_number?: string | null
+          is_demo?: boolean
+          nationality?: string | null
           notes?: string | null
           phone?: string | null
           updated_at?: string
@@ -3099,9 +3240,11 @@ export type Database = {
           processing_error: string | null
           processing_status: string
           property_id: string | null
+          property_lease_id: string | null
           public_url: string | null
           storage_bucket: string
           storage_path: string
+          tenant_id: string | null
           updated_at: string
           uploaded_by: string | null
         }
@@ -3120,9 +3263,11 @@ export type Database = {
           processing_error?: string | null
           processing_status?: string
           property_id?: string | null
+          property_lease_id?: string | null
           public_url?: string | null
           storage_bucket: string
           storage_path: string
+          tenant_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
         }
@@ -3141,9 +3286,11 @@ export type Database = {
           processing_error?: string | null
           processing_status?: string
           property_id?: string | null
+          property_lease_id?: string | null
           public_url?: string | null
           storage_bucket?: string
           storage_path?: string
+          tenant_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
         }
@@ -3182,6 +3329,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "uploads_property_lease_id_fkey"
+            columns: ["property_lease_id"]
+            isOneToOne: false
+            referencedRelation: "property_leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3428,6 +3589,7 @@ export type Database = {
         Args: { _action: string; _module: string }
         Returns: boolean
       }
+      mark_overdue_rent_items: { Args: never; Returns: number }
       match_properties_for_lead: {
         Args: { _lead_id: string; _limit?: number }
         Returns: {
@@ -3523,6 +3685,7 @@ export type Database = {
           assigned_agent_avatar: string
           assigned_agent_id: string
           assigned_agent_name: string
+          assigned_agent_role: string
           availability: string
           bathrooms: number
           bedrooms: number
@@ -3537,6 +3700,8 @@ export type Database = {
           development_id: string
           development_name: string
           development_slug: string
+          floor_number: string
+          furnishing_status: string
           hero_image_url: string
           hero_video_url: string
           highlights: string[]
@@ -3546,6 +3711,7 @@ export type Database = {
           listing_source: string
           location: string
           longitude: number
+          parking_spaces: number
           plot_size: number
           price: number
           property_type: string
@@ -3558,6 +3724,8 @@ export type Database = {
           slug: string
           title: string
           tour_360_url: string
+          tower_name: string
+          unit_number: string
           updated_at: string
         }[]
       }
@@ -3583,6 +3751,7 @@ export type Database = {
           score: number
         }[]
       }
+      slugify: { Args: { _input: string }; Returns: string }
       vault_create_secret: {
         Args: { _name: string; _secret: string }
         Returns: string

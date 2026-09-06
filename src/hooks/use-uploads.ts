@@ -6,17 +6,28 @@ export const uploadKeys = {
   list: (filters?: Record<string, unknown>) => ["uploads", "list", filters ?? {}] as const,
   byLead: (leadId: string) => ["uploads", "lead", leadId] as const,
   byProperty: (propertyId: string) => ["uploads", "property", propertyId] as const,
+  byTenant: (tenantId: string) => ["uploads", "tenant", tenantId] as const,
+  byLease: (leaseId: string) => ["uploads", "lease", leaseId] as const,
 };
 
-export function useUploads(opts?: { leadId?: string; propertyId?: string; ownerId?: string; category?: string | null }) {
-  const { leadId, propertyId, ownerId, category } = opts ?? {};
+export function useUploads(opts?: {
+  leadId?: string;
+  propertyId?: string;
+  ownerId?: string;
+  tenantId?: string;
+  propertyLeaseId?: string;
+  category?: string | null;
+}) {
+  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, category } = opts ?? {};
   return useQuery({
-    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, category }),
+    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, tenantId, propertyLeaseId, category }),
     queryFn: async (): Promise<Upload[]> => {
       let q = sb.from("uploads").select("*").order("created_at", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);
       if (propertyId) q = q.eq("property_id", propertyId);
       if (ownerId) q = q.eq("owner_id", ownerId);
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      if (propertyLeaseId) q = q.eq("property_lease_id", propertyLeaseId);
       if (category) q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
@@ -49,6 +60,8 @@ export function useUploadFile() {
       leadId,
       propertyId,
       ownerId,
+      tenantId,
+      propertyLeaseId,
       uploadedBy,
     }: {
       file: File;
@@ -56,6 +69,8 @@ export function useUploadFile() {
       leadId?: string | null;
       propertyId?: string | null;
       ownerId?: string | null;
+      tenantId?: string | null;
+      propertyLeaseId?: string | null;
       uploadedBy?: string | null;
     }): Promise<Upload> => {
       const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -110,6 +125,8 @@ export function useUploadFile() {
         lead_id: leadId ?? null,
         property_id: propertyId ?? null,
         owner_id: ownerId ?? null,
+        tenant_id: tenantId ?? null,
+        property_lease_id: propertyLeaseId ?? null,
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,
@@ -132,7 +149,9 @@ export function useDeleteUpload() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (upload: Upload) => {
-      const { error: storageErr } = await sb.storage.from(upload.storage_bucket).remove([upload.storage_path]);
+      const { error: storageErr } = await sb.storage
+        .from(upload.storage_bucket)
+        .remove([upload.storage_path]);
       if (storageErr) throw storageErr;
       const { error } = await sb.from("uploads").delete().eq("id", upload.id);
       if (error) throw error;
@@ -142,7 +161,9 @@ export function useDeleteUpload() {
 }
 
 export async function downloadUpload(upload: Upload): Promise<void> {
-  const { data, error } = await sb.storage.from(upload.storage_bucket).download(upload.storage_path);
+  const { data, error } = await sb.storage
+    .from(upload.storage_bucket)
+    .download(upload.storage_path);
   if (error) throw error;
   const blob = data;
   const url = URL.createObjectURL(blob);
@@ -156,7 +177,9 @@ export async function downloadUpload(upload: Upload): Promise<void> {
 }
 
 export async function getSignedPreviewUrl(upload: Upload): Promise<string | null> {
-  const { data, error } = await sb.storage.from(upload.storage_bucket).createSignedUrl(upload.storage_path, 3600);
+  const { data, error } = await sb.storage
+    .from(upload.storage_bucket)
+    .createSignedUrl(upload.storage_path, 3600);
   if (error) return null;
   return data.signedUrl;
 }

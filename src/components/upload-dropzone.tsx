@@ -13,6 +13,8 @@ export function UploadDropzone({
   leadId,
   propertyId,
   ownerId,
+  tenantId,
+  propertyLeaseId,
   onUploaded,
 }: {
   title: string;
@@ -21,6 +23,8 @@ export function UploadDropzone({
   leadId?: string | null;
   propertyId?: string | null;
   ownerId?: string | null;
+  tenantId?: string | null;
+  propertyLeaseId?: string | null;
   onUploaded?: (uploadId: string) => void;
 }) {
   const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -32,7 +36,15 @@ export function UploadDropzone({
     if (!files || !files.length) return;
     for (const file of Array.from(files)) {
       try {
-        const row = await upload.mutateAsync({ file, categoryKey, leadId, propertyId, ownerId });
+        const row = await upload.mutateAsync({
+          file,
+          categoryKey,
+          leadId,
+          propertyId,
+          ownerId,
+          tenantId,
+          propertyLeaseId,
+        });
         toast.success(`Uploaded ${file.name}`);
         onUploaded?.(row.id);
       } catch (err) {
@@ -63,10 +75,16 @@ export function UploadDropzone({
       }}
     >
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-canvas text-foreground">
-        {upload.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" strokeWidth={1.8} />}
+        {upload.isPending ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <UploadCloud className="h-5 w-5" strokeWidth={1.8} />
+        )}
       </div>
       <h4 className="text-sm font-semibold text-foreground">{title}</h4>
-      {description ? <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
+      ) : null}
       <p className="mt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
         {cat.extensions.join(" · ").toUpperCase()} · max {cat.maxMb}MB
       </p>
@@ -78,7 +96,13 @@ export function UploadDropzone({
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
-      <Button variant="outline" size="sm" className="mt-4" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-4"
+        onClick={() => inputRef.current?.click()}
+        disabled={upload.isPending}
+      >
         {upload.isPending ? "Uploading…" : "Browse files"}
       </Button>
     </div>

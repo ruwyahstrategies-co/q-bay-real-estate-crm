@@ -8,14 +8,25 @@ import { GoogleMapsLinkField } from "./google-maps-link-field";
 import { HeroImageField } from "./hero-image-field";
 import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
-import { useCreateProperty, useUpdateProperty, usePropertyReferencePreview } from "@/hooks/use-properties";
+import {
+  useCreateProperty,
+  useUpdateProperty,
+  usePropertyReferencePreview,
+} from "@/hooks/use-properties";
 import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import { PROPERTY_PURPOSES, PROPERTY_PURPOSE_LABELS, type Property } from "@/lib/db";
 
-const PROPERTY_TYPE_OPTIONS = ["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map((v) => ({ value: v, label: v }));
+const PROPERTY_TYPE_OPTIONS = [
+  "Apartment",
+  "Villa",
+  "Townhouse",
+  "Penthouse",
+  "Plot",
+  "Commercial",
+].map((v) => ({ value: v, label: v }));
 const AVAILABILITY_OPTIONS = [
   { value: "available", label: "Available" },
   { value: "reserved", label: "Reserved" },
@@ -27,12 +38,30 @@ const SIZE_UNIT_OPTIONS = [
   { value: "sqm", label: "sqm" },
   { value: "sqft", label: "sqft" },
 ];
-const COMPLETION_STATUS_OPTIONS = ["Ready", "Off-plan", "Under construction"].map((v) => ({ value: v, label: v }));
+const COMPLETION_STATUS_OPTIONS = ["Ready", "Off-plan", "Under construction"].map((v) => ({
+  value: v,
+  label: v,
+}));
+const FURNISHING_OPTIONS = [
+  { value: "FF", label: "FF - Fully furnished" },
+  { value: "SF", label: "SF - Semi furnished" },
+  { value: "UF", label: "UF - Unfurnished" },
+];
 
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+function Field({
+  label,
+  children,
+  full,
+}: {
+  label: string;
+  children: React.ReactNode;
+  full?: boolean;
+}) {
   return (
     <label className={cn("flex flex-col gap-1.5", full && "sm:col-span-2")}>
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -74,6 +103,11 @@ function initialForm(property: Property | null | undefined): FormState {
     seo_title: property?.seo_title ?? "",
     seo_description: property?.seo_description ?? "",
     is_published: property?.is_published ?? false,
+    tower_name: property?.tower_name ?? "",
+    floor_number: property?.floor_number ?? "",
+    unit_number: property?.unit_number ?? "",
+    parking_spaces: property?.parking_spaces ?? null,
+    furnishing_status: property?.furnishing_status ?? null,
   };
 }
 
@@ -98,7 +132,10 @@ export function PropertyDrawer({
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
   const { data: areas = [] } = useAreas(form.country_id || undefined);
-  const { data: referencePreview } = usePropertyReferencePreview(form.owner_id, form.assigned_agent_id);
+  const { data: referencePreview } = usePropertyReferencePreview(
+    form.owner_id,
+    form.assigned_agent_id,
+  );
 
   const selectedDevelopment = developments.find((d) => d.id === form.development_id) ?? null;
   const developerOwnerId = selectedDevelopment?.owner_id ?? null;
@@ -162,6 +199,14 @@ export function PropertyDrawer({
       seo_title: form.seo_title || null,
       seo_description: form.seo_description || null,
       is_published: !!form.is_published,
+      tower_name: form.tower_name || null,
+      floor_number: form.floor_number || null,
+      unit_number: form.unit_number || null,
+      parking_spaces:
+        form.parking_spaces != null && form.parking_spaces !== ("" as never)
+          ? Number(form.parking_spaces)
+          : null,
+      furnishing_status: form.furnishing_status || null,
     };
     try {
       if (isEdit && property) {
@@ -180,60 +225,118 @@ export function PropertyDrawer({
   }
 
   return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit property" : "Add property"}>
+    <DrawerShell
+      open={open}
+      onOpenChange={onOpenChange}
+      ariaLabel={isEdit ? "Edit property" : "Add property"}
+    >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Property" : "Add Property"}</h3>
-        <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
+        <button
+          onClick={() => onOpenChange(false)}
+          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+          aria-label="Close"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
-      <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
+      <form
+        className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start"
+        onSubmit={handleSubmit}
+      >
         <Field label="Title *" full>
-          <input className={inputCls} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} required />
+          <input
+            className={inputCls}
+            value={form.title ?? ""}
+            onChange={(e) => set("title", e.target.value)}
+            required
+          />
         </Field>
         <Field label="Reference code">
           <div className={cn(inputCls, "flex items-center text-muted-foreground")}>
-            {form.reference_code
-              ? form.reference_code
-              : referencePreview
-                ? <span title="Provisional - the final code is reserved when you save">{referencePreview} (preview)</span>
-                : "Select an owner and agent to generate"}
+            {form.reference_code ? (
+              form.reference_code
+            ) : referencePreview ? (
+              <span title="Provisional - the final code is reserved when you save">
+                {referencePreview} (preview)
+              </span>
+            ) : (
+              "Select an owner and agent to generate"
+            )}
           </div>
         </Field>
         <Field label="Location">
-          <input className={inputCls} value={form.location ?? ""} onChange={(e) => set("location", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.location ?? ""}
+            onChange={(e) => set("location", e.target.value)}
+          />
         </Field>
         <Field label="Property type">
-          <SelectField value={form.property_type} onChange={(v) => set("property_type", v ?? "")} options={PROPERTY_TYPE_OPTIONS} allowClear={false} placeholder="Select type" />
+          <SelectField
+            value={form.property_type}
+            onChange={(v) => set("property_type", v ?? "")}
+            options={PROPERTY_TYPE_OPTIONS}
+            allowClear={false}
+            placeholder="Select type"
+          />
         </Field>
         <Field label="Price">
-          <input className={inputCls} type="number" value={form.price ?? ""} onChange={(e) => set("price", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            value={form.price ?? ""}
+            onChange={(e) => set("price", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <Field label="Bedrooms">
-          <input className={inputCls} type="number" value={form.bedrooms ?? ""} onChange={(e) => set("bedrooms", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            value={form.bedrooms ?? ""}
+            onChange={(e) => set("bedrooms", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <Field label="Availability">
-          <SelectField value={form.availability ?? "available"} onChange={(v) => set("availability", v ?? "available")} options={AVAILABILITY_OPTIONS} allowClear={false} />
+          <SelectField
+            value={form.availability ?? "available"}
+            onChange={(v) => set("availability", v ?? "available")}
+            options={AVAILABILITY_OPTIONS}
+            allowClear={false}
+          />
         </Field>
         <Field label="Currency">
-          <SelectField value={form.currency ?? "QAR"} onChange={(v) => set("currency", v ?? "QAR")} options={CURRENCY_OPTIONS} allowClear={false} />
+          <SelectField
+            value={form.currency ?? "QAR"}
+            onChange={(v) => set("currency", v ?? "QAR")}
+            options={CURRENCY_OPTIONS}
+            allowClear={false}
+          />
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Classification & location</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Classification & location
+          </p>
         </div>
         <Field label="Purpose">
           <SelectField
             value={form.purpose ?? "sale"}
             onChange={(v) => set("purpose", (v ?? "sale") as FormState["purpose"])}
-            options={PROPERTY_PURPOSES.map((p) => ({ value: p, label: PROPERTY_PURPOSE_LABELS[p] ?? p }))}
+            options={PROPERTY_PURPOSES.map((p) => ({
+              value: p,
+              label: PROPERTY_PURPOSE_LABELS[p] ?? p,
+            }))}
             allowClear={false}
           />
         </Field>
         <Field label="Country">
           <SelectField
             value={form.country_id}
-            onChange={(v) => { set("country_id", v); set("area_id", null); }}
+            onChange={(v) => {
+              set("country_id", v);
+              set("area_id", null);
+            }}
             options={countries.map((c) => ({ value: c.id, label: c.name }))}
             placeholder="Select country"
           />
@@ -281,25 +384,91 @@ export function PropertyDrawer({
           />
         </Field>
         <Field label="Latitude">
-          <input className={inputCls} type="number" step="any" value={form.latitude ?? ""} onChange={(e) => set("latitude", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            step="any"
+            value={form.latitude ?? ""}
+            onChange={(e) => set("latitude", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <Field label="Longitude">
-          <input className={inputCls} type="number" step="any" value={form.longitude ?? ""} onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            step="any"
+            value={form.longitude ?? ""}
+            onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <div className="sm:col-span-2">
-          <GoogleMapsLinkField onResolved={(lat, lng) => { set("latitude", lat); set("longitude", lng); }} />
+          <GoogleMapsLinkField
+            onResolved={(lat, lng) => {
+              set("latitude", lat);
+              set("longitude", lng);
+            }}
+          />
         </div>
         <div className="sm:col-span-2">
           <MapboxPicker
             latitude={form.latitude ?? null}
             longitude={form.longitude ?? null}
-            onChange={(lat, lng) => { set("latitude", lat); set("longitude", lng); }}
+            onChange={(lat, lng) => {
+              set("latitude", lat);
+              set("longitude", lng);
+            }}
             className="h-56"
           />
         </div>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Website & publishing</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Unit identity (Sale Listing Form)
+          </p>
+        </div>
+        <Field label="Tower name">
+          <input
+            className={inputCls}
+            value={form.tower_name ?? ""}
+            onChange={(e) => set("tower_name", e.target.value)}
+          />
+        </Field>
+        <Field label="Floor">
+          <input
+            className={inputCls}
+            value={form.floor_number ?? ""}
+            onChange={(e) => set("floor_number", e.target.value)}
+          />
+        </Field>
+        <Field label="Unit number">
+          <input
+            className={inputCls}
+            value={form.unit_number ?? ""}
+            onChange={(e) => set("unit_number", e.target.value)}
+          />
+        </Field>
+        <Field label="Parking spaces">
+          <input
+            className={inputCls}
+            type="number"
+            min={0}
+            value={form.parking_spaces ?? ""}
+            onChange={(e) => set("parking_spaces", e.target.value ? Number(e.target.value) : null)}
+          />
+        </Field>
+        <Field label="Furniture status">
+          <SelectField
+            value={form.furnishing_status}
+            onChange={(v) => set("furnishing_status", v)}
+            options={FURNISHING_OPTIONS}
+            placeholder="Not specified"
+          />
+        </Field>
+
+        <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Website & publishing
+          </p>
         </div>
         <Field label="Hero image" full>
           <HeroImageField
@@ -311,51 +480,110 @@ export function PropertyDrawer({
           />
         </Field>
         <Field label="Hero video URL">
-          <input className={inputCls} value={form.hero_video_url ?? ""} onChange={(e) => set("hero_video_url", e.target.value)} placeholder="https://..." />
+          <input
+            className={inputCls}
+            value={form.hero_video_url ?? ""}
+            onChange={(e) => set("hero_video_url", e.target.value)}
+            placeholder="https://..."
+          />
         </Field>
         <Field label="360 tour URL">
-          <input className={inputCls} value={form.tour_360_url ?? ""} onChange={(e) => set("tour_360_url", e.target.value)} placeholder="https://..." />
+          <input
+            className={inputCls}
+            value={form.tour_360_url ?? ""}
+            onChange={(e) => set("tour_360_url", e.target.value)}
+            placeholder="https://..."
+          />
         </Field>
         <Field label="SEO title">
-          <input className={inputCls} value={form.seo_title ?? ""} onChange={(e) => set("seo_title", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.seo_title ?? ""}
+            onChange={(e) => set("seo_title", e.target.value)}
+          />
         </Field>
         <Field label="SEO description">
-          <input className={inputCls} value={form.seo_description ?? ""} onChange={(e) => set("seo_description", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.seo_description ?? ""}
+            onChange={(e) => set("seo_description", e.target.value)}
+          />
         </Field>
         <Field label="Website publication" full>
           <label className="flex h-9 items-center gap-2 text-xs">
-            <input type="checkbox" checked={!!form.is_published} onChange={(e) => set("is_published", e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={!!form.is_published}
+              onChange={(e) => set("is_published", e.target.checked)}
+            />
             Publish this listing to the future public website
           </label>
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">More details</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            More details
+          </p>
         </div>
         <Field label="Bathrooms">
-          <input className={inputCls} type="number" step="0.5" value={form.bathrooms ?? ""} onChange={(e) => set("bathrooms", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            step="0.5"
+            value={form.bathrooms ?? ""}
+            onChange={(e) => set("bathrooms", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <Field label="Size">
-          <input className={inputCls} type="number" value={form.size ?? ""} onChange={(e) => set("size", e.target.value ? Number(e.target.value) : null)} />
+          <input
+            className={inputCls}
+            type="number"
+            value={form.size ?? ""}
+            onChange={(e) => set("size", e.target.value ? Number(e.target.value) : null)}
+          />
         </Field>
         <Field label="Size unit">
-          <SelectField value={form.size_unit ?? "sqm"} onChange={(v) => set("size_unit", v ?? "sqm")} options={SIZE_UNIT_OPTIONS} allowClear={false} />
+          <SelectField
+            value={form.size_unit ?? "sqm"}
+            onChange={(v) => set("size_unit", v ?? "sqm")}
+            options={SIZE_UNIT_OPTIONS}
+            allowClear={false}
+          />
         </Field>
         <Field label="Completion status">
-          <SelectField value={form.completion_status} onChange={(v) => set("completion_status", v ?? "")} options={COMPLETION_STATUS_OPTIONS} placeholder="Select status" />
+          <SelectField
+            value={form.completion_status}
+            onChange={(v) => set("completion_status", v ?? "")}
+            options={COMPLETION_STATUS_OPTIONS}
+            placeholder="Select status"
+          />
         </Field>
         <Field label="Developer" full>
-          <input className={inputCls} value={form.developer ?? ""} onChange={(e) => set("developer", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.developer ?? ""}
+            onChange={(e) => set("developer", e.target.value)}
+          />
         </Field>
         <Field label="Amenities (comma separated)" full>
-          <input className={inputCls} value={form.amenities_str ?? ""} onChange={(e) => set("amenities_str", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.amenities_str ?? ""}
+            onChange={(e) => set("amenities_str", e.target.value)}
+          />
         </Field>
         <Field label="Description" full>
-          <textarea className={cn(inputCls, "h-24 py-2")} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+          <textarea
+            className={cn(inputCls, "h-24 py-2")}
+            value={form.description ?? ""}
+            onChange={(e) => set("description", e.target.value)}
+          />
         </Field>
 
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? "Saving..." : isEdit ? "Save changes" : "Save Property"}
           </Button>

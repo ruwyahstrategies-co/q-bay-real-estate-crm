@@ -37,7 +37,10 @@ export function useOwnerProperties(ownerId: string | undefined) {
     queryKey: ["owners", "properties", ownerId ?? "none"],
     enabled: !!ownerId,
     queryFn: async () => {
-      const { data, error } = await sb.from("properties").select("id, title, reference_code, status, price, currency").eq("owner_id", ownerId!);
+      const { data, error } = await sb
+        .from("properties")
+        .select("id, title, reference_code, status, price, currency")
+        .eq("owner_id", ownerId!);
       if (error) throw error;
       return data ?? [];
     },
@@ -49,7 +52,10 @@ export function useOwnerDevelopments(ownerId: string | undefined) {
     queryKey: ["owners", "developments", ownerId ?? "none"],
     enabled: !!ownerId,
     queryFn: async () => {
-      const { data, error } = await sb.from("developments").select("id, name, slug, status, is_published").eq("owner_id", ownerId!);
+      const { data, error } = await sb
+        .from("developments")
+        .select("id, name, slug, status, is_published")
+        .eq("owner_id", ownerId!);
       if (error) throw error;
       return data ?? [];
     },
@@ -61,7 +67,10 @@ export function useOwnerTransactions(ownerId: string | undefined) {
     queryKey: ["owners", "transactions", ownerId ?? "none"],
     enabled: !!ownerId,
     queryFn: async () => {
-      const { data: props, error: propsErr } = await sb.from("properties").select("id").eq("owner_id", ownerId!);
+      const { data: props, error: propsErr } = await sb
+        .from("properties")
+        .select("id")
+        .eq("owner_id", ownerId!);
       if (propsErr) throw propsErr;
       const propertyIds = (props ?? []).map((p) => p.id);
       if (propertyIds.length === 0) return [];

@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin } from "lucide-react";
+import { useMapboxToken } from "@/hooks/use-mapbox-config";
 
-const MAPBOX_TOKEN = (import.meta.env as Record<string, string | undefined>)["VITE_MAPBOX_TOKEN"];
 const DOHA_CENTER: [number, number] = [51.531, 25.2854];
 
 /**
@@ -26,6 +26,7 @@ export function MapboxPicker({
   /** View-only preview (property/development detail pages) - no click-to-place, no drag. */
   readOnly?: boolean;
 }) {
+  const { token: MAPBOX_TOKEN, isLoading: tokenLoading } = useMapboxToken();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -51,7 +52,8 @@ export function MapboxPicker({
       attributionControl: true,
     });
     mapRef.current = map;
-    if (!readOnly) map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    if (!readOnly)
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
 
     const el = document.createElement("div");
     el.style.width = "20px";
@@ -83,8 +85,8 @@ export function MapboxPicker({
       mapRef.current = null;
       markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialise once; external lat/long edits are synced below, not by re-creating the map
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-init only once the token arrives; external lat/long edits are synced below, not by re-creating the map
+  }, [MAPBOX_TOKEN]);
 
   // Keep the marker in sync if lat/long change from the numeric inputs directly.
   useEffect(() => {
@@ -99,13 +101,18 @@ export function MapboxPicker({
     map.easeTo({ center: [longitude, latitude] });
   }, [latitude, longitude]);
 
+  if (tokenLoading)
+    return <div className={`animate-pulse rounded-lg bg-muted ${className ?? ""}`} />;
+
   if (!MAPBOX_TOKEN || (readOnly && (latitude == null || longitude == null))) {
     return (
-      <div className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-canvas px-4 py-8 text-center ${className ?? ""}`}>
+      <div
+        className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-canvas px-4 py-8 text-center ${className ?? ""}`}
+      >
         <MapPin className="h-4 w-4 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
           {!MAPBOX_TOKEN
-            ? "Set VITE_MAPBOX_TOKEN to enable the map picker - coordinates can still be entered manually above."
+            ? "No Mapbox token configured yet - an admin can add one under Settings > Map / Mapbox."
             : "No coordinates set yet."}
         </p>
       </div>
@@ -115,7 +122,11 @@ export function MapboxPicker({
   return (
     <div className={className}>
       <div ref={containerRef} className="h-full w-full rounded-lg" />
-      {!readOnly && <p className="mt-1.5 text-[11px] text-muted-foreground">Click the map to place the marker, or drag it to adjust.</p>}
+      {!readOnly && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Click the map to place the marker, or drag it to adjust.
+        </p>
+      )}
     </div>
   );
 }

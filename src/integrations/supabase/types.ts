@@ -2425,6 +2425,7 @@ export type Database = {
           created_at: string
           currency: string | null
           description: string | null
+          development_id: string | null
           documents: Json
           email: string | null
           floor_number: string | null
@@ -2434,6 +2435,7 @@ export type Database = {
           last_refreshed_at: string | null
           location: string | null
           media: Json
+          owner_id: string | null
           owner_id_number: string | null
           parking_spaces: number | null
           phone: string | null
@@ -2443,8 +2445,10 @@ export type Database = {
           review_notes: string | null
           reviewed_by: string | null
           size: number | null
+          source: string
           status: string
           submitted_at: string | null
+          terms_accepted: boolean
           tower_name: string | null
           unit_number: string | null
           updated_at: string
@@ -2459,6 +2463,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description?: string | null
+          development_id?: string | null
           documents?: Json
           email?: string | null
           floor_number?: string | null
@@ -2468,6 +2473,7 @@ export type Database = {
           last_refreshed_at?: string | null
           location?: string | null
           media?: Json
+          owner_id?: string | null
           owner_id_number?: string | null
           parking_spaces?: number | null
           phone?: string | null
@@ -2477,8 +2483,10 @@ export type Database = {
           review_notes?: string | null
           reviewed_by?: string | null
           size?: number | null
+          source?: string
           status?: string
           submitted_at?: string | null
+          terms_accepted?: boolean
           tower_name?: string | null
           unit_number?: string | null
           updated_at?: string
@@ -2493,6 +2501,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description?: string | null
+          development_id?: string | null
           documents?: Json
           email?: string | null
           floor_number?: string | null
@@ -2502,6 +2511,7 @@ export type Database = {
           last_refreshed_at?: string | null
           location?: string | null
           media?: Json
+          owner_id?: string | null
           owner_id_number?: string | null
           parking_spaces?: number | null
           phone?: string | null
@@ -2511,8 +2521,10 @@ export type Database = {
           review_notes?: string | null
           reviewed_by?: string | null
           size?: number | null
+          source?: string
           status?: string
           submitted_at?: string | null
+          terms_accepted?: boolean
           tower_name?: string | null
           unit_number?: string | null
           updated_at?: string
@@ -2545,6 +2557,20 @@ export type Database = {
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
             referencedColumns: ["id"]
           },
           {
@@ -3673,6 +3699,12 @@ export type Database = {
           tour_360_url: string
           unit_mix: Json
           updated_at: string
+        }[]
+      }
+      public_map_config: {
+        Args: never
+        Returns: {
+          mapbox_token: string
         }[]
       }
       public_properties: {

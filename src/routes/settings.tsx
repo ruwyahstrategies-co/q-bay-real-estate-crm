@@ -12,9 +12,27 @@ import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn, titleCase } from "@/lib/utils";
 import { sb, type Area, type AreaUpdate } from "@/lib/db";
 import { APP_CONFIG } from "@/lib/config";
-import { useMyWhatsappConnection, useSaveWhatsappConnection, useVerifyWhatsapp, useDisconnectWhatsapp } from "@/hooks/use-whatsapp";
-import { useCountries, useAreas, useCreateCountry, useUpdateCountry, useCreateArea, useUpdateArea } from "@/hooks/use-locations";
-import { useScheduledNotifications, useSmsProviderConfig, useSaveSmsProviderConfig, useProcessDueNotifications } from "@/hooks/use-notifications";
+import {
+  useMyWhatsappConnection,
+  useSaveWhatsappConnection,
+  useVerifyWhatsapp,
+  useDisconnectWhatsapp,
+} from "@/hooks/use-whatsapp";
+import {
+  useCountries,
+  useAreas,
+  useCreateCountry,
+  useUpdateCountry,
+  useCreateArea,
+  useUpdateArea,
+} from "@/hooks/use-locations";
+import {
+  useScheduledNotifications,
+  useSmsProviderConfig,
+  useSaveSmsProviderConfig,
+  useProcessDueNotifications,
+} from "@/hooks/use-notifications";
+import { useMapboxConfig, useSaveMapboxConfig } from "@/hooks/use-mapbox-config";
 import { fmtDateTime } from "@/lib/db";
 
 export const Route = createFileRoute("/settings")({
@@ -26,6 +44,7 @@ const sections = [
   "Organisation",
   "Pipeline stages",
   "Locations",
+  "Map / Mapbox",
   "Permissions",
   "My WhatsApp Connection",
   "Security",
@@ -48,10 +67,18 @@ function SettingsPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await sb.from("app_settings").select("setting_value").eq("setting_key", "default_currency").maybeSingle();
+      const { data } = await sb
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "default_currency")
+        .maybeSingle();
       const v = (data?.setting_value as { value?: string } | null)?.value;
       if (v) setCurrency(v);
-      const { data: nameRow } = await sb.from("app_settings").select("setting_value").eq("setting_key", "organisation_name").maybeSingle();
+      const { data: nameRow } = await sb
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "organisation_name")
+        .maybeSingle();
       const n = (nameRow?.setting_value as { value?: string } | null)?.value;
       if (n) setOrgName(n);
     })();
@@ -60,8 +87,18 @@ function SettingsPage() {
   async function saveOrganisation() {
     setSaving(true);
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      sb.from("app_settings").upsert({ setting_key: "default_currency", setting_value: { value: currency } }, { onConflict: "setting_key" }),
-      sb.from("app_settings").upsert({ setting_key: "organisation_name", setting_value: { value: orgName } }, { onConflict: "setting_key" }),
+      sb
+        .from("app_settings")
+        .upsert(
+          { setting_key: "default_currency", setting_value: { value: currency } },
+          { onConflict: "setting_key" },
+        ),
+      sb
+        .from("app_settings")
+        .upsert(
+          { setting_key: "organisation_name", setting_value: { value: orgName } },
+          { onConflict: "setting_key" },
+        ),
     ]);
     setSaving(false);
     if (e1 || e2) toast.error((e1 || e2)!.message);
@@ -71,108 +108,145 @@ function SettingsPage() {
   return (
     <AppShell>
       <PermissionGate module="settings" action="view" page>
-      <PageHeader eyebrow="Configuration" title="Settings" description="Configure your workspace, pipeline and access." />
+        <PageHeader
+          eyebrow="Configuration"
+          title="Settings"
+          description="Configure your workspace, pipeline and access."
+        />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-        <nav className="flex flex-col gap-0.5 rounded-xl border border-border bg-canvas p-2">
-          {sections.map((s) => (
-            <button
-              key={s}
-              onClick={() => setActive(s)}
-              className={cn(
-                "rounded-lg px-3 py-2 text-left text-sm",
-                active === s ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60",
-              )}
-            >{s}</button>
-          ))}
-        </nav>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
+          <nav className="flex flex-col gap-0.5 rounded-xl border border-border bg-canvas p-2">
+            {sections.map((s) => (
+              <button
+                key={s}
+                onClick={() => setActive(s)}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-left text-sm",
+                  active === s
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60",
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </nav>
 
-        <Card>
-          <h3 className="text-base font-semibold">{active}</h3>
+          <Card>
+            <h3 className="text-base font-semibold">{active}</h3>
 
-          {active === "Organisation" && (
-            <div className="mt-4 max-w-md space-y-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Organisation name</span>
-                <input className={inputCls} value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!canManage} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Default currency</span>
-                <SelectField
-                  value={currency}
-                  onChange={(v) => setCurrency(v ?? "QAR")}
-                  options={["QAR", "AED", "USD", "EUR", "GBP"].map((c) => ({ value: c, label: c }))}
-                  allowClear={false}
-                  disabled={!canManage}
-                />
-              </label>
-              {canManage ? (
-                <Button size="sm" onClick={saveOrganisation} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+            {active === "Organisation" && (
+              <div className="mt-4 max-w-md space-y-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Organisation name
+                  </span>
+                  <input
+                    className={inputCls}
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    disabled={!canManage}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Default currency
+                  </span>
+                  <SelectField
+                    value={currency}
+                    onChange={(v) => setCurrency(v ?? "QAR")}
+                    options={["QAR", "AED", "USD", "EUR", "GBP"].map((c) => ({
+                      value: c,
+                      label: c,
+                    }))}
+                    allowClear={false}
+                    disabled={!canManage}
+                  />
+                </label>
+                {canManage ? (
+                  <Button size="sm" onClick={saveOrganisation} disabled={saving}>
+                    {saving ? "Saving..." : "Save"}
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    You have read-only access to organisation settings.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {active === "Pipeline stages" &&
+              (canManage ? (
+                <div className="mt-4">
+                  <PipelineStagesManager />
+                </div>
               ) : (
-                <p className="text-xs text-muted-foreground">You have read-only access to organisation settings.</p>
-              )}
-            </div>
-          )}
+                <p className="mt-2 text-sm text-muted-foreground">
+                  You don't have permission to manage pipeline stages.
+                </p>
+              ))}
 
-          {active === "Pipeline stages" && (
-            canManage ? <div className="mt-4"><PipelineStagesManager /></div> : (
-              <p className="mt-2 text-sm text-muted-foreground">You don't have permission to manage pipeline stages.</p>
-            )
-          )}
+            {active === "Locations" && <LocationsSection canManage={canManage} />}
 
-          {active === "Locations" && <LocationsSection canManage={canManage} />}
+            {active === "Map / Mapbox" && <MapboxSection canManage={canManage} />}
 
-          {active === "My WhatsApp Connection" && <WhatsappSection />}
+            {active === "My WhatsApp Connection" && <WhatsappSection />}
 
-          {active === "Permissions" && (
-            <div className="mt-4 max-w-md space-y-3 text-sm">
-              <p className="text-muted-foreground">
-                Permissions are granted per staff member from the Team page - role presets set sensible defaults, and
-                individual modules/actions can be overridden per person.
-              </p>
-              <Link to="/team">
-                <Button size="sm" variant="outline"><Users className="h-3.5 w-3.5" /> Open Team & Permissions</Button>
-              </Link>
-            </div>
-          )}
+            {active === "Permissions" && (
+              <div className="mt-4 max-w-md space-y-3 text-sm">
+                <p className="text-muted-foreground">
+                  Permissions are granted per staff member from the Team page - role presets set
+                  sensible defaults, and individual modules/actions can be overridden per person.
+                </p>
+                <Link to="/team">
+                  <Button size="sm" variant="outline">
+                    <Users className="h-3.5 w-3.5" /> Open Team & Permissions
+                  </Button>
+                </Link>
+              </div>
+            )}
 
-          {active === "Security" && (
-            <div className="mt-4 max-w-lg space-y-4 text-sm">
-              <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
-                <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            {active === "Security" && (
+              <div className="mt-4 max-w-lg space-y-4 text-sm">
+                <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Signed in via Supabase Auth</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      You're signed in as <strong>{teamMember?.email ?? "-"}</strong> with the{" "}
+                      <strong className="capitalize">{roleLabel.replace(/_/g, " ")}</strong> role.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Staff logins are created and revoked from the Team page - only administrators can
+                  create new logins. Passwords are never stored or visible in this application;
+                  resets issue a new temporary password directly through Supabase Auth. Row-level
+                  authorization on the database is documented in{" "}
+                  <code className="rounded bg-muted px-1 py-0.5">BACKEND_REQUIREMENTS.md</code> for
+                  backend implementation.
+                </p>
+              </div>
+            )}
+
+            {active === "Notifications" && <NotificationsSection canManage={canManage} />}
+
+            {(active === "Lead & property fields" || active === "Data retention") && (
+              <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-border bg-background p-4">
+                <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">Signed in via Supabase Auth</p>
+                  <p className="text-sm font-medium">Planned for a future release</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You're signed in as <strong>{teamMember?.email ?? "-"}</strong> with the{" "}
-                    <strong className="capitalize">{roleLabel.replace(/_/g, " ")}</strong> role.
+                    {active === "Lead & property fields" &&
+                      "Custom field configuration for leads and properties is on the roadmap. Today's fields cover the full buyer and inventory workflow."}
+                    {active === "Data retention" &&
+                      "Automated archival and retention policies are on the roadmap. Leads and properties can be archived manually today."}
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Staff logins are created and revoked from the Team page - only administrators can create new logins.
-                Passwords are never stored or visible in this application; resets issue a new temporary password directly
-                through Supabase Auth. Row-level authorization on the database is documented in
-                {" "}<code className="rounded bg-muted px-1 py-0.5">BACKEND_REQUIREMENTS.md</code> for backend implementation.
-              </p>
-            </div>
-          )}
-
-          {active === "Notifications" && <NotificationsSection canManage={canManage} />}
-
-          {(active === "Lead & property fields" || active === "Data retention") && (
-            <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-border bg-background p-4">
-              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Planned for a future release</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {active === "Lead & property fields" && "Custom field configuration for leads and properties is on the roadmap. Today's fields cover the full buyer and inventory workflow."}
-                  {active === "Data retention" && "Automated archival and retention policies are on the roadmap. Leads and properties can be archived manually today."}
-                </p>
-              </div>
-            </div>
-          )}
-        </Card>
-      </div>
+            )}
+          </Card>
+        </div>
       </PermissionGate>
     </AppShell>
   );
@@ -210,7 +284,9 @@ function WhatsappSection() {
       setAccessToken("");
       setVerifyToken("");
       toast.success("WhatsApp connection saved");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
 
   return (
@@ -220,12 +296,21 @@ function WhatsappSection() {
         <div>
           <p className="font-medium">Your own WhatsApp Business (Meta Cloud API) connection</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Each staff member connects their own WhatsApp Business number here. There is no shared/global
-            WhatsApp sender - your access token is stored encrypted and is never shown again after saving.
+            Each staff member connects their own WhatsApp Business number here. There is no
+            shared/global WhatsApp sender - your access token is stored encrypted and is never shown
+            again after saving.
           </p>
           {!isLoading && connection && (
             <p className="mt-2 text-xs">
-              Status: <span className={cn("font-medium", connection.connection_status === "connected" ? "text-foreground" : "text-muted-foreground")}>
+              Status:{" "}
+              <span
+                className={cn(
+                  "font-medium",
+                  connection.connection_status === "connected"
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
                 {connection.connection_status}
               </span>
               {connection.display_phone_number ? ` - ${connection.display_phone_number}` : ""}
@@ -235,41 +320,192 @@ function WhatsappSection() {
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Phone Number ID *</span>
-        <input className={inputCls} value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="From Meta Business Suite" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Phone Number ID *
+        </span>
+        <input
+          className={inputCls}
+          value={phoneNumberId}
+          onChange={(e) => setPhoneNumberId(e.target.value)}
+          placeholder="From Meta Business Suite"
+        />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">WhatsApp Business Account ID</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          WhatsApp Business Account ID
+        </span>
         <input className={inputCls} value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Display phone number</span>
-        <input className={inputCls} value={displayNumber} onChange={(e) => setDisplayNumber(e.target.value)} placeholder="+974..." />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Display phone number
+        </span>
+        <input
+          className={inputCls}
+          value={displayNumber}
+          onChange={(e) => setDisplayNumber(e.target.value)}
+          placeholder="+974..."
+        />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Access token {connection ? "(leave blank to keep current)" : "*"}</span>
-        <input className={inputCls} type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Meta permanent access token" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Access token {connection ? "(leave blank to keep current)" : "*"}
+        </span>
+        <input
+          className={inputCls}
+          type="password"
+          value={accessToken}
+          onChange={(e) => setAccessToken(e.target.value)}
+          placeholder="Meta permanent access token"
+        />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Webhook verify token (optional)</span>
-        <input className={inputCls} value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} placeholder="Shared secret for Meta's webhook subscription" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Webhook verify token (optional)
+        </span>
+        <input
+          className={inputCls}
+          value={verifyToken}
+          onChange={(e) => setVerifyToken(e.target.value)}
+          placeholder="Shared secret for Meta's webhook subscription"
+        />
       </label>
 
       <div className="flex items-center gap-2">
-        <Button size="sm" onClick={handleSave} disabled={save.isPending}>{save.isPending ? "Saving..." : "Save connection"}</Button>
+        <Button size="sm" onClick={handleSave} disabled={save.isPending}>
+          {save.isPending ? "Saving..." : "Save connection"}
+        </Button>
         {connection && (
-          <Button size="sm" variant="outline" onClick={async () => {
-            try { const r = await verify.mutateAsync(); if (r.ok) toast.success("Connection verified"); else toast.error(r.error ?? "Verification failed"); }
-            catch (e) { toast.error((e as Error).message); }
-          }} disabled={verify.isPending}>{verify.isPending ? "Verifying..." : "Verify connection"}</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const r = await verify.mutateAsync();
+                if (r.ok) toast.success("Connection verified");
+                else toast.error(r.error ?? "Verification failed");
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+            disabled={verify.isPending}
+          >
+            {verify.isPending ? "Verifying..." : "Verify connection"}
+          </Button>
         )}
         {connection && (
-          <Button size="sm" variant="ghost" onClick={async () => {
-            try { await disconnect.mutateAsync(); toast.success("Disconnected"); setPhoneNumberId(""); setWabaId(""); setDisplayNumber(""); }
-            catch (e) { toast.error((e as Error).message); }
-          }} disabled={disconnect.isPending}>Disconnect</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              try {
+                await disconnect.mutateAsync();
+                toast.success("Disconnected");
+                setPhoneNumberId("");
+                setWabaId("");
+                setDisplayNumber("");
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+            disabled={disconnect.isPending}
+          >
+            Disconnect
+          </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function MapboxSection({ canManage }: { canManage: boolean }) {
+  const { data, isLoading } = useMapboxConfig();
+  const save = useSaveMapboxConfig();
+  const [editing, setEditing] = useState(false);
+  const [token, setToken] = useState("");
+
+  const configured = !!data?.token;
+
+  return (
+    <div className="mt-4 max-w-lg space-y-4 text-sm">
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
+        <MapPinned className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        <div>
+          <p className="font-medium">One Mapbox public token for the whole system</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Enter Q-Bay's Mapbox public token once here. Every CRM map (property/development
+            pickers) and every public website map read it from this same setting - nobody has to
+            configure it again. Public website visitors never see this field; it's admin-only.
+          </p>
+        </div>
+      </div>
+
+      {!isLoading && configured && !editing ? (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+          <div>
+            <p className="text-xs font-medium">Token configured</p>
+            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+              pk.{"*".repeat(6)}
+              {data?.token?.slice(-4)}
+            </p>
+          </div>
+          {canManage && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setToken("");
+                setEditing(true);
+              }}
+            >
+              Change token
+            </Button>
+          )}
+        </div>
+      ) : (
+        canManage && (
+          <div className="space-y-2">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Mapbox public token
+              </span>
+              <input
+                className={inputCls}
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="pk.eyJ1Ijoi..."
+              />
+            </label>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                disabled={save.isPending || !token.trim()}
+                onClick={async () => {
+                  try {
+                    await save.mutateAsync(token.trim());
+                    toast.success("Mapbox token saved");
+                    setEditing(false);
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                {save.isPending ? "Saving..." : "Save token"}
+              </Button>
+              {configured && (
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </div>
+        )
+      )}
+      {!canManage && !configured && !isLoading && (
+        <p className="text-xs text-muted-foreground">
+          No Mapbox token configured yet. Ask an administrator to add one here.
+        </p>
+      )}
     </div>
   );
 }
@@ -295,34 +531,67 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
         </div>
         <div className="space-y-1.5">
           {countries.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5">
-              <button className={cn("text-xs", selectedCountry === c.id && "font-semibold")} onClick={() => setSelectedCountry(c.id)}>{c.name}</button>
+            <div
+              key={c.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5"
+            >
+              <button
+                className={cn("text-xs", selectedCountry === c.id && "font-semibold")}
+                onClick={() => setSelectedCountry(c.id)}
+              >
+                {c.name}
+              </button>
               <button
                 disabled={!canManage}
-                onClick={() => updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })}
-                className={cn("rounded-full px-2 py-0.5 text-[11px]", c.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
-              >{c.is_active ? "Active" : "Inactive"}</button>
+                onClick={() =>
+                  updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })
+                }
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px]",
+                  c.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {c.is_active ? "Active" : "Inactive"}
+              </button>
             </div>
           ))}
         </div>
         {canManage && (
           <div className="mt-2 flex gap-2">
-            <input className={inputCls} value={newCountry} onChange={(e) => setNewCountry(e.target.value)} placeholder="New country..." />
-            <Button size="sm" onClick={async () => {
-              const name = newCountry.trim();
-              if (!name) return;
-              try {
-                await createCountry.mutateAsync({ name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), display_order: countries.length });
-                setNewCountry("");
-              } catch (e) { toast.error((e as Error).message); }
-            }}><Plus className="h-3.5 w-3.5" /></Button>
+            <input
+              className={inputCls}
+              value={newCountry}
+              onChange={(e) => setNewCountry(e.target.value)}
+              placeholder="New country..."
+            />
+            <Button
+              size="sm"
+              onClick={async () => {
+                const name = newCountry.trim();
+                if (!name) return;
+                try {
+                  await createCountry.mutateAsync({
+                    name,
+                    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                    display_order: countries.length,
+                  });
+                  setNewCountry("");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
           </div>
         )}
       </div>
 
       {selectedCountry && (
         <div>
-          <h4 className="mb-2 font-semibold">Areas in {countries.find((c) => c.id === selectedCountry)?.name}</h4>
+          <h4 className="mb-2 font-semibold">
+            Areas in {countries.find((c) => c.id === selectedCountry)?.name}
+          </h4>
           <div className="space-y-1.5">
             {areas.map((a) => (
               <div key={a.id} className="rounded-lg border border-border bg-background px-3 py-1.5">
@@ -331,31 +600,63 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                   <div className="flex items-center gap-2">
                     <button
                       disabled={!canManage}
-                      onClick={() => updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })}
-                      className={cn("rounded-full px-2 py-0.5 text-[11px]", a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground")}
-                    >{a.is_active ? "Active" : "Inactive"}</button>
+                      onClick={() =>
+                        updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })
+                      }
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px]",
+                        a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {a.is_active ? "Active" : "Inactive"}
+                    </button>
                     {canManage && (
-                      <button className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEditingArea(editingArea === a.id ? null : a.id)}>
+                      <button
+                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() => setEditingArea(editingArea === a.id ? null : a.id)}
+                      >
                         {editingArea === a.id ? "Close" : "Website content"}
                       </button>
                     )}
                   </div>
                 </div>
-                {editingArea === a.id && <AreaContentEditor area={a} onSave={(patch) => updateArea.mutate({ id: a.id, patch })} />}
+                {editingArea === a.id && (
+                  <AreaContentEditor
+                    area={a}
+                    onSave={(patch) => updateArea.mutate({ id: a.id, patch })}
+                  />
+                )}
               </div>
             ))}
           </div>
           {canManage && (
             <div className="mt-2 flex gap-2">
-              <input className={inputCls} value={newArea} onChange={(e) => setNewArea(e.target.value)} placeholder="New area..." />
-              <Button size="sm" onClick={async () => {
-                const name = newArea.trim();
-                if (!name) return;
-                try {
-                  await createArea.mutateAsync({ country_id: selectedCountry, name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), display_order: areas.length });
-                  setNewArea("");
-                } catch (e) { toast.error((e as Error).message); }
-              }}><Plus className="h-3.5 w-3.5" /></Button>
+              <input
+                className={inputCls}
+                value={newArea}
+                onChange={(e) => setNewArea(e.target.value)}
+                placeholder="New area..."
+              />
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const name = newArea.trim();
+                  if (!name) return;
+                  try {
+                    await createArea.mutateAsync({
+                      country_id: selectedCountry,
+                      name,
+                      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                      display_order: areas.length,
+                    });
+                    setNewArea("");
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
             </div>
           )}
         </div>
@@ -376,20 +677,47 @@ function AreaContentEditor({ area, onSave }: { area: Area; onSave: (patch: AreaU
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
         Shown on the public website's area page. Leave blank to fall back to neutral copy.
       </p>
-      <input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Tagline (e.g. Qatar's city of the future)" />
-      <input className={inputCls} value={lifestyle} onChange={(e) => setLifestyle(e.target.value)} placeholder="Lifestyle tag (e.g. Waterfront - New-build)" />
-      <textarea className={cn(inputCls, "min-h-16")} value={blurb} onChange={(e) => setBlurb(e.target.value)} placeholder="Short blurb (1-2 sentences)" />
-      <textarea className={cn(inputCls, "min-h-24")} value={about} onChange={(e) => setAbout(e.target.value)} placeholder="About this area (longer editorial copy, one paragraph per line)" />
-      <input className={inputCls} value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Hero image URL" />
+      <input
+        className={inputCls}
+        value={tagline}
+        onChange={(e) => setTagline(e.target.value)}
+        placeholder="Tagline (e.g. Qatar's city of the future)"
+      />
+      <input
+        className={inputCls}
+        value={lifestyle}
+        onChange={(e) => setLifestyle(e.target.value)}
+        placeholder="Lifestyle tag (e.g. Waterfront - New-build)"
+      />
+      <textarea
+        className={cn(inputCls, "min-h-16")}
+        value={blurb}
+        onChange={(e) => setBlurb(e.target.value)}
+        placeholder="Short blurb (1-2 sentences)"
+      />
+      <textarea
+        className={cn(inputCls, "min-h-24")}
+        value={about}
+        onChange={(e) => setAbout(e.target.value)}
+        placeholder="About this area (longer editorial copy, one paragraph per line)"
+      />
+      <input
+        className={inputCls}
+        value={heroImageUrl}
+        onChange={(e) => setHeroImageUrl(e.target.value)}
+        placeholder="Hero image URL"
+      />
       <Button
         size="sm"
-        onClick={() => onSave({
-          tagline: tagline || null,
-          lifestyle: lifestyle || null,
-          blurb: blurb || null,
-          about: about || null,
-          hero_image_url: heroImageUrl || null,
-        })}
+        onClick={() =>
+          onSave({
+            tagline: tagline || null,
+            lifestyle: lifestyle || null,
+            blurb: blurb || null,
+            about: about || null,
+            hero_image_url: heroImageUrl || null,
+          })
+        }
       >
         Save
       </Button>
@@ -425,21 +753,34 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
       <div>
         <p className="text-sm font-medium">SMS provider</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Owner contract expiry reminders and sale/rental congratulations schedule themselves automatically. They stay
-          pending until a provider is configured here - nothing is ever marked sent without an actual provider call
-          succeeding.
+          Owner contract expiry reminders and sale/rental congratulations schedule themselves
+          automatically. They stay pending until a provider is configured here - nothing is ever
+          marked sent without an actual provider call succeeding.
         </p>
         {!configured && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
-            <Clock className="h-3.5 w-3.5" /> No provider configured yet - {pending} notification{pending === 1 ? "" : "s"} waiting.
+            <Clock className="h-3.5 w-3.5" /> No provider configured yet - {pending} notification
+            {pending === 1 ? "" : "s"} waiting.
           </p>
         )}
         <div className="mt-3 max-w-md space-y-2">
-          <SelectField value={provider || null} onChange={(v) => setProvider(v ?? "")} options={PROVIDER_OPTIONS} placeholder="Select provider" disabled={!canManage} />
-          <input className={inputCls} placeholder="Sender ID / from number" value={senderId} onChange={(e) => setSenderId(e.target.value)} disabled={!canManage} />
+          <SelectField
+            value={provider || null}
+            onChange={(v) => setProvider(v ?? "")}
+            options={PROVIDER_OPTIONS}
+            placeholder="Select provider"
+            disabled={!canManage}
+          />
+          <input
+            className={inputCls}
+            placeholder="Sender ID / from number"
+            value={senderId}
+            onChange={(e) => setSenderId(e.target.value)}
+            disabled={!canManage}
+          />
           <p className="text-[11px] text-muted-foreground">
-            API keys are never entered here - they're added as an edge function secret once a provider is chosen, then wired
-            into supabase/functions/sms-send.
+            API keys are never entered here - they're added as an edge function secret once a
+            provider is chosen, then wired into supabase/functions/sms-send.
           </p>
           {canManage && (
             <Button
@@ -447,9 +788,15 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
               disabled={saveConfig.isPending}
               onClick={async () => {
                 try {
-                  await saveConfig.mutateAsync({ provider: provider || null, sender_id: senderId || null, api_key_secret_id: config?.api_key_secret_id ?? null });
+                  await saveConfig.mutateAsync({
+                    provider: provider || null,
+                    sender_id: senderId || null,
+                    api_key_secret_id: config?.api_key_secret_id ?? null,
+                  });
                   toast.success("Saved");
-                } catch (e) { toast.error((e as Error).message); }
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
             >
               Save
@@ -469,8 +816,12 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
               onClick={async () => {
                 try {
                   const res = await processNow.mutateAsync();
-                  toast.success(`Processed ${res.processed} - ${res.sent} sent, ${res.skipped} skipped, ${res.failed} failed`);
-                } catch (e) { toast.error((e as Error).message); }
+                  toast.success(
+                    `Processed ${res.processed} - ${res.sent} sent, ${res.skipped} skipped, ${res.failed} failed`,
+                  );
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
             >
               {processNow.isPending ? "Processing..." : "Process due now"}
@@ -482,15 +833,29 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
         ) : (
           <div className="mt-3 space-y-2">
             {notifications.slice(0, 20).map((n: any) => (
-              <div key={n.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-xs">
+              <div
+                key={n.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-xs"
+              >
                 <div>
-                  <p className="font-medium">{n.owners?.name ?? n.recipient_name ?? "Recipient"} · {titleCase(n.event_type)}</p>
-                  <p className="mt-0.5 text-muted-foreground">Scheduled {fmtDateTime(n.scheduled_for)} {n.error_message ? `· ${n.error_message}` : ""}</p>
+                  <p className="font-medium">
+                    {n.owners?.name ?? n.recipient_name ?? "Recipient"} · {titleCase(n.event_type)}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Scheduled {fmtDateTime(n.scheduled_for)}{" "}
+                    {n.error_message ? `· ${n.error_message}` : ""}
+                  </p>
                 </div>
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide",
-                    n.status === "sent" ? "bg-pastel-green" : n.status === "failed" ? "bg-destructive/15 text-destructive" : n.status === "skipped" ? "bg-muted text-muted-foreground" : "bg-pastel-blue",
+                    n.status === "sent"
+                      ? "bg-pastel-green"
+                      : n.status === "failed"
+                        ? "bg-destructive/15 text-destructive"
+                        : n.status === "skipped"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-pastel-blue",
                   )}
                 >
                   {n.status}

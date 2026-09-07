@@ -10,7 +10,27 @@ export function useSubmissions() {
   return useQuery({
     queryKey: submissionKeys.list(),
     queryFn: async (): Promise<PropertySubmission[]> => {
-      const { data, error } = await sb.from("property_submissions").select("*").order("created_at", { ascending: false });
+      const { data, error } = await sb
+        .from("property_submissions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Every submission filed under one Owner - shown on the Owner's CRM profile. */
+export function useOwnerSubmissions(ownerId: string | undefined) {
+  return useQuery({
+    queryKey: ["property_submissions", "owner", ownerId ?? "none"],
+    enabled: !!ownerId,
+    queryFn: async (): Promise<PropertySubmission[]> => {
+      const { data, error } = await sb
+        .from("property_submissions")
+        .select("*")
+        .eq("owner_id", ownerId!)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -21,7 +41,12 @@ export function useUpdateSubmission() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: PropertySubmissionUpdate }) => {
-      const { data, error } = await sb.from("property_submissions").update(patch).eq("id", id).select().single();
+      const { data, error } = await sb
+        .from("property_submissions")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -33,7 +58,17 @@ export function useUpdateSubmission() {
 export function useReviewSubmission() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status, review_notes, reviewed_by }: { id: string; status: "approved" | "rejected"; review_notes?: string; reviewed_by: string }) => {
+    mutationFn: async ({
+      id,
+      status,
+      review_notes,
+      reviewed_by,
+    }: {
+      id: string;
+      status: "approved" | "rejected";
+      review_notes?: string;
+      reviewed_by: string;
+    }) => {
       const { data, error } = await sb
         .from("property_submissions")
         .update({ status, review_notes, reviewed_by })
@@ -47,11 +82,28 @@ export function useReviewSubmission() {
   });
 }
 
-/** Converts an approved submission into a real property row, then marks the submission published. */
+/**
+ * Converts an approved submission into a real property row, carrying every
+ * Sale Listing Form field across so nothing has to be re-keyed, and links the
+ * new property back to the Owner (and their assigned agent, so the reference
+ * code generator can fire) and to this submission. Newly converted properties
+ * are never published automatically - staff publish from the Properties page
+ * once they've reviewed the listing.
+ */
 export function useConvertSubmission() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (submission: PropertySubmission) => {
+      let assignedAgentId: string | null = null;
+      if (submission.owner_id) {
+        const { data: owner } = await sb
+          .from("owners")
+          .select("assigned_agent_id")
+          .eq("id", submission.owner_id)
+          .maybeSingle();
+        assignedAgentId = owner?.assigned_agent_id ?? null;
+      }
+
       const { data: property, error: propErr } = await sb
         .from("properties")
         .insert({
@@ -59,6 +111,9 @@ export function useConvertSubmission() {
           description: submission.description,
           country_id: submission.country_id,
           area_id: submission.area_id,
+          development_id: submission.development_id,
+          owner_id: submission.owner_id,
+          assigned_agent_id: assignedAgentId,
           location: submission.location,
           property_type: submission.property_type,
           purpose: submission.purpose ?? "sale",
@@ -67,9 +122,15 @@ export function useConvertSubmission() {
           bedrooms: submission.bedrooms,
           bathrooms: submission.bathrooms,
           size: submission.size,
+          tower_name: submission.tower_name,
+          floor_number: submission.floor_number,
+          unit_number: submission.unit_number,
+          parking_spaces: submission.parking_spaces,
+          furnishing_status: submission.furnishing_status,
           listing_source: "owner_submission",
           status: "active",
           availability: "available",
+          is_published: false,
         })
         .select()
         .single();
@@ -77,7 +138,7 @@ export function useConvertSubmission() {
 
       const { error: subErr } = await sb
         .from("property_submissions")
-        .update({ status: "published", converted_property_id: property.id })
+        .update({ status: "converted", converted_property_id: property.id })
         .eq("id", submission.id);
       if (subErr) throw subErr;
 
@@ -86,6 +147,7 @@ export function useConvertSubmission() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: submissionKeys.all });
       qc.invalidateQueries({ queryKey: ["properties"] });
+      qc.invalidateQueries({ queryKey: ["owners"] });
     },
   });
 }

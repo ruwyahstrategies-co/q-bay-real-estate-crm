@@ -83,6 +83,19 @@ export function useReviewSubmission() {
 }
 
 /**
+ * property_submissions.purpose uses the public "Sell / Rent / Let" wording;
+ * properties.purpose uses the CRM's own broader set and has no separate
+ * "let" value. "Let" still stays fully intact on the submission record - it
+ * is only collapsed into "rent" at the point a Property row is created,
+ * which is a coarser, CRM-internal classification.
+ */
+function mapSubmissionPurposeToPropertyPurpose(purpose: string | null): string {
+  if (purpose === "sell") return "sale";
+  if (purpose === "rent" || purpose === "let") return "rent";
+  return "sale";
+}
+
+/**
  * Converts an approved submission into a real property row, carrying every
  * Sale Listing Form field across so nothing has to be re-keyed, and links the
  * new property back to the Owner (and their assigned agent, so the reference
@@ -114,9 +127,12 @@ export function useConvertSubmission() {
           development_id: submission.development_id,
           owner_id: submission.owner_id,
           assigned_agent_id: assignedAgentId,
-          location: submission.location,
+          location:
+            !submission.area_id && submission.custom_area
+              ? [submission.custom_area, submission.location].filter(Boolean).join(", ")
+              : submission.location,
           property_type: submission.property_type,
-          purpose: submission.purpose ?? "sale",
+          purpose: mapSubmissionPurposeToPropertyPurpose(submission.purpose),
           price: submission.price,
           currency: submission.currency ?? "QAR",
           bedrooms: submission.bedrooms,
@@ -127,6 +143,7 @@ export function useConvertSubmission() {
           unit_number: submission.unit_number,
           parking_spaces: submission.parking_spaces,
           furnishing_status: submission.furnishing_status,
+          available_from: submission.available_from,
           listing_source: "owner_submission",
           status: "active",
           availability: "available",

@@ -5,13 +5,22 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
-import { sb, fmtDateTime, fmtMoney, type PropertySubmission } from "@/lib/db";
+import {
+  sb,
+  fmtDate,
+  fmtDateTime,
+  fmtMoney,
+  SUBMISSION_PURPOSES,
+  SUBMISSION_PURPOSE_LABELS,
+  type PropertySubmission,
+} from "@/lib/db";
 import {
   useUpdateSubmission,
   useReviewSubmission,
   useConvertSubmission,
 } from "@/hooks/use-submissions";
 import { useDevelopments } from "@/hooks/use-developments";
+import { useAreas } from "@/hooks/use-locations";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +131,7 @@ export function SubmissionDetailDrawer({
   const review = useReviewSubmission();
   const convert = useConvertSubmission();
   const { data: developments = [] } = useDevelopments({ publishedOnly: false });
+  const { data: areas = [] } = useAreas();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<PropertySubmission>>({});
   const [notes, setNotes] = useState("");
@@ -150,7 +160,10 @@ export function SubmissionDetailDrawer({
           owner_id_number: form.owner_id_number,
           property_type: form.property_type,
           purpose: form.purpose,
+          area_id: form.area_id,
+          custom_area: form.custom_area,
           location: form.location,
+          available_from: form.available_from,
           tower_name: form.tower_name,
           floor_number: form.floor_number,
           unit_number: form.unit_number,
@@ -248,11 +261,58 @@ export function SubmissionDetailDrawer({
                 onChange={(e) => setForm((p) => ({ ...p, property_type: e.target.value }))}
               />
             </Field>
+            <Field label="Purpose">
+              <SelectField
+                value={form.purpose ?? null}
+                onChange={(v) => setForm((p) => ({ ...p, purpose: v }))}
+                options={SUBMISSION_PURPOSES.map((s) => ({
+                  value: s,
+                  label: SUBMISSION_PURPOSE_LABELS[s],
+                }))}
+                placeholder="Not specified"
+              />
+            </Field>
+            <Field label="Area">
+              <SearchableSelectField
+                value={form.area_id ?? null}
+                onChange={(v) =>
+                  setForm((p) => ({ ...p, area_id: v, custom_area: v ? null : p.custom_area }))
+                }
+                options={areas
+                  .filter((a) => a.is_active)
+                  .map((a) => ({ value: a.id, label: a.name }))}
+                placeholder="Select a canonical area"
+                emptyLabel="No canonical area"
+                searchPlaceholder="Search areas..."
+              />
+            </Field>
+            <Field label="Custom area (if not in the list above)">
+              <input
+                className={inputCls}
+                value={form.custom_area ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    custom_area: e.target.value || null,
+                    area_id: e.target.value ? null : p.area_id,
+                  }))
+                }
+                placeholder="e.g. a neighbourhood not yet in Areas"
+              />
+            </Field>
             <Field label="Location">
               <input
                 className={inputCls}
                 value={form.location ?? ""}
                 onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+              />
+            </Field>
+            <Field label="Available from">
+              <input
+                type="date"
+                className={inputCls}
+                value={form.available_from ?? ""}
+                onChange={(e) => setForm((p) => ({ ...p, available_from: e.target.value || null }))}
               />
             </Field>
             <Field label="Development">
@@ -383,9 +443,30 @@ export function SubmissionDetailDrawer({
               <Info label="Mobile" value={submission.phone} />
               <Info label="Email" value={submission.email} />
               <Info label="ID number" value={submission.owner_id_number} />
-              <Info label="Purpose" value={submission.purpose} capitalize />
+              <Info
+                label="Purpose"
+                value={
+                  submission.purpose
+                    ? (SUBMISSION_PURPOSE_LABELS[submission.purpose] ?? submission.purpose)
+                    : null
+                }
+              />
               <Info label="Property type" value={submission.property_type} />
+              <Info
+                label="Area"
+                value={
+                  submission.area_id
+                    ? (areas.find((a) => a.id === submission.area_id)?.name ?? "Canonical area")
+                    : submission.custom_area
+                      ? `${submission.custom_area} (custom)`
+                      : null
+                }
+              />
               <Info label="Location" value={submission.location} />
+              <Info
+                label="Available from"
+                value={submission.available_from ? fmtDate(submission.available_from) : null}
+              />
               <Info label="Tower" value={submission.tower_name} />
               <Info label="Floor" value={submission.floor_number} />
               <Info label="Unit" value={submission.unit_number} />

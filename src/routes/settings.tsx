@@ -32,6 +32,10 @@ import {
   useSaveSmsProviderConfig,
   useProcessDueNotifications,
 } from "@/hooks/use-notifications";
+import {
+  useAvailabilityConfirmationCadence,
+  useSaveAvailabilityConfirmationCadence,
+} from "@/hooks/use-availability-confirmations";
 import { useMapboxConfig, useSaveMapboxConfig } from "@/hooks/use-mapbox-config";
 import { fmtDateTime } from "@/lib/db";
 
@@ -805,6 +809,8 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
         </div>
       </div>
 
+      <AvailabilityConfirmationCadenceSection canManage={canManage} />
+
       <div>
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Scheduled notifications</p>
@@ -863,6 +869,52 @@ function NotificationsSection({ canManage }: { canManage: boolean }) {
               </div>
             ))}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AvailabilityConfirmationCadenceSection({ canManage }: { canManage: boolean }) {
+  const { data: cadenceDays = 30 } = useAvailabilityConfirmationCadence();
+  const saveCadence = useSaveAvailabilityConfirmationCadence();
+  const [value, setValue] = useState<number>(cadenceDays);
+
+  useEffect(() => setValue(cadenceDays), [cadenceDays]);
+
+  return (
+    <div>
+      <p className="text-sm font-medium">Property availability confirmation</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        How often staff are asked to re-confirm a property's availability. Confirming schedules the
+        next check-in automatically and creates a follow-up task for the assigned agent.
+      </p>
+      <div className="mt-3 flex max-w-xs items-center gap-2">
+        <input
+          className={cn(inputCls, "w-24")}
+          type="number"
+          min={1}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          disabled={!canManage}
+        />
+        <span className="text-xs text-muted-foreground">days</span>
+        {canManage && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={saveCadence.isPending || value < 1}
+            onClick={async () => {
+              try {
+                await saveCadence.mutateAsync(value);
+                toast.success("Saved");
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+          >
+            Save
+          </Button>
         )}
       </div>
     </div>

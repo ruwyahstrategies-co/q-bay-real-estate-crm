@@ -61,6 +61,7 @@ function normalisePhone(p: string | null | undefined): string | null {
 }
 
 const FURNISHING = new Set(["FF", "SF", "UF"]);
+const SUBMISSION_PURPOSES = new Set(["sell", "rent", "let"]);
 const FILE_SHAPE = (
   f: unknown,
 ): f is { path: string; filename: string; mime_type?: string; size?: number } =>
@@ -77,9 +78,11 @@ type Body = {
   property_type?: string;
   purpose?: string;
   area_id?: string;
+  custom_area?: string;
   country_id?: string;
   development_id?: string;
   location?: string;
+  available_from?: string;
   tower_name?: string;
   floor_number?: string;
   unit_number?: string;
@@ -126,6 +129,17 @@ Deno.serve(async (req) => {
   const furnishing =
     body.furnishing_status && FURNISHING.has(body.furnishing_status)
       ? body.furnishing_status
+      : null;
+  const purpose =
+    body.purpose && SUBMISSION_PURPOSES.has(body.purpose) ? body.purpose : "sell";
+  // Public users never write into the canonical Areas table - only a real
+  // area_id (already selected from Areas) or a free-text custom_area, never
+  // both at once.
+  const areaId = body.area_id?.trim() || null;
+  const customArea = !areaId ? body.custom_area?.trim() || null : null;
+  const availableFrom =
+    body.available_from && /^\d{4}-\d{2}-\d{2}$/.test(body.available_from)
+      ? body.available_from
       : null;
   const media = Array.isArray(body.media) ? body.media.filter(FILE_SHAPE) : [];
   const documents = Array.isArray(body.documents) ? body.documents.filter(FILE_SHAPE) : [];
@@ -185,11 +199,13 @@ Deno.serve(async (req) => {
       email,
       owner_id_number: body.owner_id_number?.trim() || null,
       property_type: body.property_type,
-      purpose: body.purpose || "sale",
-      area_id: body.area_id || null,
+      purpose,
+      area_id: areaId,
+      custom_area: customArea,
       country_id: body.country_id || null,
       development_id: body.development_id || null,
       location: body.location?.trim() || null,
+      available_from: availableFrom,
       tower_name: body.tower_name?.trim() || null,
       floor_number: body.floor_number?.trim() || null,
       unit_number: body.unit_number?.trim() || null,

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sb, type Property, type PropertyInsert, type PropertyUpdate } from "@/lib/db";
+import { getR2SignedReadUrl } from "@/lib/r2";
 
 export const propertyKeys = {
   all: ["properties"] as const,
@@ -53,24 +54,39 @@ export function usePropertyThumbnails(propertyIds: string[]) {
     queryFn: async (): Promise<Record<string, string>> => {
       const { data, error } = await sb
         .from("property_media")
-        .select("property_id, display_order, uploads(storage_bucket, storage_path)")
+        .select("property_id, display_order, uploads(id, storage_provider, storage_bucket, storage_path, public_url)")
         .in("property_id", ids)
         .eq("media_type", "image")
         .order("display_order", { ascending: true });
       if (error) throw error;
 
-      type ThumbnailRow = {
-        property_id: string;
-        uploads: { storage_bucket: string; storage_path: string } | null;
+      type ThumbnailUpload = {
+        id: string;
+        storage_provider: string;
+        storage_bucket: string;
+        storage_path: string;
+        public_url: string | null;
       };
-      const firstByProperty = new Map<string, { storage_bucket: string; storage_path: string }>();
+      type ThumbnailRow = { property_id: string; uploads: ThumbnailUpload | null };
+      const firstByProperty = new Map<string, ThumbnailUpload>();
       for (const row of (data ?? []) as unknown as ThumbnailRow[]) {
         if (!row.uploads || firstByProperty.has(row.property_id)) continue;
         firstByProperty.set(row.property_id, row.uploads);
       }
 
+      // Prefer the already-known public_url (fast, no signing round-trip);
+      // fall back to a signed URL only for private/legacy rows without one.
       const entries = await Promise.all(
         Array.from(firstByProperty.entries()).map(async ([propertyId, upload]) => {
+          if (upload.public_url) return [propertyId, upload.public_url] as const;
+          if (upload.storage_provider === "r2") {
+            try {
+              const signedUrl = await getR2SignedReadUrl(upload.id);
+              return [propertyId, signedUrl] as const;
+            } catch {
+              return [propertyId, undefined] as const;
+            }
+          }
           const { data: signed } = await sb.storage
             .from(upload.storage_bucket)
             .createSignedUrl(upload.storage_path, 3600);
@@ -95,6 +111,56 @@ export function usePropertyMedia(propertyId: string | undefined) {
       if (error) throw error;
       return data ?? [];
     },
+  });
+}
+
+/** Marks one gallery image as the hero and syncs properties.hero_image_url for backward compatibility with existing hero rendering. */
+export function useSetHeroMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      propertyId,
+      mediaId,
+      imageUrl,
+    }: {
+      propertyId: string;
+      mediaId: string;
+      imageUrl: string | null;
+    }) => {
+      await sb.from("property_media").update({ is_hero: false }).eq("property_id", propertyId).eq("is_hero", true);
+      const { error: heroErr } = await sb.from("property_media").update({ is_hero: true }).eq("id", mediaId);
+      if (heroErr) throw heroErr;
+      if (imageUrl) {
+        const { error: propErr } = await sb.from("properties").update({ hero_image_url: imageUrl }).eq("id", propertyId);
+        if (propErr) throw propErr;
+      }
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: propertyKeys.media(vars.propertyId) });
+      qc.invalidateQueries({ queryKey: propertyKeys.detail(vars.propertyId) });
+      qc.invalidateQueries({ queryKey: propertyKeys.all });
+    },
+  });
+}
+
+/** Reorders gallery images by writing new display_order values. */
+export function useReorderPropertyMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      propertyId,
+      items,
+    }: {
+      propertyId: string;
+      items: { id: string; display_order: number }[];
+    }) => {
+      const results = await Promise.all(
+        items.map((it) => sb.from("property_media").update({ display_order: it.display_order }).eq("id", it.id)),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: propertyKeys.media(vars.propertyId) }),
   });
 }
 

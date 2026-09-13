@@ -1,9 +1,18 @@
 // Public "List Your Property" intake — the ONLY way an anonymous website
-// visitor's Sale Listing Form reaches the CRM. Mirrors website-enquiry:
-// anonymous callers have no RLS access to owners/property_submissions (no
-// policy permits it), so this function validates, normalises, finds-or-
-// creates the Owner, and writes the submission, all via the service role.
-// Nothing here ever publishes a property — staff review and convert.
+// visitor's submission reaches the CRM. Mirrors website-enquiry: anonymous
+// callers have no RLS access to owners/property_submissions (no policy
+// permits it), so this function validates, normalises, finds-or-creates the
+// Owner, and writes the submission, all via the service role. Nothing here
+// ever publishes a property — staff review and convert.
+//
+// The simplified form only requires full_name, phone, a description (typed
+// text and/or a recorded voice note) and terms_accepted — every other field
+// stays exactly as optional as it already was. A voice note and/or owner
+// photos arrive as R2 object references (already uploaded client-side via
+// r2-upload) and are recorded as `uploads` rows linked through the new
+// property_submission_id column — the legacy `media`/`documents` jsonb
+// arrays (Supabase Storage paths) keep working unchanged for anything still
+// using that path.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -70,6 +79,10 @@ const FILE_SHAPE = (
   typeof (f as any).path === "string" &&
   typeof (f as any).filename === "string";
 
+type R2Ref = { object_key: string; bucket: string; mime_type?: string; size?: number };
+const R2_REF_SHAPE = (f: unknown): f is R2Ref =>
+  !!f && typeof f === "object" && typeof (f as any).object_key === "string" && typeof (f as any).bucket === "string";
+
 type Body = {
   full_name?: string;
   phone?: string;
@@ -97,6 +110,10 @@ type Body = {
   media?: unknown[];
   documents?: unknown[];
   website_profile_id?: string;
+  // New: R2-backed voice note and/or owner photos, uploaded client-side
+  // beforehand via r2-upload (context: "public_submission").
+  voice_note?: { object_key?: string; bucket?: string; mime_type?: string; duration_seconds?: number; size?: number };
+  r2_photos?: unknown[];
 };
 
 Deno.serve(async (req) => {
@@ -118,13 +135,17 @@ Deno.serve(async (req) => {
   const fullName = body.full_name?.trim();
   const phone = normalisePhone(body.phone);
   const email = body.email?.trim()?.toLowerCase() || null;
+  const description = body.description?.trim() || null;
+  const voiceNote = R2_REF_SHAPE(body.voice_note) ? body.voice_note : null;
 
   if (!fullName) return json({ error: "Owner name is required" }, 400);
   if (!phone) return json({ error: "Mobile number is required" }, 400);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return json({ error: "Invalid email" }, 400);
-  if (!body.property_type) return json({ error: "Property type is required" }, 400);
   if (!body.terms_accepted) return json({ error: "Terms must be accepted" }, 400);
+  if (!description && !voiceNote) {
+    return json({ error: "Please add a description or record a voice note" }, 400);
+  }
 
   const furnishing =
     body.furnishing_status && FURNISHING.has(body.furnishing_status)
@@ -143,6 +164,7 @@ Deno.serve(async (req) => {
       : null;
   const media = Array.isArray(body.media) ? body.media.filter(FILE_SHAPE) : [];
   const documents = Array.isArray(body.documents) ? body.documents.filter(FILE_SHAPE) : [];
+  const r2Photos = Array.isArray(body.r2_photos) ? body.r2_photos.filter(R2_REF_SHAPE) : [];
 
   // Find an existing Owner by phone or email; never create a duplicate.
   let ownerId: string | null = null;
@@ -198,7 +220,7 @@ Deno.serve(async (req) => {
       phone,
       email,
       owner_id_number: body.owner_id_number?.trim() || null,
-      property_type: body.property_type,
+      property_type: body.property_type?.trim() || null,
       purpose,
       area_id: areaId,
       custom_area: customArea,
@@ -215,7 +237,7 @@ Deno.serve(async (req) => {
       parking_spaces: body.parking_spaces ?? null,
       furnishing_status: furnishing,
       price: body.price ?? null,
-      description: body.description?.trim() || null,
+      description,
       media,
       documents,
       status: "new",
@@ -227,6 +249,46 @@ Deno.serve(async (req) => {
     .single();
 
   if (subErr || !submission) return json({ error: "Failed to save submission" }, 500);
+
+  // Record any R2-backed voice note / owner photos, linked via the new
+  // property_submission_id column. Best-effort: a failure here must not
+  // lose the submission itself, since the core record is already saved.
+  const r2Rows: Record<string, unknown>[] = [];
+  if (voiceNote) {
+    r2Rows.push({
+      category: "voice_note",
+      filename: voiceNote.object_key.split("/").pop() ?? "voice-note",
+      storage_bucket: voiceNote.bucket,
+      storage_path: voiceNote.object_key,
+      storage_provider: "r2",
+      bucket_scope: "private",
+      mime_type: voiceNote.mime_type ?? null,
+      file_size: voiceNote.size ?? null,
+      duration_seconds: body.voice_note?.duration_seconds ?? null,
+      property_submission_id: submission.id,
+      processing_status: "completed",
+    });
+  }
+  for (const photo of r2Photos) {
+    r2Rows.push({
+      category: "submission_photo",
+      filename: photo.object_key.split("/").pop() ?? "photo",
+      storage_bucket: photo.bucket,
+      storage_path: photo.object_key,
+      storage_provider: "r2",
+      bucket_scope: "private",
+      mime_type: photo.mime_type ?? null,
+      file_size: photo.size ?? null,
+      property_submission_id: submission.id,
+      processing_status: "completed",
+    });
+  }
+  if (r2Rows.length > 0) {
+    const { error: uploadsErr } = await service.from("uploads").insert(r2Rows);
+    if (uploadsErr) {
+      console.error("[list-your-property] failed to save R2 media rows", uploadsErr.message);
+    }
+  }
 
   return json({ ok: true, submission_id: submission.id, owner_id: ownerId });
 });

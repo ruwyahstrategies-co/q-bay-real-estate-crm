@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, FileText, Image as ImageIcon, ExternalLink, Play, Pause, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { Button } from "./ui-primitives";
@@ -10,15 +10,19 @@ import {
   fmtDate,
   fmtDateTime,
   fmtMoney,
+  fmtSize,
   SUBMISSION_PURPOSES,
   SUBMISSION_PURPOSE_LABELS,
   type PropertySubmission,
+  type Upload,
 } from "@/lib/db";
 import {
   useUpdateSubmission,
   useReviewSubmission,
   useConvertSubmission,
+  useSubmissionUploads,
 } from "@/hooks/use-submissions";
+import { getR2SignedReadUrl } from "@/lib/r2";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useAreas } from "@/hooks/use-locations";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -109,6 +113,138 @@ function FileList({ files }: { files: FileRef[] }) {
   );
 }
 
+function fmtDuration(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return "";
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Secure, staff-only voice note playback - the signed URL is fetched from r2-signed-read on demand, never a permanent public URL. */
+function VoiceNotePlayer({ upload }: { upload: Upload }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  async function ensureUrl(): Promise<string | null> {
+    if (url) return url;
+    setLoading(true);
+    setError(null);
+    try {
+      const signedUrl = await getR2SignedReadUrl(upload.id);
+      setUrl(signedUrl);
+      return signedUrl;
+    } catch (e) {
+      setError((e as Error).message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function togglePlay() {
+    const signedUrl = await ensureUrl();
+    if (!signedUrl || !audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      await audioRef.current.play();
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2.5">
+      <button
+        type="button"
+        onClick={togglePlay}
+        disabled={loading}
+        aria-label={playing ? "Pause" : "Play"}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 translate-x-[1px]" />}
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+          <div className="h-full bg-foreground transition-[width]" style={{ width: `${progress * 100}%` }} />
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Mic className="h-3 w-3" />
+          <span>Voice note</span>
+          {upload.duration_seconds ? <span>- {fmtDuration(upload.duration_seconds)}</span> : null}
+          {upload.file_size ? <span>- {fmtSize(upload.file_size)}</span> : null}
+          {error && <span className="text-destructive">- {error}</span>}
+          {loading && <span>- loading...</span>}
+        </div>
+      </div>
+      {url && (
+        <audio
+          ref={audioRef}
+          src={url}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => {
+            setPlaying(false);
+            setProgress(0);
+          }}
+          onTimeUpdate={(e) => {
+            const el = e.currentTarget;
+            if (el.duration > 0) setProgress(el.currentTime / el.duration);
+          }}
+          className="hidden"
+        />
+      )}
+    </div>
+  );
+}
+
+/** Owner-submitted photos stored in R2 (private until a staff member promotes them on conversion). */
+function R2PhotoList({ uploads }: { uploads: Upload[] }) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        uploads.map(async (u) => {
+          try {
+            const signedUrl = await getR2SignedReadUrl(u.id);
+            return [u.id, signedUrl] as const;
+          } catch {
+            return [u.id, ""] as const;
+          }
+        }),
+      );
+      if (!cancelled) setUrls(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [uploads]);
+
+  if (uploads.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {uploads.map((u) => (
+        <a
+          key={u.id}
+          href={urls[u.id] || undefined}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs hover:bg-muted"
+        >
+          <ImageIcon className="h-3.5 w-3.5" />
+          <span className="max-w-[160px] truncate">{u.filename}</span>
+          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Full Sale Listing Form detail for one submission, wherever it's opened from
  * (the Listing Submissions tab, or an Owner's profile). Staff can see every
@@ -132,6 +268,7 @@ export function SubmissionDetailDrawer({
   const convert = useConvertSubmission();
   const { data: developments = [] } = useDevelopments({ publishedOnly: false });
   const { data: areas = [] } = useAreas();
+  const { data: r2Uploads = [] } = useSubmissionUploads(submission?.id);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<PropertySubmission>>({});
   const [notes, setNotes] = useState("");
@@ -148,6 +285,8 @@ export function SubmissionDetailDrawer({
   if (!submission) return null;
   const media = (submission.media as unknown as FileRef[] | null) ?? [];
   const documents = (submission.documents as unknown as FileRef[] | null) ?? [];
+  const voiceNote = r2Uploads.find((u) => u.category === "voice_note");
+  const r2Photos = r2Uploads.filter((u) => u.category === "submission_photo");
 
   async function saveEdits() {
     try {
@@ -481,7 +620,7 @@ export function SubmissionDetailDrawer({
             {submission.description && (
               <section>
                 <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Notes
+                  Description
                 </h4>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {submission.description}
@@ -489,11 +628,27 @@ export function SubmissionDetailDrawer({
               </section>
             )}
 
+            {voiceNote && (
+              <section>
+                <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Voice note
+                </h4>
+                <VoiceNotePlayer upload={voiceNote} />
+              </section>
+            )}
+
             <section>
               <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Photos
               </h4>
-              <FileList files={media.filter(isImage)} />
+              {media.filter(isImage).length === 0 && r2Photos.length === 0 ? (
+                <p className="text-xs text-muted-foreground">None uploaded.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {media.filter(isImage).length > 0 && <FileList files={media.filter(isImage)} />}
+                  {r2Photos.length > 0 && <R2PhotoList uploads={r2Photos} />}
+                </div>
+              )}
             </section>
             <section>
               <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

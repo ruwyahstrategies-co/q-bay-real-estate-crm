@@ -15,7 +15,7 @@ import { AvailabilityRing } from "@/components/status-badge";
 import { PropertyPublicationDestinations } from "@/components/property-publication-destinations";
 import { PropertyAvailabilityConfirmation } from "@/components/property-availability-confirmation";
 import { PropertyLeadsSection } from "@/components/property-leads-section";
-import { useProperty, usePropertyMedia, useDeleteProperty } from "@/hooks/use-properties";
+import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
 import { sb, fmtMoney, isConfirmationOverdue } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
@@ -44,6 +44,8 @@ function PropertyDetailPage() {
   const qc = useQueryClient();
   const deleteUpload = useDeleteUpload();
   const deleteProperty = useDeleteProperty();
+  const setHeroMedia = useSetHeroMedia();
+  const reorderMedia = useReorderPropertyMedia();
   const recordEvent = useRecordPropertyEvent();
   const { can } = usePermissions();
   const canEdit = can("properties", "edit");
@@ -246,46 +248,68 @@ function PropertyDetailPage() {
           )}
           {media.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {media.map((m) => (
-                <MediaThumb
-                  key={m.id}
-                  upload={
-                    (
-                      m as unknown as {
-                        uploads: {
-                          id: string;
-                          filename: string;
-                          storage_bucket: string;
-                          storage_path: string;
-                        };
+              {media.map((m, index) => {
+                const row = m as unknown as {
+                  id: string;
+                  is_hero: boolean;
+                  display_order: number;
+                  uploads: {
+                    id: string;
+                    filename: string;
+                    storage_bucket: string;
+                    storage_path: string;
+                    public_url: string | null;
+                  } | null;
+                };
+                return (
+                  <MediaThumb
+                    key={row.id}
+                    upload={row.uploads}
+                    isHero={row.is_hero}
+                    canDelete={canDeleteUpload}
+                    canEdit={canEdit}
+                    canMoveUp={index > 0}
+                    canMoveDown={index < media.length - 1}
+                    onSetHero={() => {
+                      if (!row.uploads) return;
+                      setHeroMedia.mutate(
+                        { propertyId, mediaId: row.id, imageUrl: row.uploads.public_url },
+                        {
+                          onSuccess: () => toast.success("Hero image updated"),
+                          onError: (e) => toast.error((e as Error).message),
+                        },
+                      );
+                    }}
+                    onMove={(direction) => {
+                      const swapWith = media[index + direction] as unknown as { id: string; display_order: number } | undefined;
+                      if (!swapWith) return;
+                      reorderMedia.mutate(
+                        {
+                          propertyId,
+                          items: [
+                            { id: row.id, display_order: swapWith.display_order },
+                            { id: swapWith.id, display_order: row.display_order },
+                          ],
+                        },
+                        { onError: (e) => toast.error((e as Error).message) },
+                      );
+                    }}
+                    onDelete={async () => {
+                      const u = row.uploads;
+                      if (!u) return;
+                      try {
+                        await deleteUpload.mutateAsync(u as never);
+                        await sb.from("property_media").delete().eq("id", row.id);
+                        qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
+                        qc.invalidateQueries({ queryKey: propertyKeys.all });
+                        toast.success("Removed");
+                      } catch (e) {
+                        toast.error((e as Error).message);
                       }
-                    ).uploads
-                  }
-                  canDelete={canDeleteUpload}
-                  onDelete={async () => {
-                    const u = (
-                      m as unknown as {
-                        uploads: {
-                          id: string;
-                          storage_bucket: string;
-                          storage_path: string;
-                          filename: string;
-                        };
-                      }
-                    ).uploads;
-                    if (!u) return;
-                    try {
-                      await deleteUpload.mutateAsync(u as never);
-                      await sb.from("property_media").delete().eq("id", m.id);
-                      qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
-                      qc.invalidateQueries({ queryKey: propertyKeys.all });
-                      toast.success("Removed");
-                    } catch (e) {
-                      toast.error((e as Error).message);
-                    }
-                  }}
-                />
-              ))}
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -477,16 +501,32 @@ function MatchRowLead({
 
 function MediaThumb({
   upload,
+  isHero,
   onDelete,
+  onSetHero,
+  onMove,
   canDelete,
+  canEdit,
+  canMoveUp,
+  canMoveDown,
 }: {
-  upload?: { id: string; filename: string; storage_bucket: string; storage_path: string } | null;
+  upload?: { id: string; filename: string; storage_bucket: string; storage_path: string; public_url?: string | null } | null;
+  isHero?: boolean;
   onDelete: () => void;
+  onSetHero?: () => void;
+  onMove?: (direction: -1 | 1) => void;
   canDelete: boolean;
+  canEdit?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!upload) return;
+    if (upload.public_url) {
+      setUrl(upload.public_url);
+      return;
+    }
     getSignedPreviewUrl(upload as never).then(setUrl);
   }, [upload]);
 
@@ -500,6 +540,43 @@ function MediaThumb({
           {upload.filename}
         </div>
       )}
+      {isHero && (
+        <span className="absolute left-2 top-2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-medium text-background">
+          Hero
+        </span>
+      )}
+      <div className="absolute inset-x-0 bottom-0 hidden items-center justify-between gap-1 bg-black/60 px-2 py-1.5 group-hover:flex">
+        {canEdit && onSetHero && !isHero ? (
+          <button
+            onClick={onSetHero}
+            className="rounded-md bg-white/95 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-white"
+          >
+            Set as hero
+          </button>
+        ) : (
+          <span />
+        )}
+        {onMove && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onMove(-1)}
+              disabled={!canMoveUp}
+              aria-label="Move left"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-foreground hover:bg-white disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => onMove(1)}
+              disabled={!canMoveDown}
+              aria-label="Move right"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-foreground hover:bg-white disabled:opacity-40"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
       {canDelete && (
         <button
           onClick={onDelete}

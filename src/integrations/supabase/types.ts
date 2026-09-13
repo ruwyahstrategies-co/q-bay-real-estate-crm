@@ -2484,6 +2484,7 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          is_hero: boolean
           media_type: string | null
           organisation_id: string | null
           property_id: string
@@ -2493,6 +2494,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_hero?: boolean
           media_type?: string | null
           organisation_id?: string | null
           property_id: string
@@ -2502,6 +2504,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_hero?: boolean
           media_type?: string | null
           organisation_id?: string | null
           property_id?: string
@@ -3399,11 +3402,14 @@ export type Database = {
       }
       uploads: {
         Row: {
+          bucket_scope: string | null
           category: string
           created_at: string
+          duration_seconds: number | null
           extracted_text: string | null
           file_size: number | null
           filename: string
+          height: number | null
           id: string
           lead_id: string | null
           metadata: Json
@@ -3415,19 +3421,25 @@ export type Database = {
           processing_status: string
           property_id: string | null
           property_lease_id: string | null
+          property_submission_id: string | null
           public_url: string | null
           storage_bucket: string
           storage_path: string
+          storage_provider: string
           tenant_id: string | null
           updated_at: string
           uploaded_by: string | null
+          width: number | null
         }
         Insert: {
+          bucket_scope?: string | null
           category: string
           created_at?: string
+          duration_seconds?: number | null
           extracted_text?: string | null
           file_size?: number | null
           filename: string
+          height?: number | null
           id?: string
           lead_id?: string | null
           metadata?: Json
@@ -3439,19 +3451,25 @@ export type Database = {
           processing_status?: string
           property_id?: string | null
           property_lease_id?: string | null
+          property_submission_id?: string | null
           public_url?: string | null
           storage_bucket: string
           storage_path: string
+          storage_provider?: string
           tenant_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Update: {
+          bucket_scope?: string | null
           category?: string
           created_at?: string
+          duration_seconds?: number | null
           extracted_text?: string | null
           file_size?: number | null
           filename?: string
+          height?: number | null
           id?: string
           lead_id?: string | null
           metadata?: Json
@@ -3463,12 +3481,15 @@ export type Database = {
           processing_status?: string
           property_id?: string | null
           property_lease_id?: string | null
+          property_submission_id?: string | null
           public_url?: string | null
           storage_bucket?: string
           storage_path?: string
+          storage_provider?: string
           tenant_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -3518,6 +3539,13 @@ export type Database = {
             columns: ["property_lease_id"]
             isOneToOne: false
             referencedRelation: "property_leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploads_property_submission_id_fkey"
+            columns: ["property_submission_id"]
+            isOneToOne: false
+            referencedRelation: "property_submissions"
             referencedColumns: ["id"]
           },
           {
@@ -3884,8 +3912,11 @@ export type Database = {
           assigned_agent_name: string
           assigned_agent_role: string
           availability: string
+          available_from: string
           bathrooms: number
           bedrooms: number
+          cloudflare_video_status: string
+          cloudflare_video_uid: string
           completion_status: string
           country_id: string
           country_name: string
@@ -3903,11 +3934,15 @@ export type Database = {
           hero_video_url: string
           highlights: string[]
           id: string
+          indoor_majlis: boolean
           last_refreshed_at: string
           latitude: number
           listing_source: string
           location: string
           longitude: number
+          maids_room: boolean
+          majlis: boolean
+          outdoor_majlis: boolean
           parking_spaces: number
           plot_size: number
           price: number

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { sb, type PropertySubmission, type PropertySubmissionUpdate } from "@/lib/db";
+import { sb, type PropertySubmission, type PropertySubmissionUpdate, type Upload } from "@/lib/db";
+import { promoteSubmissionPhoto } from "@/lib/r2";
 
 export const submissionKeys = {
   all: ["property_submissions"] as const,
@@ -31,6 +32,27 @@ export function useOwnerSubmissions(ownerId: string | undefined) {
         .select("*")
         .eq("owner_id", ownerId!)
         .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * R2-backed voice note / owner photos attached to a submission (linked via
+ * uploads.property_submission_id). Separate from the legacy media/documents
+ * jsonb columns, which keep working unchanged for older submissions.
+ */
+export function useSubmissionUploads(submissionId: string | undefined) {
+  return useQuery({
+    queryKey: ["property_submissions", "uploads", submissionId ?? "none"],
+    enabled: !!submissionId,
+    queryFn: async (): Promise<Upload[]> => {
+      const { data, error } = await sb
+        .from("uploads")
+        .select("*")
+        .eq("property_submission_id", submissionId!)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -159,12 +181,33 @@ export function useConvertSubmission() {
         .eq("id", submission.id);
       if (subErr) throw subErr;
 
+      // Promote any R2-backed owner photos into the public property gallery.
+      // Best-effort: a promotion failure must not fail the conversion itself
+      // (the property + submission link are already saved) - staff can
+      // still see and re-attempt from the submission's Photos section.
+      const { data: r2Photos } = await sb
+        .from("uploads")
+        .select("id")
+        .eq("property_submission_id", submission.id)
+        .eq("category", "submission_photo")
+        .eq("storage_provider", "r2");
+      if (r2Photos && r2Photos.length > 0) {
+        const results = await Promise.allSettled(
+          r2Photos.map((u) => promoteSubmissionPhoto({ uploadId: u.id, propertyId: property.id })),
+        );
+        const failures = results.filter((r) => r.status === "rejected").length;
+        if (failures > 0) {
+          console.warn(`[convert-submission] ${failures}/${r2Photos.length} submission photo(s) failed to promote`);
+        }
+      }
+
       return property;
     },
-    onSuccess: () => {
+    onSuccess: (_property, submission) => {
       qc.invalidateQueries({ queryKey: submissionKeys.all });
       qc.invalidateQueries({ queryKey: ["properties"] });
       qc.invalidateQueries({ queryKey: ["owners"] });
+      qc.invalidateQueries({ queryKey: ["property_submissions", "uploads", submission.id] });
     },
   });
 }

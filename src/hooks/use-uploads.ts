@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sb, type Upload, UPLOAD_CATEGORIES, type UploadCategoryKey } from "@/lib/db";
+import { authorizeCrmUpload, deleteR2Upload, getR2SignedReadUrl, putToR2, resolveR2PublicUrl, R2NotConfiguredError } from "@/lib/r2";
 
 export const uploadKeys = {
   all: ["uploads"] as const,
@@ -62,6 +63,16 @@ async function readTextSafe(file: File): Promise<string | null> {
   }
 }
 
+function processingStatusFor(ext: string): string {
+  if (["txt", "csv"].includes(ext)) return "pending"; // filled in after text extraction below
+  if (["mp3", "wav", "m4a"].includes(ext)) return "transcription_required";
+  if (["pdf", "docx"].includes(ext)) return "uploaded";
+  if (["jpg", "jpeg", "png", "webp"].includes(ext)) return "completed";
+  if (ext === "zip") return "unsupported";
+  if (ext === "xlsx") return "uploaded";
+  return "uploaded";
+}
+
 export function useUploadFile() {
   const qc = useQueryClient();
   return useMutation({
@@ -97,6 +108,58 @@ export function useUploadFile() {
         throw new UploadValidationError(`File exceeds ${cat.maxMb} MB limit.`);
       }
 
+      let extracted_text: string | null = null;
+      let processing_status = processingStatusFor(ext);
+      if (["txt", "csv"].includes(ext)) {
+        extracted_text = await readTextSafe(file);
+        processing_status = extracted_text != null ? "completed" : "uploaded";
+      }
+
+      const contentType = file.type || "application/octet-stream";
+      const entityId = propertyId ?? leadId ?? ownerId ?? tenantId ?? propertyLeaseId ?? offerId ?? crypto.randomUUID();
+
+      // Try Cloudflare R2 first (the target architecture) - fall back to the
+      // legacy Supabase Storage path only when R2 genuinely isn't configured
+      // yet, never on a real rejection (permission/mime/size).
+      try {
+        const auth = await authorizeCrmUpload({
+          categoryKey,
+          entityId,
+          filename: file.name,
+          mimeType: contentType,
+          sizeBytes: file.size,
+        });
+        await putToR2(auth.uploadUrl, file, contentType);
+
+        const insertRow = {
+          category: categoryKey,
+          filename: file.name,
+          storage_bucket: auth.bucket,
+          storage_path: auth.objectKey,
+          storage_provider: "r2" as const,
+          bucket_scope: auth.scope,
+          public_url: auth.scope === "public" ? resolveR2PublicUrl(auth.objectKey) : null,
+          mime_type: contentType,
+          file_size: file.size,
+          lead_id: leadId ?? null,
+          property_id: propertyId ?? null,
+          owner_id: ownerId ?? null,
+          tenant_id: tenantId ?? null,
+          property_lease_id: propertyLeaseId ?? null,
+          offer_id: offerId ?? null,
+          uploaded_by: uploadedBy ?? null,
+          processing_status,
+          extracted_text,
+          metadata: { extension: ext },
+        };
+        const { data, error } = await sb.from("uploads").insert(insertRow).select().single();
+        if (error) throw error;
+        return data;
+      } catch (err) {
+        if (!(err instanceof R2NotConfiguredError)) throw err;
+        // R2 not configured yet - fall through to legacy Supabase Storage.
+      }
+
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `${crypto.randomUUID()}-${safeName}`;
 
@@ -106,25 +169,6 @@ export function useUploadFile() {
       });
       if (upErr) throw upErr;
 
-      // Optional text extraction
-      let extracted_text: string | null = null;
-      let processing_status = "uploaded";
-      if (["txt", "csv"].includes(ext)) {
-        extracted_text = await readTextSafe(file);
-        if (extracted_text != null) processing_status = "completed";
-      } else if (["mp3", "wav", "m4a"].includes(ext)) {
-        processing_status = "transcription_required";
-      } else if (["pdf", "docx"].includes(ext)) {
-        processing_status = "uploaded"; // server-side extraction not enabled
-      } else if (["jpg", "jpeg", "png", "webp"].includes(ext)) {
-        processing_status = "completed";
-      } else if (ext === "zip") {
-        processing_status = "unsupported";
-      } else if (ext === "xlsx") {
-        processing_status = "uploaded";
-      }
-
-      // Public URL (works only if bucket is public; otherwise we'll use signed URLs)
       const { data: pub } = sb.storage.from(cat.bucket).getPublicUrl(path);
 
       const insertRow = {
@@ -132,6 +176,7 @@ export function useUploadFile() {
         filename: file.name,
         storage_bucket: cat.bucket,
         storage_path: path,
+        storage_provider: "supabase" as const,
         public_url: pub.publicUrl,
         mime_type: file.type || null,
         file_size: file.size,
@@ -163,6 +208,10 @@ export function useDeleteUpload() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (upload: Upload) => {
+      if (upload.storage_provider === "r2") {
+        await deleteR2Upload(upload.id);
+        return;
+      }
       const { error: storageErr } = await sb.storage
         .from(upload.storage_bucket)
         .remove([upload.storage_path]);
@@ -175,11 +224,17 @@ export function useDeleteUpload() {
 }
 
 export async function downloadUpload(upload: Upload): Promise<void> {
-  const { data, error } = await sb.storage
-    .from(upload.storage_bucket)
-    .download(upload.storage_path);
-  if (error) throw error;
-  const blob = data;
+  let blob: Blob;
+  if (upload.storage_provider === "r2") {
+    const signedUrl = await getR2SignedReadUrl(upload.id);
+    const res = await fetch(signedUrl);
+    if (!res.ok) throw new Error(`Failed to download file (HTTP ${res.status})`);
+    blob = await res.blob();
+  } else {
+    const { data, error } = await sb.storage.from(upload.storage_bucket).download(upload.storage_path);
+    if (error) throw error;
+    blob = data;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -191,6 +246,13 @@ export async function downloadUpload(upload: Upload): Promise<void> {
 }
 
 export async function getSignedPreviewUrl(upload: Upload): Promise<string | null> {
+  if (upload.storage_provider === "r2") {
+    try {
+      return await getR2SignedReadUrl(upload.id);
+    } catch {
+      return null;
+    }
+  }
   const { data, error } = await sb.storage
     .from(upload.storage_bucket)
     .createSignedUrl(upload.storage_path, 3600);

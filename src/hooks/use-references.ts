@@ -3,7 +3,14 @@ import { sb } from "@/lib/db";
 
 export type LeadRef = { id: string; full_name: string };
 export type PropertyRef = { id: string; title: string; reference_code: string | null };
-export type InteractionRef = { id: string; interaction_type: string; interaction_date: string; subject: string | null; lead_id: string | null; lead_name?: string };
+export type InteractionRef = {
+  id: string;
+  interaction_type: string;
+  interaction_date: string;
+  subject: string | null;
+  lead_id: string | null;
+  lead_name?: string;
+};
 
 // Properties tied to a lead: from lead_property_interests + property_events.source=interaction joining via lead's interactions
 export function useLeadReferences(leadId: string | undefined) {
@@ -12,15 +19,24 @@ export function useLeadReferences(leadId: string | undefined) {
     queryKey: ["refs", "lead", leadId],
     queryFn: async () => {
       const [{ data: interests = [] }, { data: interactions = [] }] = await Promise.all([
-        sb.from("lead_property_interests").select("id, interest_level, status, notes, property_id, properties(id, title, reference_code, location, property_type, price, currency)").eq("lead_id", leadId!),
+        sb
+          .from("lead_property_interests")
+          .select(
+            "id, interest_level, status, notes, property_id, properties(id, title, reference_code, location, property_type, price, currency)",
+          )
+          .eq("lead_id", leadId!),
         sb.from("interactions").select("id").eq("lead_id", leadId!),
       ]);
       const intIds = (interactions as any[]).map((i) => i.id);
       let mentioned: any[] = [];
       if (intIds.length) {
-        const { data: events = [] } = await (sb as any).from("property_events")
-          .select("property_id, source_id, occurred_at, event_type, properties(id, title, reference_code)")
-          .eq("event_type", "mention").in("source_id", intIds);
+        const { data: events = [] } = await (sb as any)
+          .from("property_events")
+          .select(
+            "property_id, source_id, occurred_at, event_type, properties(id, title, reference_code)",
+          )
+          .eq("event_type", "mention")
+          .in("source_id", intIds);
         mentioned = events as any[];
       }
       return { interests, mentioned };
@@ -34,7 +50,10 @@ export function useLeadPropertyInterests(leadId: string | undefined) {
     enabled: !!leadId,
     queryKey: ["lead_property_interest_ids", leadId],
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await sb.from("lead_property_interests").select("property_id").eq("lead_id", leadId!);
+      const { data, error } = await sb
+        .from("lead_property_interests")
+        .select("property_id")
+        .eq("lead_id", leadId!);
       if (error) throw error;
       return (data ?? []).map((r) => r.property_id);
     },
@@ -58,7 +77,9 @@ export function useSyncLeadPropertyInterests() {
       const toDelete = (existing ?? []).filter((r) => !desired.has(r.property_id)).map((r) => r.id);
 
       if (toInsert.length) {
-        const { error } = await sb.from("lead_property_interests").insert(toInsert.map((property_id) => ({ lead_id: leadId, property_id })));
+        const { error } = await sb
+          .from("lead_property_interests")
+          .insert(toInsert.map((property_id) => ({ lead_id: leadId, property_id })));
         if (error) throw error;
       }
       if (toDelete.length) {
@@ -80,13 +101,27 @@ export function usePropertyReferences(propertyId: string | undefined) {
     queryKey: ["refs", "property", propertyId],
     queryFn: async () => {
       const [{ data: interests = [] }, { data: events = [] }] = await Promise.all([
-        sb.from("lead_property_interests").select("id, interest_level, status, lead_id, leads(id, full_name)").eq("property_id", propertyId!),
-        (sb as any).from("property_events").select("source_id, occurred_at, event_type, source").eq("property_id", propertyId!).eq("event_type", "mention").order("occurred_at",{ascending:false}).limit(50),
+        sb
+          .from("lead_property_interests")
+          .select("id, interest_level, status, lead_id, leads(id, full_name)")
+          .eq("property_id", propertyId!),
+        (sb as any)
+          .from("property_events")
+          .select("source_id, occurred_at, event_type, source")
+          .eq("property_id", propertyId!)
+          .eq("event_type", "mention")
+          .order("occurred_at", { ascending: false })
+          .limit(50),
       ]);
-      const interactionIds = Array.from(new Set((events as any[]).map((e) => e.source_id).filter(Boolean)));
+      const interactionIds = Array.from(
+        new Set((events as any[]).map((e) => e.source_id).filter(Boolean)),
+      );
       let interactions: any[] = [];
       if (interactionIds.length) {
-        const { data: ints = [] } = await sb.from("interactions").select("id, interaction_type, interaction_date, subject, lead_id, leads(id, full_name)").in("id", interactionIds);
+        const { data: ints = [] } = await sb
+          .from("interactions")
+          .select("id, interaction_type, interaction_date, subject, lead_id, leads(id, full_name)")
+          .in("id", interactionIds);
         interactions = ints as any[];
       }
       return { interests, interactions };
@@ -124,11 +159,23 @@ export function usePropertyLeads(propertyId: string | undefined) {
     enabled: !!propertyId,
     queryKey: ["refs", "property-leads", propertyId],
     queryFn: async (): Promise<PropertyLeadRow[]> => {
-      const [{ data: interests = [] }, { data: viewings = [] }, { data: offers = [] }] = await Promise.all([
-        sb.from("lead_property_interests").select("lead_id, interest_level, status").eq("property_id", propertyId!),
-        sb.from("viewings").select("lead_id, status, scheduled_at").eq("property_id", propertyId!).order("scheduled_at", { ascending: false }),
-        sb.from("offers").select("lead_id, status, created_at").eq("property_id", propertyId!).order("created_at", { ascending: false }),
-      ]);
+      const [{ data: interests = [] }, { data: viewings = [] }, { data: offers = [] }] =
+        await Promise.all([
+          sb
+            .from("lead_property_interests")
+            .select("lead_id, interest_level, status")
+            .eq("property_id", propertyId!),
+          sb
+            .from("viewings")
+            .select("lead_id, status, scheduled_at")
+            .eq("property_id", propertyId!)
+            .order("scheduled_at", { ascending: false }),
+          sb
+            .from("offers")
+            .select("lead_id, status, created_at")
+            .eq("property_id", propertyId!)
+            .order("created_at", { ascending: false }),
+        ]);
 
       const leadIds = new Set<string>();
       for (const i of interests as any[]) if (i.lead_id) leadIds.add(i.lead_id);
@@ -137,17 +184,34 @@ export function usePropertyLeads(propertyId: string | undefined) {
       if (leadIds.size === 0) return [];
 
       const ids = Array.from(leadIds);
-      const [{ data: leads = [] }, { data: analyses = [] }, { data: recentInteractions = [] }] = await Promise.all([
-        sb.from("leads").select("id, full_name, classification, pipeline_stage, status, assigned_agent_id, intent_score, intended_transaction_date, transaction_timeframe, team_members(full_name)").in("id", ids),
-        (sb as any).from("ai_analyses").select("lead_id, status, output_json, completed_at").in("lead_id", ids).eq("status", "completed").order("completed_at", { ascending: false }),
-        sb.from("interactions").select("lead_id, interaction_type, interaction_date").in("lead_id", ids).order("interaction_date", { ascending: false }),
-      ]);
+      const [{ data: leads = [] }, { data: analyses = [] }, { data: recentInteractions = [] }] =
+        await Promise.all([
+          sb
+            .from("leads")
+            .select(
+              "id, full_name, classification, pipeline_stage, status, assigned_agent_id, intent_score, intended_transaction_date, transaction_timeframe, team_members(full_name)",
+            )
+            .in("id", ids),
+          (sb as any)
+            .from("ai_analyses")
+            .select("lead_id, status, output_json, completed_at")
+            .in("lead_id", ids)
+            .eq("status", "completed")
+            .order("completed_at", { ascending: false }),
+          sb
+            .from("interactions")
+            .select("lead_id, interaction_type, interaction_date")
+            .in("lead_id", ids)
+            .order("interaction_date", { ascending: false }),
+        ]);
 
       const interestByLead = new Map((interests as any[]).map((i) => [i.lead_id, i]));
       const latestAnalysisByLead = new Map<string, any>();
-      for (const a of analyses as any[]) if (!latestAnalysisByLead.has(a.lead_id)) latestAnalysisByLead.set(a.lead_id, a);
+      for (const a of analyses as any[])
+        if (!latestAnalysisByLead.has(a.lead_id)) latestAnalysisByLead.set(a.lead_id, a);
       const latestInteractionByLead = new Map<string, any>();
-      for (const i of recentInteractions as any[]) if (!latestInteractionByLead.has(i.lead_id)) latestInteractionByLead.set(i.lead_id, i);
+      for (const i of recentInteractions as any[])
+        if (!latestInteractionByLead.has(i.lead_id)) latestInteractionByLead.set(i.lead_id, i);
       const viewingsByLead = new Map<string, any[]>();
       for (const v of viewings as any[]) {
         if (!v.lead_id) continue;
@@ -178,7 +242,11 @@ export function usePropertyLeads(propertyId: string | undefined) {
           assigned_agent_name: l.team_members?.full_name ?? null,
           interest_level: interest?.interest_level ?? null,
           interest_status: interest?.status ?? null,
-          base_intent_score: analysis?.output_json?.deep_analysis?.intent_score ?? analysis?.output_json?.intentScore ?? l.intent_score ?? null,
+          base_intent_score:
+            analysis?.output_json?.deep_analysis?.intent_score ??
+            analysis?.output_json?.intentScore ??
+            l.intent_score ??
+            null,
           intended_transaction_date: l.intended_transaction_date,
           transaction_timeframe: l.transaction_timeframe,
           latest_interaction_at: interaction?.interaction_date ?? null,

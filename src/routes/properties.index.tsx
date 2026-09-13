@@ -1,6 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, LayoutGrid, Rows3, Building2, Pencil, Archive, ArchiveRestore, Trash2, Share2, Upload, Download, FileText } from "lucide-react";
+import {
+  Plus,
+  LayoutGrid,
+  Rows3,
+  Building2,
+  Pencil,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+  Share2,
+  Upload,
+  Download,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -16,7 +29,13 @@ import { AvailabilityRing } from "@/components/status-badge";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers } from "@/hooks/use-team";
 import { cn } from "@/lib/utils";
-import { useProperties, useArchiveProperty, useRestoreProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
+import {
+  useProperties,
+  useArchiveProperty,
+  useRestoreProperty,
+  useDeleteProperty,
+  usePropertyThumbnails,
+} from "@/hooks/use-properties";
 import { downloadCsv } from "@/lib/csv-export";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
 import { fmtMoney, isConfirmationOverdue, type Property } from "@/lib/db";
@@ -39,11 +58,16 @@ function PropertiesPage() {
   const [edit, setEdit] = useState<Property | null>(null);
   const [search, setSearch] = useState("");
   const [type, setType] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
+  const [statusFilter, setStatusFilter] =
+    useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
   const [importerOpen, setImporterOpen] = useState(false);
-  const { data: properties = [], isLoading } = useProperties({ search, type, status: statusFilter });
+  const { data: properties = [], isLoading } = useProperties({
+    search,
+    type,
+    status: statusFilter,
+  });
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
   const { data: team = [] } = useTeamMembers();
   const archive = useArchiveProperty();
@@ -57,7 +81,11 @@ function PropertiesPage() {
   async function handleShare(p: Property) {
     const agent = team.find((m) => m.id === p.assigned_agent_id);
     try {
-      const result = await sharePropertyPdf(p, thumbnails[p.id], agent ? { full_name: agent.full_name, email: agent.email, phone: agent.phone } : null);
+      const result = await sharePropertyPdf(
+        p,
+        thumbnails[p.id],
+        agent ? { full_name: agent.full_name, email: agent.email, phone: agent.phone } : null,
+      );
       if (result === "downloaded") toast.success("PDF downloaded - share it from your downloads");
     } catch (e) {
       toast.error((e as Error).message);
@@ -67,222 +95,348 @@ function PropertiesPage() {
   return (
     <AppShell>
       <PermissionGate module="properties" action="view" page>
-      <PageHeader
-        eyebrow="Inventory"
-        title="Properties"
-        description="Centralised property inventory for matching with buyer intent."
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                downloadCsv(
-                  `properties-${new Date().toISOString().slice(0, 10)}.csv`,
-                  properties,
-                  [
-                    { key: "title", label: "Title" },
-                    { key: "reference_code", label: "Reference code" },
-                    { key: "property_type", label: "Type" },
-                    { key: "purpose", label: "Purpose" },
-                    { key: "location", label: "Location" },
-                    { key: "developer", label: "Developer" },
-                    { key: "price", label: "Price" },
-                    { key: "currency", label: "Currency" },
-                    { key: "bedrooms", label: "Bedrooms" },
-                    { key: "bathrooms", label: "Bathrooms" },
-                    { key: "size", label: "Size" },
-                    { key: "availability", label: "Availability" },
-                    { key: "status", label: "Status" },
-                    { key: "is_published", label: "Published" },
-                  ],
-                )
-              }
-            >
-              <Download className="h-3.5 w-3.5" /> Export
-            </Button>
-            {canCreate && (
-              <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
-                <Upload className="h-3.5 w-3.5" /> Upload Properties
+        <PageHeader
+          eyebrow="Inventory"
+          title="Properties"
+          description="Centralised property inventory for matching with buyer intent."
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  downloadCsv(
+                    `properties-${new Date().toISOString().slice(0, 10)}.csv`,
+                    properties,
+                    [
+                      { key: "title", label: "Title" },
+                      { key: "reference_code", label: "Reference code" },
+                      { key: "property_type", label: "Type" },
+                      { key: "purpose", label: "Purpose" },
+                      { key: "location", label: "Location" },
+                      { key: "developer", label: "Developer" },
+                      { key: "price", label: "Price" },
+                      { key: "currency", label: "Currency" },
+                      { key: "bedrooms", label: "Bedrooms" },
+                      { key: "bathrooms", label: "Bathrooms" },
+                      { key: "size", label: "Size" },
+                      { key: "availability", label: "Availability" },
+                      { key: "status", label: "Status" },
+                      { key: "is_published", label: "Published" },
+                    ],
+                  )
+                }
+              >
+                <Download className="h-3.5 w-3.5" /> Export
               </Button>
-            )}
-            {canCreate && (
-              <Button size="sm" onClick={() => { setEdit(null); setOpen(true); }}>
-                <Plus className="h-3.5 w-3.5" /> Add Property
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
-        <input
-          type="text"
-          placeholder="Search by title, reference, location..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-        <SelectField
-          value={type}
-          onChange={(v) => setType(v)}
-          options={["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map((t) => ({ value: t, label: t }))}
-          emptyLabel="All types"
-          className="w-44"
-        />
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                statusFilter === f.value ? "bg-canvas text-foreground" : "text-muted-foreground hover:text-foreground",
+              {canCreate && (
+                <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
+                  <Upload className="h-3.5 w-3.5" /> Upload Properties
+                </Button>
               )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-          <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "table" && "bg-canvas")} onClick={() => setView("table")} aria-label="Table view">
-            <Rows3 className="h-3.5 w-3.5" />
-          </button>
-          <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "grid" && "bg-canvas")} onClick={() => setView("grid")} aria-label="Grid view">
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {view === "table" ? (
-        <DataTable
-          columns={["Property", "Reference", "Type", "Location", "Developer", "Price", "Beds", "Size", "Availability", "Actions"]}
-          empty={
-            isLoading ? <EmptyState title="Loading..." /> :
-            <EmptyState icon={<Building2 className="h-4 w-4" />} title="No properties yet" description="Add a property to build your inventory." />
+              {canCreate && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEdit(null);
+                    setOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Property
+                </Button>
+              )}
+            </>
           }
-        >
-          {properties.length > 0 ? properties.map((p) => (
-            <tr key={p.id} className="border-b border-border last:border-0 hover:bg-background/60">
-              <td className="px-4 py-3 text-sm font-medium">
-                <Link to="/properties/$propertyId" params={{ propertyId: p.id }} className="flex items-center gap-3 hover:underline">
-                  <span className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+        />
+
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
+          <input
+            type="text"
+            placeholder="Search by title, reference, location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <SelectField
+            value={type}
+            onChange={(v) => setType(v)}
+            options={["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"].map(
+              (t) => ({ value: t, label: t }),
+            )}
+            emptyLabel="All types"
+            className="w-44"
+          />
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  statusFilter === f.value
+                    ? "bg-canvas text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+            <button
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md",
+                view === "table" && "bg-canvas",
+              )}
+              onClick={() => setView("table")}
+              aria-label="Table view"
+            >
+              <Rows3 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md",
+                view === "grid" && "bg-canvas",
+              )}
+              onClick={() => setView("grid")}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {view === "table" ? (
+          <DataTable
+            columns={[
+              "Property",
+              "Reference",
+              "Type",
+              "Location",
+              "Developer",
+              "Price",
+              "Beds",
+              "Size",
+              "Availability",
+              "Actions",
+            ]}
+            empty={
+              isLoading ? (
+                <EmptyState title="Loading..." />
+              ) : (
+                <EmptyState
+                  icon={<Building2 className="h-4 w-4" />}
+                  title="No properties yet"
+                  description="Add a property to build your inventory."
+                />
+              )
+            }
+          >
+            {properties.length > 0
+              ? properties.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-border last:border-0 hover:bg-background/60"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">
+                      <Link
+                        to="/properties/$propertyId"
+                        params={{ propertyId: p.id }}
+                        className="flex items-center gap-3 hover:underline"
+                      >
+                        <span className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                          {thumbnails[p.id] ? (
+                            <img
+                              src={thumbnails[p.id]}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center">
+                              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            </span>
+                          )}
+                        </span>
+                        {p.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{p.reference_code ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{p.property_type ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{p.developer ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{fmtMoney(p.price, p.currency)}</td>
+                    <td className="px-4 py-3 text-xs">{p.bedrooms ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {p.size ? `${p.size} ${p.size_unit ?? ""}` : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <AvailabilityRing
+                        availability={p.availability}
+                        needsConfirmation={isConfirmationOverdue(p)}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="rounded-md p-1.5 hover:bg-muted"
+                          title="Download PDF"
+                          onClick={() => openPropertyPdf(p, thumbnails[p.id])}
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                        </button>
+                        {canEdit && (
+                          <button
+                            className="rounded-md p-1.5 hover:bg-muted"
+                            onClick={() => {
+                              setEdit(p);
+                              setOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canEdit && p.status !== "archived" && (
+                          <button
+                            className="rounded-md p-1.5 hover:bg-muted"
+                            title="Archive"
+                            onClick={() => setConfirmArchive(p)}
+                          >
+                            <Archive className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canEdit && p.status === "archived" && (
+                          <button
+                            className="rounded-md p-1.5 hover:bg-muted"
+                            title="Restore"
+                            onClick={async () => {
+                              try {
+                                await restore.mutateAsync(p.id);
+                                toast.success("Property restored");
+                              } catch (e) {
+                                toast.error((e as Error).message);
+                              }
+                            }}
+                          >
+                            <ArchiveRestore className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canHardDelete ? (
+                          <button
+                            className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                            title="Delete permanently"
+                            onClick={() => setConfirmDelete(p)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            className="rounded-md p-1.5 hover:bg-muted"
+                            title="Share"
+                            onClick={() => handleShare(p)}
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              : null}
+          </DataTable>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {properties.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyState icon={<Building2 className="h-4 w-4" />} title="No properties yet" />
+              </div>
+            ) : (
+              properties.map((p) => (
+                <Link
+                  key={p.id}
+                  to="/properties/$propertyId"
+                  params={{ propertyId: p.id }}
+                  className="overflow-hidden rounded-2xl border border-border bg-canvas hover:shadow-md transition"
+                >
+                  <div className="aspect-video w-full bg-muted">
                     {thumbnails[p.id] ? (
                       <img src={thumbnails[p.id]} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="flex h-full w-full items-center justify-center"><Building2 className="h-3.5 w-3.5 text-muted-foreground" /></span>
+                      <span className="flex h-full w-full items-center justify-center">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                      </span>
                     )}
-                  </span>
-                  {p.title}
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-sm font-semibold">{p.title}</h4>
+                      <AvailabilityRing
+                        availability={p.availability}
+                        needsConfirmation={isConfirmationOverdue(p)}
+                        className="flex-shrink-0"
+                        labelClassName="sr-only"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{p.location ?? "-"}</p>
+                    <p className="mt-3 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {p.property_type ?? "-"} · {p.bedrooms ?? "?"} bed · {p.size ?? "?"}{" "}
+                      {p.size_unit ?? ""}
+                    </p>
+                  </div>
                 </Link>
-              </td>
-              <td className="px-4 py-3 text-xs">{p.reference_code ?? "-"}</td>
-              <td className="px-4 py-3 text-xs">{p.property_type ?? "-"}</td>
-              <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
-              <td className="px-4 py-3 text-xs">{p.developer ?? "-"}</td>
-              <td className="px-4 py-3 text-xs">{fmtMoney(p.price, p.currency)}</td>
-              <td className="px-4 py-3 text-xs">{p.bedrooms ?? "-"}</td>
-              <td className="px-4 py-3 text-xs">{p.size ? `${p.size} ${p.size_unit ?? ""}` : "-"}</td>
-              <td className="px-4 py-3 text-xs">
-                <AvailabilityRing availability={p.availability} needsConfirmation={isConfirmationOverdue(p)} />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <button className="rounded-md p-1.5 hover:bg-muted" title="Download PDF" onClick={() => openPropertyPdf(p, thumbnails[p.id])}><FileText className="h-3.5 w-3.5" /></button>
-                  {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>}
-                  {canEdit && p.status !== "archived" && (
-                    <button className="rounded-md p-1.5 hover:bg-muted" title="Archive" onClick={() => setConfirmArchive(p)}><Archive className="h-3.5 w-3.5" /></button>
-                  )}
-                  {canEdit && p.status === "archived" && (
-                    <button
-                      className="rounded-md p-1.5 hover:bg-muted"
-                      title="Restore"
-                      onClick={async () => {
-                        try { await restore.mutateAsync(p.id); toast.success("Property restored"); }
-                        catch (e) { toast.error((e as Error).message); }
-                      }}
-                    >
-                      <ArchiveRestore className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {canHardDelete ? (
-                    <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Delete permanently" onClick={() => setConfirmDelete(p)}><Trash2 className="h-3.5 w-3.5" /></button>
-                  ) : (
-                    <button className="rounded-md p-1.5 hover:bg-muted" title="Share" onClick={() => handleShare(p)}><Share2 className="h-3.5 w-3.5" /></button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          )) : null}
-        </DataTable>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {properties.length === 0 ? (
-            <div className="col-span-full">
-              <EmptyState icon={<Building2 className="h-4 w-4" />} title="No properties yet" />
-            </div>
-          ) : properties.map((p) => (
-            <Link key={p.id} to="/properties/$propertyId" params={{ propertyId: p.id }} className="overflow-hidden rounded-2xl border border-border bg-canvas hover:shadow-md transition">
-              <div className="aspect-video w-full bg-muted">
-                {thumbnails[p.id] ? (
-                  <img src={thumbnails[p.id]} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center"><Building2 className="h-5 w-5 text-muted-foreground" /></span>
-                )}
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-semibold">{p.title}</h4>
-                  <AvailabilityRing availability={p.availability} needsConfirmation={isConfirmationOverdue(p)} className="flex-shrink-0" labelClassName="sr-only" />
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{p.location ?? "-"}</p>
-                <p className="mt-3 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{p.property_type ?? "-"} · {p.bedrooms ?? "?"} bed · {p.size ?? "?"} {p.size_unit ?? ""}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        )}
 
-      <PropertyImporter open={importerOpen} onOpenChange={setImporterOpen} />
-      <PropertyDrawer
-        open={open}
-        onOpenChange={setOpen}
-        property={edit}
-        onSaved={(saved, wasNew) => {
-          if (wasNew) navigate({ to: "/properties/$propertyId", params: { propertyId: saved.id } });
-        }}
-      />
-      <ConfirmDialog
-        open={!!confirmArchive}
-        title="Archive property?"
-        description={`Archive ${confirmArchive?.title}?`}
-        confirmLabel="Archive"
-        pending={archive.isPending}
-        onCancel={() => setConfirmArchive(null)}
-        onConfirm={async () => {
-          if (!confirmArchive) return;
-          try { await archive.mutateAsync(confirmArchive.id); toast.success("Property archived"); }
-          catch (e) { toast.error((e as Error).message); }
-          setConfirmArchive(null);
-        }}
-      />
-      <ConfirmDialog
-        open={!!confirmDelete}
-        title="Permanently delete property?"
-        description={`Delete ${confirmDelete?.title}. This cannot be undone.`}
-        confirmLabel="Delete"
-        destructive
-        pending={del.isPending}
-        onCancel={() => setConfirmDelete(null)}
-        onConfirm={async () => {
-          if (!confirmDelete) return;
-          try { await del.mutateAsync(confirmDelete.id); toast.success("Property deleted"); }
-          catch (e) { toast.error((e as Error).message); }
-          setConfirmDelete(null);
-        }}
-      />
+        <PropertyImporter open={importerOpen} onOpenChange={setImporterOpen} />
+        <PropertyDrawer
+          open={open}
+          onOpenChange={setOpen}
+          property={edit}
+          onSaved={(saved, wasNew) => {
+            if (wasNew)
+              navigate({ to: "/properties/$propertyId", params: { propertyId: saved.id } });
+          }}
+        />
+        <ConfirmDialog
+          open={!!confirmArchive}
+          title="Archive property?"
+          description={`Archive ${confirmArchive?.title}?`}
+          confirmLabel="Archive"
+          pending={archive.isPending}
+          onCancel={() => setConfirmArchive(null)}
+          onConfirm={async () => {
+            if (!confirmArchive) return;
+            try {
+              await archive.mutateAsync(confirmArchive.id);
+              toast.success("Property archived");
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+            setConfirmArchive(null);
+          }}
+        />
+        <ConfirmDialog
+          open={!!confirmDelete}
+          title="Permanently delete property?"
+          description={`Delete ${confirmDelete?.title}. This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          pending={del.isPending}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={async () => {
+            if (!confirmDelete) return;
+            try {
+              await del.mutateAsync(confirmDelete.id);
+              toast.success("Property deleted");
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+            setConfirmDelete(null);
+          }}
+        />
       </PermissionGate>
     </AppShell>
   );

@@ -22,7 +22,15 @@ export function useUploads(opts?: {
 }) {
   const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, category } = opts ?? {};
   return useQuery({
-    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, category }),
+    queryKey: uploadKeys.list({
+      leadId,
+      propertyId,
+      ownerId,
+      tenantId,
+      propertyLeaseId,
+      offerId,
+      category,
+    }),
     queryFn: async (): Promise<Upload[]> => {
       let q = sb.from("uploads").select("*").order("created_at", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);

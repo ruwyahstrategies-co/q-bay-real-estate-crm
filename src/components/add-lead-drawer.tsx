@@ -22,10 +22,20 @@ import {
 } from "@/lib/db";
 import { NATIONALITIES } from "@/lib/nationalities";
 
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+function Field({
+  label,
+  children,
+  full,
+}: {
+  label: string;
+  children: React.ReactNode;
+  full?: boolean;
+}) {
   return (
     <label className={cn("flex flex-col gap-1.5", full && "sm:col-span-2")}>
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -41,7 +51,10 @@ function toCsv(arr: string[] | null | undefined): string {
 }
 
 function fromCsv(s: string): string[] | null {
-  const parts = s.split(",").map((x) => x.trim()).filter(Boolean);
+  const parts = s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
   return parts.length ? parts : null;
 }
 
@@ -61,7 +74,9 @@ export function AddLeadDrawer({
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: areas = [] } = useAreas();
-  const activeAreaOptions = areas.filter((a) => a.is_active).map((a) => ({ value: a.id, label: a.name }));
+  const activeAreaOptions = areas
+    .filter((a) => a.is_active)
+    .map((a) => ({ value: a.id, label: a.name }));
   const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
@@ -155,8 +170,14 @@ export function AddLeadDrawer({
       email: form.email || null,
       nationality: form.nationality || null,
       preferred_language: form.preferred_language || null,
-      budget_min: form.budget_min != null && form.budget_min !== ("" as unknown as number) ? Number(form.budget_min) : null,
-      budget_max: form.budget_max != null && form.budget_max !== ("" as unknown as number) ? Number(form.budget_max) : null,
+      budget_min:
+        form.budget_min != null && form.budget_min !== ("" as unknown as number)
+          ? Number(form.budget_min)
+          : null,
+      budget_max:
+        form.budget_max != null && form.budget_max !== ("" as unknown as number)
+          ? Number(form.budget_max)
+          : null,
       currency: form.currency || "QAR",
       preferred_locations: fromCsv(form.preferred_locations_str ?? ""),
       preferred_area_id: form.preferred_area_id || null,
@@ -172,7 +193,7 @@ export function AddLeadDrawer({
       classification: form.classification || "buyer",
       workflow: form.workflow || "sales",
       development_id: form.development_id || null,
-      telesales_outcome: form.workflow === "telesales" ? (form.telesales_outcome || null) : null,
+      telesales_outcome: form.workflow === "telesales" ? form.telesales_outcome || null : null,
       telesales_qualified: form.workflow === "telesales" ? !!form.telesales_qualified : false,
       notes: form.notes || null,
     };
@@ -190,7 +211,9 @@ export function AddLeadDrawer({
         try {
           await syncInterests.mutateAsync({ leadId, propertyIds: interestedPropertyIds });
         } catch (err) {
-          toast.error(`Lead saved, but property interests failed to sync: ${(err as Error).message}`);
+          toast.error(
+            `Lead saved, but property interests failed to sync: ${(err as Error).message}`,
+          );
         }
       }
       onOpenChange(false);
@@ -200,26 +223,51 @@ export function AddLeadDrawer({
   }
 
   return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit lead" : "Add lead"}>
+    <DrawerShell
+      open={open}
+      onOpenChange={onOpenChange}
+      ariaLabel={isEdit ? "Edit lead" : "Add lead"}
+    >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Lead" : "Add Lead"}</h3>
-        <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
+        <button
+          onClick={() => onOpenChange(false)}
+          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+          aria-label="Close"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
+      <form
+        className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start"
+        onSubmit={handleSubmit}
+      >
         <Field label="Full name *" full>
-          <input className={inputCls} placeholder="Jane Doe" value={form.full_name ?? ""} onChange={(e) => set("full_name", e.target.value)} required />
+          <input
+            className={inputCls}
+            placeholder="Jane Doe"
+            value={form.full_name ?? ""}
+            onChange={(e) => set("full_name", e.target.value)}
+            required
+          />
         </Field>
         <Field label="Phone number">
-          <input className={inputCls} placeholder="+974..." value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="+974..."
+            value={form.phone ?? ""}
+            onChange={(e) => set("phone", e.target.value)}
+          />
         </Field>
         <Field label="Classification">
           <SelectField
             value={form.classification ?? "buyer"}
             onChange={(v) => set("classification", (v ?? "buyer") as FormState["classification"])}
-            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c) }))}
+            options={LEAD_CLASSIFICATIONS.map((c) => ({
+              value: c,
+              label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
+            }))}
             allowClear={false}
           />
         </Field>
@@ -243,25 +291,49 @@ export function AddLeadDrawer({
         {form.workflow === "telesales" && (
           <>
             <Field label="Telesales outcome">
-              <input className={inputCls} placeholder="e.g. callback requested" value={form.telesales_outcome ?? ""} onChange={(e) => set("telesales_outcome", e.target.value)} />
+              <input
+                className={inputCls}
+                placeholder="e.g. callback requested"
+                value={form.telesales_outcome ?? ""}
+                onChange={(e) => set("telesales_outcome", e.target.value)}
+              />
             </Field>
             <Field label="Qualified for transfer">
               <label className="flex h-9 items-center gap-2 text-xs">
-                <input type="checkbox" checked={!!form.telesales_qualified} onChange={(e) => set("telesales_qualified", e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={!!form.telesales_qualified}
+                  onChange={(e) => set("telesales_qualified", e.target.checked)}
+                />
                 Ready to transfer to a sales agent
               </label>
             </Field>
           </>
         )}
         <Field label="Lead source">
-          <input className={inputCls} placeholder="Website, referral..." value={form.lead_source ?? ""} onChange={(e) => set("lead_source", e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="Website, referral..."
+            value={form.lead_source ?? ""}
+            onChange={(e) => set("lead_source", e.target.value)}
+          />
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:col-span-2">
           <Field label="Budget min">
-            <input className={inputCls} type="number" value={form.budget_min ?? ""} onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value) : null)} />
+            <input
+              className={inputCls}
+              type="number"
+              value={form.budget_min ?? ""}
+              onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value) : null)}
+            />
           </Field>
           <Field label="Budget max">
-            <input className={inputCls} type="number" value={form.budget_max ?? ""} onChange={(e) => set("budget_max", e.target.value ? Number(e.target.value) : null)} />
+            <input
+              className={inputCls}
+              type="number"
+              value={form.budget_max ?? ""}
+              onChange={(e) => set("budget_max", e.target.value ? Number(e.target.value) : null)}
+            />
           </Field>
         </div>
         <Field label={`Interested properties (${interestedPropertyIds.length} selected)`} full>
@@ -270,7 +342,10 @@ export function AddLeadDrawer({
               <p className="px-1 py-2 text-xs text-muted-foreground">No active properties yet.</p>
             ) : (
               properties.map((p) => (
-                <label key={p.id} className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs hover:bg-muted">
+                <label
+                  key={p.id}
+                  className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs hover:bg-muted"
+                >
                   <input
                     type="checkbox"
                     checked={interestedPropertyIds.includes(p.id)}
@@ -280,7 +355,10 @@ export function AddLeadDrawer({
                       )
                     }
                   />
-                  <span className="truncate">{p.reference_code ? `${p.reference_code} · ` : ""}{p.title}</span>
+                  <span className="truncate">
+                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {p.title}
+                  </span>
                 </label>
               ))
             )}
@@ -305,14 +383,26 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Notes / follow-up" full>
-          <textarea className={cn(inputCls, "h-20 py-2")} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
+          <textarea
+            className={cn(inputCls, "h-20 py-2")}
+            value={form.notes ?? ""}
+            onChange={(e) => set("notes", e.target.value)}
+          />
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">More details</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            More details
+          </p>
         </div>
         <Field label="Email">
-          <input className={inputCls} type="email" placeholder="jane@..." value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+          <input
+            className={inputCls}
+            type="email"
+            placeholder="jane@..."
+            value={form.email ?? ""}
+            onChange={(e) => set("email", e.target.value)}
+          />
         </Field>
         <Field label="Currency">
           <SelectField
@@ -332,7 +422,12 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Preferred language">
-          <input className={inputCls} placeholder="English" value={form.preferred_language ?? ""} onChange={(e) => set("preferred_language", e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="English"
+            value={form.preferred_language ?? ""}
+            onChange={(e) => set("preferred_language", e.target.value)}
+          />
         </Field>
         <Field label="Preferred location">
           <SearchableSelectField
@@ -345,13 +440,20 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Other preferred locations (legacy free text, comma separated)" full>
-          <input className={inputCls} value={form.preferred_locations_str ?? ""} onChange={(e) => set("preferred_locations_str", e.target.value)} />
+          <input
+            className={inputCls}
+            value={form.preferred_locations_str ?? ""}
+            onChange={(e) => set("preferred_locations_str", e.target.value)}
+          />
         </Field>
         <Field label="Purchase purpose">
           <SelectField
             value={form.purchase_purpose}
             onChange={(v) => set("purchase_purpose", v ?? "")}
-            options={["Primary residence", "Investment", "Holiday home"].map((v) => ({ value: v, label: v }))}
+            options={["Primary residence", "Investment", "Holiday home"].map((v) => ({
+              value: v,
+              label: v,
+            }))}
             placeholder="Select purpose"
           />
         </Field>
@@ -359,15 +461,22 @@ export function AddLeadDrawer({
           <SelectField
             value={form.buying_timeline}
             onChange={(v) => set("buying_timeline", v ?? "")}
-            options={["Immediate", "1-3 months", "3-6 months", "6-12 months", "Exploring"].map((v) => ({ value: v, label: v }))}
+            options={["Immediate", "1-3 months", "3-6 months", "6-12 months", "Exploring"].map(
+              (v) => ({ value: v, label: v }),
+            )}
             placeholder="Select timeline"
           />
         </Field>
         <Field label="Expected transaction timeframe">
           <SelectField
             value={form.transaction_timeframe}
-            onChange={(v) => set("transaction_timeframe", (v ?? "") as FormState["transaction_timeframe"])}
-            options={TRANSACTION_TIMEFRAMES.map((t) => ({ value: t, label: TRANSACTION_TIMEFRAME_LABELS[t] }))}
+            onChange={(v) =>
+              set("transaction_timeframe", (v ?? "") as FormState["transaction_timeframe"])
+            }
+            options={TRANSACTION_TIMEFRAMES.map((t) => ({
+              value: t,
+              label: TRANSACTION_TIMEFRAME_LABELS[t],
+            }))}
             placeholder="Select timeframe"
           />
         </Field>
@@ -383,13 +492,18 @@ export function AddLeadDrawer({
           <SelectField
             value={form.financing_status}
             onChange={(v) => set("financing_status", v ?? "")}
-            options={["Cash", "Mortgage approved", "Mortgage pending", "Undecided"].map((v) => ({ value: v, label: v }))}
+            options={["Cash", "Mortgage approved", "Mortgage pending", "Undecided"].map((v) => ({
+              value: v,
+              label: v,
+            }))}
             placeholder="Select status"
           />
         </Field>
 
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? "Saving..." : isEdit ? "Save changes" : "Save Lead"}
           </Button>

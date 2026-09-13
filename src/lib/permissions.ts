@@ -127,7 +127,8 @@ const ALL_MODULES = Object.keys(MODULES) as ModuleKey[];
 export const ROLE_PRESETS = {
   super_administrator: {
     label: "Super Administrator",
-    description: "Everything an Administrator has, plus the sole ability to permanently delete properties. Everyone else sees Share instead of Delete.",
+    description:
+      "Everything an Administrator has, plus the sole ability to permanently delete properties. Everyone else sees Share instead of Delete.",
     permissions: (): PermissionSet => ({
       ...fullAccessPermissions(),
       properties: [...MODULES.properties],
@@ -135,7 +136,8 @@ export const ROLE_PRESETS = {
   },
   administrator: {
     label: "Administrator",
-    description: "Full, organisation-wide access to every module. Cannot permanently delete properties - only Super Administrator can.",
+    description:
+      "Full, organisation-wide access to every module. Cannot permanently delete properties - only Super Administrator can.",
     permissions: (): PermissionSet => fullAccessPermissions(),
   },
   team_leader: {
@@ -165,7 +167,8 @@ export const ROLE_PRESETS = {
   },
   sales_manager: {
     label: "Sales Manager",
-    description: "Full sales workflow control plus organisation-wide visibility into team performance.",
+    description:
+      "Full sales workflow control plus organisation-wide visibility into team performance.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view", "view_all", "create", "edit", "delete", "assign"],
@@ -216,7 +219,8 @@ export const ROLE_PRESETS = {
   },
   telesales: {
     label: "Telesales",
-    description: "Works cold/telesales leads, records call outcomes and qualifies prospects for transfer.",
+    description:
+      "Works cold/telesales leads, records call outcomes and qualifies prospects for transfer.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view", "create", "edit"],
@@ -230,7 +234,8 @@ export const ROLE_PRESETS = {
   },
   marketing: {
     label: "Marketing",
-    description: "Market and demand intelligence, journal/blog, read access to inventory and leads.",
+    description:
+      "Market and demand intelligence, journal/blog, read access to inventory and leads.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
       leads: ["view"],
@@ -312,7 +317,10 @@ export function can(
 }
 
 /** True if the caller can see leads/tasks/viewings/conversations beyond their own (view_team or view_all). */
-export function canSeeBeyondOwn(permissions: PermissionSet | null | undefined, module: ModuleKey): boolean {
+export function canSeeBeyondOwn(
+  permissions: PermissionSet | null | undefined,
+  module: ModuleKey,
+): boolean {
   return can(permissions, module, "view_team") || can(permissions, module, "view_all");
 }
 

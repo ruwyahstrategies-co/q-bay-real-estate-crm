@@ -11,7 +11,11 @@ export function useAvailabilityConfirmationCadence() {
   return useQuery({
     queryKey: keys.cadence,
     queryFn: async (): Promise<number> => {
-      const { data } = await sb.from("app_settings").select("setting_value").eq("setting_key", "availability_confirmation").maybeSingle();
+      const { data } = await sb
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "availability_confirmation")
+        .maybeSingle();
       const v = data?.setting_value as { cadence_days?: number } | null;
       return v?.cadence_days ?? 30;
     },
@@ -24,7 +28,13 @@ export function useSaveAvailabilityConfirmationCadence() {
     mutationFn: async (cadenceDays: number) => {
       const { error } = await sb
         .from("app_settings")
-        .upsert({ setting_key: "availability_confirmation", setting_value: { cadence_days: cadenceDays } }, { onConflict: "setting_key" });
+        .upsert(
+          {
+            setting_key: "availability_confirmation",
+            setting_value: { cadence_days: cadenceDays },
+          },
+          { onConflict: "setting_key" },
+        );
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.cadence }),
@@ -126,7 +136,13 @@ export function useConfirmPropertyAvailability() {
 export function useRequestOwnerAvailabilityConfirmation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ ownerId, propertyId, propertyTitle, recipientName, recipientPhone }: {
+    mutationFn: async ({
+      ownerId,
+      propertyId,
+      propertyTitle,
+      recipientName,
+      recipientPhone,
+    }: {
       ownerId: string;
       propertyId: string;
       propertyTitle: string;

@@ -8,7 +8,11 @@ export const propertyKeys = {
   media: (id: string) => ["properties", "media", id] as const,
 };
 
-export function useProperties(opts?: { search?: string; type?: string | null; status?: "active" | "archived" | "all" }) {
+export function useProperties(opts?: {
+  search?: string;
+  type?: string | null;
+  status?: "active" | "archived" | "all";
+}) {
   const { search = "", type = null, status = "active" } = opts ?? {};
   return useQuery({
     queryKey: propertyKeys.list({ search, type, status }),
@@ -67,7 +71,9 @@ export function usePropertyThumbnails(propertyIds: string[]) {
 
       const entries = await Promise.all(
         Array.from(firstByProperty.entries()).map(async ([propertyId, upload]) => {
-          const { data: signed } = await sb.storage.from(upload.storage_bucket).createSignedUrl(upload.storage_path, 3600);
+          const { data: signed } = await sb.storage
+            .from(upload.storage_bucket)
+            .createSignedUrl(upload.storage_path, 3600);
           return [propertyId, signed?.signedUrl] as const;
         }),
       );
@@ -108,7 +114,12 @@ export function useUpdateProperty() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: PropertyUpdate }) => {
-      const { data, error } = await sb.from("properties").update(patch).eq("id", id).select().single();
+      const { data, error } = await sb
+        .from("properties")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -148,12 +159,18 @@ export function useRestoreProperty() {
 }
 
 /** Live preview of the reference code a new/edited property will get once saved (owner+agent both selected). Purely informational - the real value is reserved server-side on insert/update. */
-export function usePropertyReferencePreview(ownerId: string | null | undefined, agentId: string | null | undefined) {
+export function usePropertyReferencePreview(
+  ownerId: string | null | undefined,
+  agentId: string | null | undefined,
+) {
   return useQuery({
     queryKey: ["properties", "reference-preview", ownerId ?? "none", agentId ?? "none"],
     enabled: !!ownerId && !!agentId,
     queryFn: async (): Promise<string | null> => {
-      const { data, error } = await sb.rpc("preview_property_reference", { _owner_id: ownerId!, _agent_id: agentId! });
+      const { data, error } = await sb.rpc("preview_property_reference", {
+        _owner_id: ownerId!,
+        _agent_id: agentId!,
+      });
       if (error) throw error;
       return data ?? null;
     },

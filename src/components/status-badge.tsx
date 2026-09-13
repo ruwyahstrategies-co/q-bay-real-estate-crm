@@ -79,7 +79,13 @@ export function AvailabilityRing({
   const info = AVAILABILITY_RING[key] ?? AVAILABILITY_RING.available;
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)} title={info.label}>
-      <span className={cn("inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-canvas", info.dot)} aria-hidden="true" />
+      <span
+        className={cn(
+          "inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-canvas",
+          info.dot,
+        )}
+        aria-hidden="true"
+      />
       <span className={cn("text-xs text-foreground", labelClassName)}>{info.label}</span>
     </span>
   );

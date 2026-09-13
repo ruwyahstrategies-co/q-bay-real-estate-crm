@@ -17,7 +17,13 @@ import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
-import { PROPERTY_PURPOSES, PROPERTY_PURPOSE_LABELS, PROPERTY_AVAILABILITIES, PROPERTY_AVAILABILITY_LABELS, type Property } from "@/lib/db";
+import {
+  PROPERTY_PURPOSES,
+  PROPERTY_PURPOSE_LABELS,
+  PROPERTY_AVAILABILITIES,
+  PROPERTY_AVAILABILITY_LABELS,
+  type Property,
+} from "@/lib/db";
 import { CloudflareVideoUpload } from "./cloudflare-video-upload";
 
 const PROPERTY_TYPE_OPTIONS = [
@@ -28,7 +34,10 @@ const PROPERTY_TYPE_OPTIONS = [
   "Plot",
   "Commercial",
 ].map((v) => ({ value: v, label: v }));
-const AVAILABILITY_OPTIONS = PROPERTY_AVAILABILITIES.map((a) => ({ value: a, label: PROPERTY_AVAILABILITY_LABELS[a] }));
+const AVAILABILITY_OPTIONS = PROPERTY_AVAILABILITIES.map((a) => ({
+  value: a,
+  label: PROPERTY_AVAILABILITY_LABELS[a],
+}));
 const CURRENCY_OPTIONS = ["QAR", "AED", "USD", "EUR", "GBP"].map((v) => ({ value: v, label: v }));
 const SIZE_UNIT_OPTIONS = [
   { value: "sqm", label: "sqm" },
@@ -208,7 +217,9 @@ export function PropertyDrawer({
       floor_number: form.floor_number || null,
       unit_number: form.unit_number || null,
       parking_spaces:
-        form.property_type === "Villa" && form.parking_spaces != null && form.parking_spaces !== ("" as never)
+        form.property_type === "Villa" &&
+        form.parking_spaces != null &&
+        form.parking_spaces !== ("" as never)
           ? Number(form.parking_spaces)
           : null,
       furnishing_status: form.furnishing_status || null,
@@ -485,7 +496,10 @@ export function PropertyDrawer({
               <SelectField
                 value={form.maids_room == null ? null : form.maids_room ? "yes" : "no"}
                 onChange={(v) => set("maids_room", v === "yes")}
-                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                options={[
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
                 placeholder="Not specified"
               />
             </Field>
@@ -505,14 +519,19 @@ export function PropertyDrawer({
                 type="number"
                 min={0}
                 value={form.parking_spaces ?? ""}
-                onChange={(e) => set("parking_spaces", e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) =>
+                  set("parking_spaces", e.target.value ? Number(e.target.value) : null)
+                }
               />
             </Field>
             <Field label="Majlis">
               <SelectField
                 value={form.majlis == null ? null : form.majlis ? "yes" : "no"}
                 onChange={(v) => set("majlis", v === "yes")}
-                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                options={[
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
                 placeholder="Not specified"
               />
             </Field>
@@ -520,7 +539,10 @@ export function PropertyDrawer({
               <SelectField
                 value={form.indoor_majlis == null ? null : form.indoor_majlis ? "yes" : "no"}
                 onChange={(v) => set("indoor_majlis", v === "yes")}
-                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                options={[
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
                 placeholder="Not specified"
               />
             </Field>
@@ -528,7 +550,10 @@ export function PropertyDrawer({
               <SelectField
                 value={form.outdoor_majlis == null ? null : form.outdoor_majlis ? "yes" : "no"}
                 onChange={(v) => set("outdoor_majlis", v === "yes")}
-                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                options={[
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
                 placeholder="Not specified"
               />
             </Field>

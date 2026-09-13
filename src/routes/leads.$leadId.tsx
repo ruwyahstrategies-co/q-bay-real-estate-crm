@@ -1,6 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, Pencil, Sparkles, ChevronLeft, Plus, Trash2, UserPlus } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MessageCircle,
+  Pencil,
+  Sparkles,
+  ChevronLeft,
+  Plus,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -29,7 +39,13 @@ import { useLeadReferences } from "@/hooks/use-references";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
-import { useLeadNotes, useLeadNoteVersions, useCreateLeadNote, useUpdateLeadNote, useDeleteLeadNote } from "@/hooks/use-lead-notes";
+import {
+  useLeadNotes,
+  useLeadNoteVersions,
+  useCreateLeadNote,
+  useUpdateLeadNote,
+  useDeleteLeadNote,
+} from "@/hooks/use-lead-notes";
 import { usePropertyMatchesForLead } from "@/hooks/use-matching";
 import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
@@ -41,8 +57,18 @@ export const Route = createFileRoute("/leads/$leadId")({
   component: LeadProfilePage,
 });
 
-const tabs = ["Overview", "Notes", "Conversations", "Viewings", "Offers", "Property Interests", "Buyer Intelligence", "Files", "Tasks", "Activity"] as const;
-
+const tabs = [
+  "Overview",
+  "Notes",
+  "Conversations",
+  "Viewings",
+  "Offers",
+  "Property Interests",
+  "Buyer Intelligence",
+  "Files",
+  "Tasks",
+  "Activity",
+] as const;
 
 function LeadProfilePage() {
   const { leadId } = Route.useParams();
@@ -69,30 +95,52 @@ function LeadProfilePage() {
   const deleteUpload = useDeleteUpload();
   const { can } = usePermissions();
 
-  if (isLoading) return <AppShell><EmptyState title="Loading..." /></AppShell>;
-  if (!lead) return (
-    <AppShell>
-      <EmptyState title="Lead not found" description="This lead may have been deleted." />
-    </AppShell>
-  );
+  if (isLoading)
+    return (
+      <AppShell>
+        <EmptyState title="Loading..." />
+      </AppShell>
+    );
+  if (!lead)
+    return (
+      <AppShell>
+        <EmptyState title="Lead not found" description="This lead may have been deleted." />
+      </AppShell>
+    );
 
   const agent = team.find((t) => t.id === lead.assigned_agent_id);
-  const initials = lead.full_name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+  const initials = lead.full_name
+    .split(" ")
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
   const currentAnalysis = analyses.find((a) => a.status === "completed");
   const processingAnalysis = analyses.find((a) => a.status === "processing");
   const baseIntentScore = (currentAnalysis?.output_json as any)?.intentScore ?? null;
-  const intentScore = lead && typeof baseIntentScore === "number" ? effectiveIntentScore(baseIntentScore, lead) : baseIntentScore;
-  const preferredAreaName = lead?.preferred_area_id ? areas.find((a) => a.id === lead.preferred_area_id)?.name : null;
+  const intentScore =
+    lead && typeof baseIntentScore === "number"
+      ? effectiveIntentScore(baseIntentScore, lead)
+      : baseIntentScore;
+  const preferredAreaName = lead?.preferred_area_id
+    ? areas.find((a) => a.id === lead.preferred_area_id)?.name
+    : null;
   const isAnalysing = analyseMut.isPending || !!processingAnalysis;
   const handleAnalyse = async () => {
     try {
       const res = await analyseMut.mutateAsync(lead.id);
-      if (res.status === "completed") { toast.success("Analysis complete"); setTab("Buyer Intelligence"); }
-      else toast.error(res.error || "Analysis failed");
-    } catch (e) { toast.error((e as Error).message); }
+      if (res.status === "completed") {
+        toast.success("Analysis complete");
+        setTab("Buyer Intelligence");
+      } else toast.error(res.error || "Analysis failed");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
-  const wonStage = stages.find((s) => s.stage_key === lead.pipeline_stage)?.is_won ?? lead.pipeline_stage === "won";
+  const wonStage =
+    stages.find((s) => s.stage_key === lead.pipeline_stage)?.is_won ??
+    lead.pipeline_stage === "won";
   const canConvertToOwner = can("owners", "create");
 
   const handleConvertToOwner = async () => {
@@ -100,7 +148,9 @@ function LeadProfilePage() {
       const owner = await convertToOwner.mutateAsync(lead);
       toast.success(lead.converted_owner_id ? "Owner profile" : "Owner created");
       navigate({ to: "/owners/$ownerId", params: { ownerId: owner.id } });
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const canEdit = can("leads", "edit");
@@ -114,272 +164,387 @@ function LeadProfilePage() {
   return (
     <AppShell>
       <PermissionGate module="leads" action="view" page>
-      <Link to="/leads" className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-3.5 w-3.5" /> All leads
-      </Link>
+        <Link
+          to="/leads"
+          className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" /> All leads
+        </Link>
 
-      <Card className="mb-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-pastel-purple text-base font-semibold text-foreground">
-              {initials || "-"}
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <PipelineStageBadge stage={stageLabelFrom(stages, lead.pipeline_stage)} />
-                <IntentScore score={intentScore} />
-                <span className="text-xs text-muted-foreground">{agent?.full_name ?? "Unassigned agent"}</span>
+        <Card className="mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-pastel-purple text-base font-semibold text-foreground">
+                {initials || "-"}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <PipelineStageBadge stage={stageLabelFrom(stages, lead.pipeline_stage)} />
+                  <IntentScore score={intentScore} />
+                  <span className="text-xs text-muted-foreground">
+                    {agent?.full_name ?? "Unassigned agent"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {lead.phone && (
-              <a href={`tel:${lead.phone}`}><Button variant="outline" size="sm"><Phone className="h-3.5 w-3.5" /> Call</Button></a>
-            )}
-            {lead.phone && (
-              <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</Button>
-              </a>
-            )}
-            {lead.email && (
-              <a href={`mailto:${lead.email}`}><Button variant="outline" size="sm"><Mail className="h-3.5 w-3.5" /> Email</Button></a>
-            )}
-            {canEdit && (
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" /> Edit
-              </Button>
-            )}
-            {canRunAi && (
-              <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
-                <Sparkles className="h-3.5 w-3.5" /> {isAnalysing ? "Analysing..." : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
-              </Button>
-            )}
-            {wonStage && canConvertToOwner && (
-              lead.converted_owner_id ? (
-                <Link to="/owners/$ownerId" params={{ ownerId: lead.converted_owner_id }}>
-                  <Button variant="outline" size="sm"><UserPlus className="h-3.5 w-3.5" /> View Owner Profile</Button>
-                </Link>
-              ) : (
-                <Button size="sm" disabled={convertToOwner.isPending} onClick={handleConvertToOwner}>
-                  <UserPlus className="h-3.5 w-3.5" /> {convertToOwner.isPending ? "Converting..." : "Convert To Owner"}
+            <div className="flex flex-wrap items-center gap-2">
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`}>
+                  <Button variant="outline" size="sm">
+                    <Phone className="h-3.5 w-3.5" /> Call
+                  </Button>
+                </a>
+              )}
+              {lead.phone && (
+                <a
+                  href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button variant="outline" size="sm">
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+                </a>
+              )}
+              {lead.email && (
+                <a href={`mailto:${lead.email}`}>
+                  <Button variant="outline" size="sm">
+                    <Mail className="h-3.5 w-3.5" /> Email
+                  </Button>
+                </a>
+              )}
+              {canEdit && (
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
-              )
+              )}
+              {canRunAi && (
+                <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
+                  <Sparkles className="h-3.5 w-3.5" />{" "}
+                  {isAnalysing ? "Analysing..." : currentAnalysis ? "Reanalyse" : "Analyse Lead"}
+                </Button>
+              )}
+              {wonStage &&
+                canConvertToOwner &&
+                (lead.converted_owner_id ? (
+                  <Link to="/owners/$ownerId" params={{ ownerId: lead.converted_owner_id }}>
+                    <Button variant="outline" size="sm">
+                      <UserPlus className="h-3.5 w-3.5" /> View Owner Profile
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={convertToOwner.isPending}
+                    onClick={handleConvertToOwner}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />{" "}
+                    {convertToOwner.isPending ? "Converting..." : "Convert To Owner"}
+                  </Button>
+                ))}
+            </div>
+          </div>
+        </Card>
+
+        <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={cn(
+                "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                tab === t
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === "Overview" && (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Card>
+              <h4 className="text-sm font-semibold">Contact</h4>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <dt className="text-muted-foreground">Phone</dt>
+                <dd>{lead.phone ?? "-"}</dd>
+                <dt className="text-muted-foreground">Email</dt>
+                <dd>{lead.email ?? "-"}</dd>
+                <dt className="text-muted-foreground">Nationality</dt>
+                <dd>{lead.nationality ?? "-"}</dd>
+                <dt className="text-muted-foreground">Language</dt>
+                <dd>{lead.preferred_language ?? "-"}</dd>
+                <dt className="text-muted-foreground">Source</dt>
+                <dd>{lead.lead_source ?? "-"}</dd>
+              </dl>
+            </Card>
+            <Card>
+              <h4 className="text-sm font-semibold">Preferences</h4>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <dt className="text-muted-foreground">Budget</dt>
+                <dd>
+                  {fmtMoney(lead.budget_min, lead.currency)} -{" "}
+                  {fmtMoney(lead.budget_max, lead.currency)}
+                </dd>
+                <dt className="text-muted-foreground">Preferred area</dt>
+                <dd>{preferredAreaName ?? lead.preferred_locations?.join(", ") ?? "-"}</dd>
+                <dt className="text-muted-foreground">Types</dt>
+                <dd>{lead.preferred_property_types?.join(", ") ?? "-"}</dd>
+                <dt className="text-muted-foreground">Purpose</dt>
+                <dd>{lead.purchase_purpose ?? "-"}</dd>
+                <dt className="text-muted-foreground">Timeline</dt>
+                <dd>{lead.buying_timeline ?? "-"}</dd>
+                <dt className="text-muted-foreground">Expected timeframe</dt>
+                <dd>
+                  {lead.transaction_timeframe
+                    ? (TRANSACTION_TIMEFRAME_LABELS[lead.transaction_timeframe] ??
+                      lead.transaction_timeframe)
+                    : "-"}
+                </dd>
+                <dt className="text-muted-foreground">Intended date</dt>
+                <dd>
+                  {lead.intended_transaction_date ? fmtDate(lead.intended_transaction_date) : "-"}
+                </dd>
+                <dt className="text-muted-foreground">Financing</dt>
+                <dd>{lead.financing_status ?? "-"}</dd>
+              </dl>
+            </Card>
+            {lead.notes && (
+              <Card className="md:col-span-2">
+                <h4 className="text-sm font-semibold">Notes</h4>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {lead.notes}
+                </p>
+              </Card>
+            )}
+            <LeadPropertyMatches leadId={lead.id} />
+          </div>
+        )}
+
+        {tab === "Notes" && <NotesTab leadId={lead.id} />}
+
+        {tab === "Conversations" && (
+          <div className="space-y-3">
+            {canCreateInteraction && (
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setInteractionOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Add interaction
+                </Button>
+              </div>
+            )}
+            <CallTranscriptCard lead={lead} />
+            {canCreateInteraction && <WhatsappSendBox leadId={lead.id} phone={lead.phone} />}
+            {interactions.length === 0 ? (
+              <EmptyState
+                compact
+                title="No interactions yet"
+                description="Log a call, WhatsApp message, meeting or note."
+              />
+            ) : (
+              <div className="space-y-2">
+                {interactions.map((i) => (
+                  <Card key={i.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                            {i.interaction_type.replace(/_/g, " ")}
+                          </span>
+                          {i.direction && (
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {i.direction}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {fmtDateTime(i.interaction_date)}
+                          </span>
+                          {(i as any).transcript && (
+                            <span className="rounded-full bg-pastel-green px-2 py-0.5 text-[10px]">
+                              transcript
+                            </span>
+                          )}
+                        </div>
+                        {i.subject && <p className="mt-2 text-sm font-medium">{i.subject}</p>}
+                        {i.content && (
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                            {i.content}
+                          </p>
+                        )}
+                      </div>
+                      {canDeleteInteraction && (
+                        <button
+                          className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                          onClick={async () => {
+                            try {
+                              await deleteInteraction.mutateAsync(i.id);
+                              toast.success("Deleted");
+                            } catch (e) {
+                              toast.error((e as Error).message);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
-        </div>
-      </Card>
+        )}
 
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+        {tab === "Viewings" && <ViewingsTab leadId={lead.id} />}
+        {tab === "Offers" && <OffersTab leadId={lead.id} developmentId={lead.development_id} />}
+
+        {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
+
+        {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
+
+        {tab === "Files" && (
+          <div className="space-y-3">
+            {canUpload && (
+              <UploadDropzone
+                title="Upload file for this lead"
+                description="Documents, sheets or audio."
+                categoryKey="general_documents"
+                leadId={lead.id}
+              />
             )}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === "Overview" && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Card>
-            <h4 className="text-sm font-semibold">Contact</h4>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <dt className="text-muted-foreground">Phone</dt><dd>{lead.phone ?? "-"}</dd>
-              <dt className="text-muted-foreground">Email</dt><dd>{lead.email ?? "-"}</dd>
-              <dt className="text-muted-foreground">Nationality</dt><dd>{lead.nationality ?? "-"}</dd>
-              <dt className="text-muted-foreground">Language</dt><dd>{lead.preferred_language ?? "-"}</dd>
-              <dt className="text-muted-foreground">Source</dt><dd>{lead.lead_source ?? "-"}</dd>
-            </dl>
-          </Card>
-          <Card>
-            <h4 className="text-sm font-semibold">Preferences</h4>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <dt className="text-muted-foreground">Budget</dt>
-              <dd>{fmtMoney(lead.budget_min, lead.currency)} - {fmtMoney(lead.budget_max, lead.currency)}</dd>
-              <dt className="text-muted-foreground">Preferred area</dt>
-              <dd>{preferredAreaName ?? lead.preferred_locations?.join(", ") ?? "-"}</dd>
-              <dt className="text-muted-foreground">Types</dt><dd>{lead.preferred_property_types?.join(", ") ?? "-"}</dd>
-              <dt className="text-muted-foreground">Purpose</dt><dd>{lead.purchase_purpose ?? "-"}</dd>
-              <dt className="text-muted-foreground">Timeline</dt><dd>{lead.buying_timeline ?? "-"}</dd>
-              <dt className="text-muted-foreground">Expected timeframe</dt>
-              <dd>{lead.transaction_timeframe ? TRANSACTION_TIMEFRAME_LABELS[lead.transaction_timeframe] ?? lead.transaction_timeframe : "-"}</dd>
-              <dt className="text-muted-foreground">Intended date</dt><dd>{lead.intended_transaction_date ? fmtDate(lead.intended_transaction_date) : "-"}</dd>
-              <dt className="text-muted-foreground">Financing</dt><dd>{lead.financing_status ?? "-"}</dd>
-            </dl>
-          </Card>
-          {lead.notes && (
-            <Card className="md:col-span-2">
-              <h4 className="text-sm font-semibold">Notes</h4>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{lead.notes}</p>
-            </Card>
-          )}
-          <LeadPropertyMatches leadId={lead.id} />
-        </div>
-      )}
-
-      {tab === "Notes" && <NotesTab leadId={lead.id} />}
-
-      {tab === "Conversations" && (
-        <div className="space-y-3">
-          {canCreateInteraction && (
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setInteractionOpen(true)}><Plus className="h-3.5 w-3.5" /> Add interaction</Button>
-            </div>
-          )}
-          <CallTranscriptCard lead={lead} />
-          {canCreateInteraction && <WhatsappSendBox leadId={lead.id} phone={lead.phone} />}
-          {interactions.length === 0 ? (
-            <EmptyState compact title="No interactions yet" description="Log a call, WhatsApp message, meeting or note." />
-          ) : (
-            <div className="space-y-2">
-              {interactions.map((i) => (
-                <Card key={i.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{i.interaction_type.replace(/_/g, " ")}</span>
-                        {i.direction && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{i.direction}</span>}
-                        <span className="text-xs text-muted-foreground">{fmtDateTime(i.interaction_date)}</span>
-                        {(i as any).transcript && <span className="rounded-full bg-pastel-green px-2 py-0.5 text-[10px]">transcript</span>}
-                      </div>
-                      {i.subject && <p className="mt-2 text-sm font-medium">{i.subject}</p>}
-                      {i.content && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{i.content}</p>}
-                    </div>
-                    {canDeleteInteraction && (
-                      <button
-                        className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                        onClick={async () => {
-                          try { await deleteInteraction.mutateAsync(i.id); toast.success("Deleted"); }
-                          catch (e) { toast.error((e as Error).message); }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "Viewings" && <ViewingsTab leadId={lead.id} />}
-      {tab === "Offers" && <OffersTab leadId={lead.id} developmentId={lead.development_id} />}
-
-      {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
-
-      {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
-
-      {tab === "Files" && (
-        <div className="space-y-3">
-          {canUpload && (
-            <UploadDropzone
-              title="Upload file for this lead"
-              description="Documents, sheets or audio."
-              categoryKey="general_documents"
-              leadId={lead.id}
-            />
-          )}
-          {files.length === 0 ? (
-            <EmptyState compact title="No files yet" />
-          ) : (
-            <div className="space-y-2">
-              {files.map((f) => (
-                <Card key={f.id} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="text-sm font-medium">{f.filename}</p>
-                    <p className="text-xs text-muted-foreground">{f.category} · {f.processing_status}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => downloadUpload(f).catch((e) => toast.error((e as Error).message))}>Download</Button>
-                    {canDeleteUpload && (
-                      <button
-                        className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                        onClick={async () => {
-                          try { await deleteUpload.mutateAsync(f); toast.success("Deleted"); }
-                          catch (e) { toast.error((e as Error).message); }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "Tasks" && (
-        <div>
-          {canCreateTask && (
-            <div className="mb-3 flex justify-end">
-              <Button size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5" /> Add task</Button>
-            </div>
-          )}
-          {tasks.length === 0 ? (
-            <EmptyState compact title="No tasks yet" />
-          ) : (
-            <div className="space-y-2">
-              {tasks.map((t) => (
-                <Card key={t.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={t.status === "completed"}
-                      onChange={async (e) => {
-                        try {
-                          await updateTask.mutateAsync({
-                            id: t.id,
-                            patch: { status: e.target.checked ? "completed" : "pending", completed_at: e.target.checked ? new Date().toISOString() : null },
-                          });
-                        } catch (err) { toast.error((err as Error).message); }
-                      }}
-                    />
+            {files.length === 0 ? (
+              <EmptyState compact title="No files yet" />
+            ) : (
+              <div className="space-y-2">
+                {files.map((f) => (
+                  <Card key={f.id} className="flex items-center justify-between gap-3 py-3">
                     <div>
-                      <p className={cn("text-sm font-medium", t.status === "completed" && "line-through text-muted-foreground")}>{t.title}</p>
-                      <p className="text-xs text-muted-foreground">Due {fmtDateTime(t.due_at)} · {t.priority}</p>
+                      <p className="text-sm font-medium">{f.filename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {f.category} · {f.processing_status}
+                      </p>
                     </div>
-                  </div>
-                  <button
-                    className="rounded-md p-1.5 hover:bg-muted text-destructive"
-                    onClick={async () => {
-                      try { await deleteTask.mutateAsync(t.id); toast.success("Deleted"); }
-                      catch (e) { toast.error((e as Error).message); }
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadUpload(f).catch((e) => toast.error((e as Error).message))
+                        }
+                      >
+                        Download
+                      </Button>
+                      {canDeleteUpload && (
+                        <button
+                          className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                          onClick={async () => {
+                            try {
+                              await deleteUpload.mutateAsync(f);
+                              toast.success("Deleted");
+                            } catch (e) {
+                              toast.error((e as Error).message);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {tab === "Activity" && (
-        <ActivityTimeline
-          leadId={lead.id}
-          interactions={interactions}
-          tasks={tasks}
-          files={files}
-          history={history}
-          leadCreatedAt={lead.created_at}
+        {tab === "Tasks" && (
+          <div>
+            {canCreateTask && (
+              <div className="mb-3 flex justify-end">
+                <Button size="sm" onClick={() => setTaskOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Add task
+                </Button>
+              </div>
+            )}
+            {tasks.length === 0 ? (
+              <EmptyState compact title="No tasks yet" />
+            ) : (
+              <div className="space-y-2">
+                {tasks.map((t) => (
+                  <Card key={t.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={t.status === "completed"}
+                        onChange={async (e) => {
+                          try {
+                            await updateTask.mutateAsync({
+                              id: t.id,
+                              patch: {
+                                status: e.target.checked ? "completed" : "pending",
+                                completed_at: e.target.checked ? new Date().toISOString() : null,
+                              },
+                            });
+                          } catch (err) {
+                            toast.error((err as Error).message);
+                          }
+                        }}
+                      />
+                      <div>
+                        <p
+                          className={cn(
+                            "text-sm font-medium",
+                            t.status === "completed" && "line-through text-muted-foreground",
+                          )}
+                        >
+                          {t.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Due {fmtDateTime(t.due_at)} · {t.priority}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      className="rounded-md p-1.5 hover:bg-muted text-destructive"
+                      onClick={async () => {
+                        try {
+                          await deleteTask.mutateAsync(t.id);
+                          toast.success("Deleted");
+                        } catch (e) {
+                          toast.error((e as Error).message);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "Activity" && (
+          <ActivityTimeline
+            leadId={lead.id}
+            interactions={interactions}
+            tasks={tasks}
+            files={files}
+            history={history}
+            leadCreatedAt={lead.created_at}
+          />
+        )}
+
+        <AddLeadDrawer open={editOpen} onOpenChange={setEditOpen} lead={lead} />
+        <InteractionDrawer
+          open={interactionOpen}
+          onOpenChange={setInteractionOpen}
+          defaultLeadId={lead.id}
         />
-      )}
-
-      <AddLeadDrawer open={editOpen} onOpenChange={setEditOpen} lead={lead} />
-      <InteractionDrawer open={interactionOpen} onOpenChange={setInteractionOpen} defaultLeadId={lead.id} />
-      <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultLeadId={lead.id} />
-      <ConfirmDialog open={false} title="" onConfirm={() => {}} onCancel={() => {}} />
+        <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultLeadId={lead.id} />
+        <ConfirmDialog open={false} title="" onConfirm={() => {}} onCancel={() => {}} />
       </PermissionGate>
     </AppShell>
   );
@@ -395,7 +560,12 @@ function ActivityTimeline({
   leadCreatedAt,
 }: {
   leadId: string;
-  interactions: { id: string; interaction_type: string; interaction_date: string; subject: string | null }[];
+  interactions: {
+    id: string;
+    interaction_type: string;
+    interaction_date: string;
+    subject: string | null;
+  }[];
   tasks: { id: string; title: string; created_at: string; completed_at: string | null }[];
   files: { id: string; filename: string; created_at: string }[];
   history: { id: string; new_stage: string; previous_stage: string | null; changed_at: string }[];
@@ -414,7 +584,9 @@ function ActivityTimeline({
       sub: i.subject ?? undefined,
     })),
     ...tasks.map((t) => ({ ts: t.created_at, label: `Task created · ${t.title}` })),
-    ...tasks.filter((t) => t.completed_at).map((t) => ({ ts: t.completed_at!, label: `Task completed · ${t.title}` })),
+    ...tasks
+      .filter((t) => t.completed_at)
+      .map((t) => ({ ts: t.completed_at!, label: `Task completed · ${t.title}` })),
     ...files.map((f) => ({ ts: f.created_at, label: `File uploaded · ${f.filename}` })),
   ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
 
@@ -423,7 +595,10 @@ function ActivityTimeline({
   return (
     <div className="space-y-2">
       {events.map((e, i) => (
-        <div key={i} className="flex items-start gap-3 rounded-lg border border-border bg-canvas p-3">
+        <div
+          key={i}
+          className="flex items-start gap-3 rounded-lg border border-border bg-canvas p-3"
+        >
           <div className="mt-1 h-2 w-2 rounded-full bg-foreground" />
           <div className="flex-1">
             <p className="text-sm font-medium">{e.label}</p>
@@ -441,12 +616,23 @@ function LeadPropertyMatches({ leadId }: { leadId: string }) {
   if (matches.length === 0) return null;
   return (
     <Card className="md:col-span-2">
-      <h4 className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-3.5 w-3.5" /> Recommended properties</h4>
-      <p className="mt-1 text-[11px] text-muted-foreground">Deterministic match on purpose, location, type, budget and development.</p>
+      <h4 className="flex items-center gap-1.5 text-sm font-semibold">
+        <Sparkles className="h-3.5 w-3.5" /> Recommended properties
+      </h4>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Deterministic match on purpose, location, type, budget and development.
+      </p>
       <ul className="mt-3 space-y-2">
         {matches.map((m) => (
-          <li key={m.property_id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
-            <Link to="/properties/$propertyId" params={{ propertyId: m.property_id }} className="hover:underline">
+          <li
+            key={m.property_id}
+            className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs"
+          >
+            <Link
+              to="/properties/$propertyId"
+              params={{ propertyId: m.property_id }}
+              className="hover:underline"
+            >
               View property {m.reasons.length ? `- ${m.reasons.join(", ")}` : ""}
             </Link>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">score {m.score}</span>
@@ -464,7 +650,10 @@ function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | nu
   return (
     <Card>
       <h4 className="text-sm font-semibold">Send via your WhatsApp Business connection</h4>
-      <p className="mt-1 text-[11px] text-muted-foreground">Uses your own connected WhatsApp Business number (Settings). Logged as a conversation on this lead.</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Uses your own connected WhatsApp Business number (Settings). Logged as a conversation on
+        this lead.
+      </p>
       <div className="mt-2 flex gap-2">
         <input
           className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm"
@@ -480,7 +669,9 @@ function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | nu
               await send.mutateAsync({ lead_id: leadId, to: phone, message: message.trim() });
               setMessage("");
               toast.success("Message sent");
-            } catch (e) { toast.error((e as Error).message); }
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
           }}
         >
           Send
@@ -518,10 +709,16 @@ function NotesTab({ leadId }: { leadId: string }) {
                 disabled={!draft.trim() || create.isPending}
                 onClick={async () => {
                   try {
-                    await create.mutateAsync({ leadId, content: draft.trim(), authorId: teamMember?.id ?? null });
+                    await create.mutateAsync({
+                      leadId,
+                      content: draft.trim(),
+                      authorId: teamMember?.id ?? null,
+                    });
                     setDraft("");
                     toast.success("Note added");
-                  } catch (e) { toast.error((e as Error).message); }
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
                 }}
               >
                 Add note
@@ -531,11 +728,22 @@ function NotesTab({ leadId }: { leadId: string }) {
         </Card>
       )}
       {notes.length === 0 ? (
-        <EmptyState compact title="No notes yet" description="Notes preserve every edit as version history." />
+        <EmptyState
+          compact
+          title="No notes yet"
+          description="Notes preserve every edit as version history."
+        />
       ) : (
         <div className="space-y-2">
           {notes.map((n) => (
-            <NoteCard key={n.id} note={n} leadId={leadId} canEdit={canEdit} canDelete={canDelete} onDelete={() => del.mutate({ id: n.id, leadId })} />
+            <NoteCard
+              key={n.id}
+              note={n}
+              leadId={leadId}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              onDelete={() => del.mutate({ id: n.id, leadId })}
+            />
           ))}
         </div>
       )}
@@ -550,7 +758,13 @@ function NoteCard({
   canDelete,
   onDelete,
 }: {
-  note: { id: string; content: string; created_at: string; updated_at: string; team_members: { full_name: string } | null };
+  note: {
+    id: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+    team_members: { full_name: string } | null;
+  };
   leadId: string;
   canEdit: boolean;
   canDelete: boolean;
@@ -568,15 +782,30 @@ function NoteCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{note.team_members?.full_name ?? "Unknown"}</span>
+            <span className="font-medium text-foreground">
+              {note.team_members?.full_name ?? "Unknown"}
+            </span>
             <span>{fmtDateTime(note.created_at)}</span>
             {wasEdited && <span>· edited {fmtDateTime(note.updated_at)}</span>}
           </div>
           {editing ? (
             <div className="mt-2 flex flex-col gap-2">
-              <textarea className="min-h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm" value={content} onChange={(e) => setContent(e.target.value)} />
+              <textarea
+                className="min-h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setEditing(false); setContent(note.content); }}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditing(false);
+                    setContent(note.content);
+                  }}
+                >
+                  Cancel
+                </Button>
                 <Button
                   size="sm"
                   disabled={update.isPending || !content.trim()}
@@ -585,7 +814,9 @@ function NoteCard({
                       await update.mutateAsync({ id: note.id, content: content.trim(), leadId });
                       setEditing(false);
                       toast.success("Note updated - previous version kept in history");
-                    } catch (e) { toast.error((e as Error).message); }
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
                   }}
                 >
                   Save
@@ -597,12 +828,23 @@ function NoteCard({
           )}
         </div>
         <div className="flex items-center gap-1">
-          {canEdit && !editing && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /></button>}
-          {canDelete && <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></button>}
+          {canEdit && !editing && (
+            <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {canDelete && (
+            <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
       {wasEdited && (
-        <button className="mt-2 text-[11px] text-muted-foreground hover:underline" onClick={() => setShowHistory((v) => !v)}>
+        <button
+          className="mt-2 text-[11px] text-muted-foreground hover:underline"
+          onClick={() => setShowHistory((v) => !v)}
+        >
           {showHistory ? "Hide" : "Show"} edit history
         </button>
       )}
@@ -613,7 +855,9 @@ function NoteCard({
           ) : (
             versions.map((v) => (
               <div key={v.id} className="rounded-md border border-border bg-canvas p-2 text-xs">
-                <p className="text-muted-foreground">{v.team_members?.full_name ?? "Unknown"} · {fmtDateTime(v.edited_at)}</p>
+                <p className="text-muted-foreground">
+                  {v.team_members?.full_name ?? "Unknown"} · {fmtDateTime(v.edited_at)}
+                </p>
                 <p className="mt-1 whitespace-pre-wrap">{v.content}</p>
               </div>
             ))
@@ -642,7 +886,12 @@ function ViewingsTab({ leadId }: { leadId: string }) {
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Date & time
-              <input type="datetime-local" className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+              <input
+                type="datetime-local"
+                className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Agent
@@ -659,10 +908,17 @@ function ViewingsTab({ leadId }: { leadId: string }) {
               disabled={!scheduledAt || create.isPending}
               onClick={async () => {
                 try {
-                  await create.mutateAsync({ lead_id: leadId, scheduled_at: new Date(scheduledAt).toISOString(), assigned_agent_id: agentId || null });
-                  setScheduledAt(""); setAgentId("");
+                  await create.mutateAsync({
+                    lead_id: leadId,
+                    scheduled_at: new Date(scheduledAt).toISOString(),
+                    assigned_agent_id: agentId || null,
+                  });
+                  setScheduledAt("");
+                  setAgentId("");
                   toast.success("Viewing scheduled");
-                } catch (e) { toast.error((e as Error).message); }
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
             >
               Schedule
@@ -678,10 +934,14 @@ function ViewingsTab({ leadId }: { leadId: string }) {
             <Card key={v.id} className="flex items-center justify-between gap-3 py-3">
               <div>
                 <p className="text-sm font-medium">{fmtDateTime(v.scheduled_at)}</p>
-                <p className="text-xs text-muted-foreground capitalize">{v.status.replace(/_/g, " ")}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {v.status.replace(/_/g, " ")}
+                </p>
               </div>
               {v.status !== "completed" && v.status !== "cancelled" && (
-                <Button size="sm" variant="outline" onClick={() => complete.mutate({ id: v.id })}>Mark completed</Button>
+                <Button size="sm" variant="outline" onClick={() => complete.mutate({ id: v.id })}>
+                  Mark completed
+                </Button>
               )}
             </Card>
           ))}
@@ -703,7 +963,7 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
   const canCreate = can("offers", "create");
   const canEdit = can("offers", "edit");
-  const interests = ((refs?.interests ?? []) as any[]);
+  const interests = (refs?.interests ?? []) as any[];
 
   return (
     <div className="space-y-3">
@@ -716,18 +976,30 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
               <SearchableSelectField
                 value={propertyId || null}
                 onChange={(v) => setPropertyId(v ?? "")}
-                options={interests.map((i) => ({ value: i.property_id, label: i.properties?.title ?? i.property_id }))}
+                options={interests.map((i) => ({
+                  value: i.property_id,
+                  label: i.properties?.title ?? i.property_id,
+                }))}
                 placeholder="Select property"
                 searchPlaceholder="Search properties..."
               />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
               Amount (QAR)
-              <input type="number" className="h-9 w-32 rounded-lg border border-border bg-canvas px-3 text-sm" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <input
+                type="number"
+                className="h-9 w-32 rounded-lg border border-border bg-canvas px-3 text-sm"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </label>
             <label className="flex flex-1 min-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground">
               Notes
-              <input className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <input
+                className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
             </label>
             <Button
               size="sm"
@@ -742,9 +1014,13 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
                     notes: notes || null,
                     status: "submitted",
                   });
-                  setPropertyId(""); setAmount(""); setNotes("");
+                  setPropertyId("");
+                  setAmount("");
+                  setNotes("");
                   toast.success("Offer logged");
-                } catch (e) { toast.error((e as Error).message); }
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
             >
               Log offer
@@ -764,19 +1040,26 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
                   className="flex-1 text-left"
                   onClick={() => setExpandedOfferId((cur) => (cur === o.id ? null : o.id))}
                 >
-                  <p className="text-sm font-medium">{o.amount ? `${o.currency ?? "QAR"} ${o.amount.toLocaleString()}` : "Offer"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{o.status.replace(/_/g, " ")} · {fmtDate(o.offer_date)}</p>
+                  <p className="text-sm font-medium">
+                    {o.amount ? `${o.currency ?? "QAR"} ${o.amount.toLocaleString()}` : "Offer"}
+                  </p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {o.status.replace(/_/g, " ")} · {fmtDate(o.offer_date)}
+                  </p>
                   {o.notes && <p className="text-xs text-muted-foreground mt-1">{o.notes}</p>}
                 </button>
-                {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
-                  <SelectField
-                    className="h-8 w-36 text-xs"
-                    value={o.status}
-                    onChange={(v) => update.mutate({ id: o.id, patch: { status: v ?? o.status } })}
-                    options={OFFER_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
-                    allowClear={false}
-                  />
-                )}
+                {canEdit &&
+                  !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
+                    <SelectField
+                      className="h-8 w-36 text-xs"
+                      value={o.status}
+                      onChange={(v) =>
+                        update.mutate({ id: o.id, patch: { status: v ?? o.status } })
+                      }
+                      options={OFFER_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
+                      allowClear={false}
+                    />
+                  )}
               </div>
               {expandedOfferId === o.id && (
                 <OfferAttachments offerId={o.id} canUpload={canCreate || canEdit} />
@@ -789,25 +1072,28 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
   );
 }
 
-function OfferAttachments({
-  offerId,
-  canUpload,
-}: {
-  offerId: string;
-  canUpload: boolean;
-}) {
+function OfferAttachments({ offerId, canUpload }: { offerId: string; canUpload: boolean }) {
   const { data: files = [] } = useUploads({ offerId });
   const del = useDeleteUpload();
   return (
     <div className="mt-3 border-t border-border pt-3">
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Attachments</p>
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Attachments
+      </p>
       {files.length === 0 ? (
         <p className="mb-2 text-xs text-muted-foreground">No files attached to this offer yet.</p>
       ) : (
         <ul className="mb-2 space-y-1">
           {files.map((f) => (
-            <li key={f.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-canvas px-3 py-1.5 text-xs">
-              <button type="button" className="truncate text-left hover:underline" onClick={() => downloadUpload(f)}>
+            <li
+              key={f.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-canvas px-3 py-1.5 text-xs"
+            >
+              <button
+                type="button"
+                className="truncate text-left hover:underline"
+                onClick={() => downloadUpload(f)}
+              >
                 {f.filename}
               </button>
               <button
@@ -848,7 +1134,13 @@ function PropertyInterestsTab({ leadId }: { leadId: string }) {
   const seen = new Set(interests.map((i) => i.property_id));
   const extras = mentioned.filter((m) => m.property_id && !seen.has(m.property_id));
   if (interests.length === 0 && extras.length === 0) {
-    return <EmptyState compact title="No property interests yet" description="Properties this lead views, mentions or shortlists will appear here." />;
+    return (
+      <EmptyState
+        compact
+        title="No property interests yet"
+        description="Properties this lead views, mentions or shortlists will appear here."
+      />
+    );
   }
   return (
     <div className="space-y-3">
@@ -860,11 +1152,21 @@ function PropertyInterestsTab({ leadId }: { leadId: string }) {
               const p = it.properties;
               if (!p) return null;
               return (
-                <li key={it.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
-                  <Link to="/properties/$propertyId" params={{ propertyId: p.id }} className="hover:underline">
-                    {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
+                <li
+                  key={it.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs"
+                >
+                  <Link
+                    to="/properties/$propertyId"
+                    params={{ propertyId: p.id }}
+                    className="hover:underline"
+                  >
+                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {p.title}
                   </Link>
-                  <span className="text-muted-foreground capitalize">{it.interest_level ?? it.status ?? "interested"}</span>
+                  <span className="text-muted-foreground capitalize">
+                    {it.interest_level ?? it.status ?? "interested"}
+                  </span>
                 </li>
               );
             })}
@@ -879,9 +1181,17 @@ function PropertyInterestsTab({ leadId }: { leadId: string }) {
               const p = e.properties;
               if (!p) return null;
               return (
-                <li key={i} className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs">
-                  <Link to="/properties/$propertyId" params={{ propertyId: p.id }} className="hover:underline">
-                    {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs"
+                >
+                  <Link
+                    to="/properties/$propertyId"
+                    params={{ propertyId: p.id }}
+                    className="hover:underline"
+                  >
+                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {p.title}
                   </Link>
                   <span className="text-muted-foreground">{fmtDate(e.occurred_at)}</span>
                 </li>

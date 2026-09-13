@@ -1,6 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity, BarChart3, Megaphone, CheckCircle2, ListChecks } from "lucide-react";
+import {
+  Flame,
+  Target,
+  AlertTriangle,
+  UserPlus,
+  Inbox,
+  ArrowRight,
+  Activity,
+  BarChart3,
+  Megaphone,
+  CheckCircle2,
+  ListChecks,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { DataTable } from "@/components/data-table";
@@ -31,7 +43,10 @@ export const Route = createFileRoute("/overview")({
   head: () => ({
     meta: [
       { title: "Overview" },
-      { name: "description", content: "Real-time view of buyer pipeline activity, intent and follow-ups." },
+      {
+        name: "description",
+        content: "Real-time view of buyer pipeline activity, intent and follow-ups.",
+      },
     ],
   }),
   component: OverviewPage,
@@ -75,10 +90,13 @@ function OverviewPage() {
   );
   const updateTodayTask = useUpdateTask();
 
-  function taskLinkTarget(t: TaskWithRelations): { to: string; params: Record<string, string> } | null {
+  function taskLinkTarget(
+    t: TaskWithRelations,
+  ): { to: string; params: Record<string, string> } | null {
     if (t.lead_id) return { to: "/leads/$leadId", params: { leadId: t.lead_id } };
     if (t.owner_id) return { to: "/owners/$ownerId", params: { ownerId: t.owner_id } };
-    if (t.property_id) return { to: "/properties/$propertyId", params: { propertyId: t.property_id } };
+    if (t.property_id)
+      return { to: "/properties/$propertyId", params: { propertyId: t.property_id } };
     return null;
   }
 
@@ -103,11 +121,14 @@ function OverviewPage() {
 
   // Newest completed analysis per lead
   const currentByLead = new Map<string, any>();
-  for (const a of completedAnalyses) if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
+  for (const a of completedAnalyses)
+    if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
   const currents = Array.from(currentByLead.values());
   const leadById = new Map(leads.map((l) => [l.id, l]));
-  const getStatus = (a: any) => a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
-  const getBaseIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  const getStatus = (a: any) =>
+    a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
+  const getBaseIntent = (a: any) =>
+    a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
   // High Intent reflects effective intent (base AI score blended with how close
   // the lead's intended transaction date/timeframe is) - buyer_status ("hot")
   // stays purely the AI's own categorical judgement, untouched, so a lead can
@@ -123,7 +144,10 @@ function OverviewPage() {
 
   // Demand signals
   const demandAgg = useMemo(() => {
-    const perProp = new Map<string, { views: number; mentions: number; loc: string | null; type: string | null; score: number }>();
+    const perProp = new Map<
+      string,
+      { views: number; mentions: number; loc: string | null; type: string | null; score: number }
+    >();
     const locCounts = new Map<string, number>();
     const typeCounts = new Map<string, number>();
     let topPriceOp: { pid: string; signal: number } | null = null;
@@ -131,14 +155,25 @@ function OverviewPage() {
       if (!e.property_id) continue;
       const p = propertyById.get(e.property_id);
       if (!p) continue;
-      const cur = perProp.get(e.property_id) ?? { views: 0, mentions: 0, loc: p.location, type: p.property_type, score: 0 };
+      const cur = perProp.get(e.property_id) ?? {
+        views: 0,
+        mentions: 0,
+        loc: p.location,
+        type: p.property_type,
+        score: 0,
+      };
       cur.score += Number(e.weight ?? 1);
       if (e.event_type === "view") cur.views++;
       if (e.event_type === "mention") cur.mentions++;
       perProp.set(e.property_id, cur);
-      if (p.location) locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
-      if (p.property_type) typeCounts.set(p.property_type, (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1));
-      const isStrong = ["enquiry","viewing_request","offer","shortlist"].includes(e.event_type);
+      if (p.location)
+        locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
+      if (p.property_type)
+        typeCounts.set(
+          p.property_type,
+          (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1),
+        );
+      const isStrong = ["enquiry", "viewing_request", "offer", "shortlist"].includes(e.event_type);
       if (isStrong) {
         const cur2 = topPriceOp;
         const sig = cur.score;
@@ -159,275 +194,425 @@ function OverviewPage() {
   return (
     <AppShell>
       <PermissionGate module="overview" action="view" page>
-      <p className="mb-3 text-[13px] font-medium text-muted-foreground">Buyer Intelligence</p>
+        <p className="mb-3 text-[13px] font-medium text-muted-foreground">Buyer Intelligence</p>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl bg-pastel-blue p-6 lg:col-span-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[13px] font-medium text-foreground/70">Active Pipeline</p>
-              <h3 className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-foreground">
-                {pipelineValue > 0 ? fmtMoney(pipelineValue, currency) : "0"}
-              </h3>
-              <p className="mt-2 text-xs text-muted-foreground">Qualified Buyer Value ({activeLeads.length} active leads)</p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex h-44 items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/40 text-center">
-            <div>
-              <Activity className="mx-auto h-5 w-5 text-foreground/60" />
-              <p className="mt-2 text-xs font-medium text-foreground">
-                {activeLeads.length === 0 ? "No pipeline activity yet" : `${activeLeads.length} leads in pipeline`}
-              </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Detailed charts will appear once enough activity has been recorded.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-1">
-            {ranges.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
-                  r === range ? "bg-foreground text-primary-foreground" : "text-foreground/70 hover:bg-white/50",
-                )}
-              >{r}</button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <MetricCard label="Hot Leads" value={String(hotCount)} tone="purple" icon={<Flame className="h-4 w-4" />} />
-          <MetricCard label="High Intent" value={String(highIntentCount)} tone="green" icon={<Target className="h-4 w-4" />} />
-          <MetricCard label="At Risk" value={String(atRiskCount)} tone="cream" icon={<AlertTriangle className="h-4 w-4" />} />
-          <MetricCard label="New Leads" value={String(newLeadsCount)} tone="blue" icon={<UserPlus className="h-4 w-4" />} />
-        </div>
-      </div>
-
-      <Card className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ListChecks className="h-4 w-4" />
-            <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{todaysTasks.length}</span>
-            <Link to="/calendar"><Button variant="outline" size="sm">Open calendar</Button></Link>
-          </div>
-        </div>
-        {todaysTasks.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {todaysTasks.map((t) => {
-              const target = taskLinkTarget(t);
-              const related = t.leads?.full_name ?? t.owners?.name ?? t.properties?.title ?? null;
-              const row = (
-                <div className="flex items-center gap-3 py-2.5 text-sm">
-                  <button
-                    type="button"
-                    title="Mark complete"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      updateTodayTask.mutate(
-                        { id: t.id, patch: { status: "completed", completed_at: new Date().toISOString() } },
-                        {
-                          onSuccess: () => toast.success("Task completed"),
-                          onError: (err) => toast.error((err as Error).message),
-                        },
-                      );
-                    }}
-                    className="flex-shrink-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{t.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {t.task_type ? `${t.task_type} · ` : ""}
-                      {t.due_at ? new Date(t.due_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "No time set"}
-                      {related ? ` · ${related}` : ""}
-                    </p>
-                  </div>
-                  <span className="flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{t.status.replace(/_/g, " ")}</span>
-                </div>
-              );
-              return target ? (
-                <li
-                  key={t.id}
-                  className="cursor-pointer px-1 hover:bg-background/60"
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
-                  onClick={() => navigate(target as any)}
-                >
-                  {row}
-                </li>
-              ) : (
-                <li key={t.id} className="px-1">{row}</li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[16px] font-semibold text-foreground">Recent Buyer Activity</h3>
-            <Link to="/leads"><Button variant="outline" size="sm">View all</Button></Link>
-          </div>
-
-          <DataTable
-            columns={["Buyer", "Pipeline Stage", "Budget", "Last update", "Action"]}
-            empty={
-              <EmptyState compact icon={<Inbox className="h-4 w-4" />} title="No buyer activity has been recorded." description="Once leads engage, their latest interactions will appear here." />
-            }
-          >
-            {recentLeads.length > 0
-              ? recentLeads.map((l) => (
-                  <tr key={l.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-sm font-medium">
-                      <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
-                    </td>
-                    <td className="px-4 py-3"><PipelineStageBadge stage={stageLabel(l.pipeline_stage)} /></td>
-                    <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(l.updated_at)}</td>
-                    <td className="px-4 py-3">
-                      <Link to="/leads/$leadId" params={{ leadId: l.id }}>
-                        <Button variant="outline" size="sm">Open</Button>
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              : null}
-          </DataTable>
-
-          {recentInteractions.length > 0 && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-[16px] font-semibold">Recent interactions</h3>
-              <div className="space-y-2">
-                {recentInteractions.map((i) => (
-                  <div key={i.id} className="rounded-lg border border-border bg-canvas px-4 py-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium capitalize">{i.interaction_type.replace(/_/g, " ")}</span>
-                      <span className="text-xs text-muted-foreground">{fmtDate(i.interaction_date)}</span>
-                    </div>
-                    {i.subject && <p className="mt-1 text-xs text-muted-foreground">{i.subject}</p>}
-                  </div>
-                ))}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="relative overflow-hidden rounded-2xl bg-pastel-blue p-6 lg:col-span-2">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[13px] font-medium text-foreground/70">Active Pipeline</p>
+                <h3 className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-foreground">
+                  {pipelineValue > 0 ? fmtMoney(pipelineValue, currency) : "0"}
+                </h3>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Qualified Buyer Value ({activeLeads.length} active leads)
+                </p>
               </div>
             </div>
-          )}
+
+            <div className="mt-6 flex h-44 items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/40 text-center">
+              <div>
+                <Activity className="mx-auto h-5 w-5 text-foreground/60" />
+                <p className="mt-2 text-xs font-medium text-foreground">
+                  {activeLeads.length === 0
+                    ? "No pipeline activity yet"
+                    : `${activeLeads.length} leads in pipeline`}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Detailed charts will appear once enough activity has been recorded.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-1">
+              {ranges.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
+                    r === range
+                      ? "bg-foreground text-primary-foreground"
+                      : "text-foreground/70 hover:bg-white/50",
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <MetricCard
+              label="Hot Leads"
+              value={String(hotCount)}
+              tone="purple"
+              icon={<Flame className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="High Intent"
+              value={String(highIntentCount)}
+              tone="green"
+              icon={<Target className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="At Risk"
+              value={String(atRiskCount)}
+              tone="cream"
+              icon={<AlertTriangle className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="New Leads"
+              value={String(newLeadsCount)}
+              tone="blue"
+              icon={<UserPlus className="h-4 w-4" />}
+            />
+          </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-sidebar p-6 text-white">
-          <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border border-white/10" />
-          <div className="absolute -bottom-16 -right-16 h-56 w-56 rounded-full border border-white/10" />
-          <h3 className="relative text-[20px] font-semibold leading-snug">Turn buyer behaviour into decisions</h3>
-          <p className="relative mt-3 max-w-xs text-sm text-white/65">
-            Analyse conversations, preferences and objections before the next follow-up.
-          </p>
-          <Link to="/ai-insights">
-            <Button variant="outline" className="relative mt-6 border-white/15 bg-white text-foreground hover:bg-white/90" size="sm">
-              Review AI Insights
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+        <Card className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                {todaysTasks.length}
+              </span>
+              <Link to="/calendar">
+                <Button variant="outline" size="sm">
+                  Open calendar
+                </Button>
+              </Link>
+            </div>
+          </div>
+          {todaysTasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {todaysTasks.map((t) => {
+                const target = taskLinkTarget(t);
+                const related = t.leads?.full_name ?? t.owners?.name ?? t.properties?.title ?? null;
+                const row = (
+                  <div className="flex items-center gap-3 py-2.5 text-sm">
+                    <button
+                      type="button"
+                      title="Mark complete"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        updateTodayTask.mutate(
+                          {
+                            id: t.id,
+                            patch: { status: "completed", completed_at: new Date().toISOString() },
+                          },
+                          {
+                            onSuccess: () => toast.success("Task completed"),
+                            onError: (err) => toast.error((err as Error).message),
+                          },
+                        );
+                      }}
+                      className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{t.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {t.task_type ? `${t.task_type} · ` : ""}
+                        {t.due_at
+                          ? new Date(t.due_at).toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "No time set"}
+                        {related ? ` · ${related}` : ""}
+                      </p>
+                    </div>
+                    <span className="flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">
+                      {t.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                );
+                return target ? (
+                  <li
+                    key={t.id}
+                    className="cursor-pointer px-1 hover:bg-background/60"
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
+                    onClick={() => navigate(target as any)}
+                  >
+                    {row}
+                  </li>
+                ) : (
+                  <li key={t.id} className="px-1">
+                    {row}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[16px] font-semibold text-foreground">Recent Buyer Activity</h3>
+              <Link to="/leads">
+                <Button variant="outline" size="sm">
+                  View all
+                </Button>
+              </Link>
+            </div>
+
+            <DataTable
+              columns={["Buyer", "Pipeline Stage", "Budget", "Last update", "Action"]}
+              empty={
+                <EmptyState
+                  compact
+                  icon={<Inbox className="h-4 w-4" />}
+                  title="No buyer activity has been recorded."
+                  description="Once leads engage, their latest interactions will appear here."
+                />
+              }
+            >
+              {recentLeads.length > 0
+                ? recentLeads.map((l) => (
+                    <tr key={l.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-sm font-medium">
+                        <Link
+                          to="/leads/$leadId"
+                          params={{ leadId: l.id }}
+                          className="hover:underline"
+                        >
+                          {l.full_name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <PipelineStageBadge stage={stageLabel(l.pipeline_stage)} />
+                      </td>
+                      <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {fmtDate(l.updated_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link to="/leads/$leadId" params={{ leadId: l.id }}>
+                          <Button variant="outline" size="sm">
+                            Open
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                : null}
+            </DataTable>
+
+            {recentInteractions.length > 0 && (
+              <div className="mt-6">
+                <h3 className="mb-3 text-[16px] font-semibold">Recent interactions</h3>
+                <div className="space-y-2">
+                  {recentInteractions.map((i) => (
+                    <div
+                      key={i.id}
+                      className="rounded-lg border border-border bg-canvas px-4 py-3 text-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium capitalize">
+                          {i.interaction_type.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {fmtDate(i.interaction_date)}
+                        </span>
+                      </div>
+                      {i.subject && (
+                        <p className="mt-1 text-xs text-muted-foreground">{i.subject}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl bg-sidebar p-6 text-white">
+            <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border border-white/10" />
+            <div className="absolute -bottom-16 -right-16 h-56 w-56 rounded-full border border-white/10" />
+            <h3 className="relative text-[20px] font-semibold leading-snug">
+              Turn buyer behaviour into decisions
+            </h3>
+            <p className="relative mt-3 max-w-xs text-sm text-white/65">
+              Analyse conversations, preferences and objections before the next follow-up.
+            </p>
+            <Link to="/ai-insights">
+              <Button
+                variant="outline"
+                className="relative mt-6 border-white/15 bg-white text-foreground hover:bg-white/90"
+                size="sm"
+              >
+                Review AI Insights
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Follow-ups */}
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[15px] font-semibold">Overdue follow-ups</h3>
-            <span className="rounded-full bg-[#FADCDA] px-2 py-0.5 text-[11px]">{overdueTasks.length}</span>
-          </div>
-          {overdueTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing overdue - you're on top of it.</p>
-          ) : (
-            <ul className="space-y-2 text-xs">
-              {overdueTasks.slice(0, 6).map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
-                  <span className="truncate">{t.title}</span>
-                  <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[15px] font-semibold">Upcoming follow-ups</h3>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{upcomingTasks.length}</span>
-          </div>
-          {upcomingTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No upcoming follow-ups scheduled.</p>
-          ) : (
-            <ul className="space-y-2 text-xs">
-              {upcomingTasks.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
-                  <span className="truncate">{t.title}</span>
-                  <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      {/* Demand & Marketing signals */}
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <h3 className="text-[15px] font-semibold">Demand Signals</h3>
+        {/* Follow-ups */}
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[15px] font-semibold">Overdue follow-ups</h3>
+              <span className="rounded-full bg-[#FADCDA] px-2 py-0.5 text-[11px]">
+                {overdueTasks.length}
+              </span>
             </div>
-            <Link to="/property-demand"><Button variant="outline" size="sm">Open<ArrowRight className="h-3 w-3" /></Button></Link>
-          </div>
-          {events.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No property activity yet. Open property pages or import conversations to start tracking.</p>
-          ) : (
-            <ul className="space-y-1.5 text-xs">
-              <SignalRow label="Most viewed" value={demandAgg.topViewed ? propertyById.get(demandAgg.topViewed[0])?.title : null} extra={demandAgg.topViewed ? `${demandAgg.topViewed[1].views} views` : ""} />
-              <SignalRow label="Most mentioned" value={demandAgg.topMentioned ? propertyById.get(demandAgg.topMentioned[0])?.title : null} extra={demandAgg.topMentioned ? `${demandAgg.topMentioned[1].mentions} mentions` : ""} />
-              <SignalRow label="Top location" value={demandAgg.topLoc?.[0] ?? null} />
-              <SignalRow label="Top property type" value={demandAgg.topType?.[0] ?? null} />
-              <SignalRow label="Strongest pricing opportunity" value={demandAgg.topPriceOp ? propertyById.get(demandAgg.topPriceOp.pid)?.title : null} />
-            </ul>
-          )}
-        </Card>
-
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Megaphone className="h-4 w-4" />
-              <h3 className="text-[15px] font-semibold">Marketing Signals</h3>
+            {overdueTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nothing overdue - you're on top of it.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-xs">
+                {overdueTasks.slice(0, 6).map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0"
+                  >
+                    <span className="truncate">{t.title}</span>
+                    <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[15px] font-semibold">Upcoming follow-ups</h3>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                {upcomingTasks.length}
+              </span>
             </div>
-            <Link to="/marketing-intelligence"><Button variant="outline" size="sm">Open<ArrowRight className="h-3 w-3" /></Button></Link>
-          </div>
-          {!reportOut ? (
-            <p className="text-xs text-muted-foreground">No marketing intelligence report yet. Generate one to see patterns here.</p>
-          ) : (
-            <ul className="space-y-1.5 text-xs">
-              <SignalRow label="Top buyer signal" value={(reportOut as any).buyer_language?.[0]?.finding ?? null} />
-              <SignalRow label="Brand gap" value={(reportOut as any).brand_gaps?.[0]?.gap ?? null} />
-              <SignalRow label="Recommended direction" value={(reportOut as any).recommended_direction ?? null} />
-              <SignalRow label="Top campaign idea" value={(reportOut as any).campaign_ideas?.[0]?.angle ?? null} />
-            </ul>
-          )}
-        </Card>
-      </div>
+            {upcomingTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No upcoming follow-ups scheduled.</p>
+            ) : (
+              <ul className="space-y-2 text-xs">
+                {upcomingTasks.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0"
+                  >
+                    <span className="truncate">{t.title}</span>
+                    <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        {/* Demand & Marketing signals */}
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <h3 className="text-[15px] font-semibold">Demand Signals</h3>
+              </div>
+              <Link to="/property-demand">
+                <Button variant="outline" size="sm">
+                  Open
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
+            {events.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No property activity yet. Open property pages or import conversations to start
+                tracking.
+              </p>
+            ) : (
+              <ul className="space-y-1.5 text-xs">
+                <SignalRow
+                  label="Most viewed"
+                  value={
+                    demandAgg.topViewed ? propertyById.get(demandAgg.topViewed[0])?.title : null
+                  }
+                  extra={demandAgg.topViewed ? `${demandAgg.topViewed[1].views} views` : ""}
+                />
+                <SignalRow
+                  label="Most mentioned"
+                  value={
+                    demandAgg.topMentioned
+                      ? propertyById.get(demandAgg.topMentioned[0])?.title
+                      : null
+                  }
+                  extra={
+                    demandAgg.topMentioned ? `${demandAgg.topMentioned[1].mentions} mentions` : ""
+                  }
+                />
+                <SignalRow label="Top location" value={demandAgg.topLoc?.[0] ?? null} />
+                <SignalRow label="Top property type" value={demandAgg.topType?.[0] ?? null} />
+                <SignalRow
+                  label="Strongest pricing opportunity"
+                  value={
+                    demandAgg.topPriceOp ? propertyById.get(demandAgg.topPriceOp.pid)?.title : null
+                  }
+                />
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Megaphone className="h-4 w-4" />
+                <h3 className="text-[15px] font-semibold">Marketing Signals</h3>
+              </div>
+              <Link to="/marketing-intelligence">
+                <Button variant="outline" size="sm">
+                  Open
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
+            {!reportOut ? (
+              <p className="text-xs text-muted-foreground">
+                No marketing intelligence report yet. Generate one to see patterns here.
+              </p>
+            ) : (
+              <ul className="space-y-1.5 text-xs">
+                <SignalRow
+                  label="Top buyer signal"
+                  value={(reportOut as any).buyer_language?.[0]?.finding ?? null}
+                />
+                <SignalRow
+                  label="Brand gap"
+                  value={(reportOut as any).brand_gaps?.[0]?.gap ?? null}
+                />
+                <SignalRow
+                  label="Recommended direction"
+                  value={(reportOut as any).recommended_direction ?? null}
+                />
+                <SignalRow
+                  label="Top campaign idea"
+                  value={(reportOut as any).campaign_ideas?.[0]?.angle ?? null}
+                />
+              </ul>
+            )}
+          </Card>
+        </div>
       </PermissionGate>
     </AppShell>
   );
 }
 
-function SignalRow({ label, value, extra }: { label: string; value: string | null | undefined; extra?: string }) {
+function SignalRow({
+  label,
+  value,
+  extra,
+}: {
+  label: string;
+  value: string | null | undefined;
+  extra?: string;
+}) {
   return (
     <li className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0">
       <span className="text-muted-foreground">{label}</span>

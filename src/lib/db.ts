@@ -125,7 +125,13 @@ export const LEAD_CLASSIFICATION_LABELS: Record<string, string> = {
   tenant: "Renter", // legacy value from earlier demo data, treated as an alias of "renter"
 };
 export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;
-export const PROPERTY_PURPOSES = ["sale", "rent", "commercial", "off_plan", "off_plan_resale"] as const;
+export const PROPERTY_PURPOSES = [
+  "sale",
+  "rent",
+  "commercial",
+  "off_plan",
+  "off_plan_resale",
+] as const;
 export const PROPERTY_PURPOSE_LABELS: Record<string, string> = {
   sale: "Sale",
   rent: "Rent",
@@ -139,7 +145,13 @@ export const SUBMISSION_PURPOSE_LABELS: Record<string, string> = {
   rent: "Rent",
   let: "Let",
 };
-export const PROPERTY_AVAILABILITIES = ["available", "reserved", "sold", "rented", "unavailable"] as const;
+export const PROPERTY_AVAILABILITIES = [
+  "available",
+  "reserved",
+  "sold",
+  "rented",
+  "unavailable",
+] as const;
 export const PROPERTY_AVAILABILITY_LABELS: Record<string, string> = {
   available: "Available",
   reserved: "Reserved",
@@ -149,12 +161,20 @@ export const PROPERTY_AVAILABILITY_LABELS: Record<string, string> = {
   needs_confirmation: "Needs Confirmation",
 };
 /** True once a property's availability confirmation is overdue (or has never been confirmed but was created long enough ago to need one). */
-export function isConfirmationOverdue(property: Pick<Property, "availability_next_due_at">): boolean {
+export function isConfirmationOverdue(
+  property: Pick<Property, "availability_next_due_at">,
+): boolean {
   if (!property.availability_next_due_at) return false;
   return new Date(property.availability_next_due_at).getTime() < Date.now();
 }
 
-export const PUBLICATION_DESTINATION_STATUSES = ["not_configured", "queued", "published", "failed", "unpublished"] as const;
+export const PUBLICATION_DESTINATION_STATUSES = [
+  "not_configured",
+  "queued",
+  "published",
+  "failed",
+  "unpublished",
+] as const;
 export const PUBLICATION_DESTINATION_STATUS_LABELS: Record<string, string> = {
   not_configured: "Not configured",
   queued: "Queued",
@@ -162,7 +182,14 @@ export const PUBLICATION_DESTINATION_STATUS_LABELS: Record<string, string> = {
   failed: "Failed",
   unpublished: "Unpublished",
 };
-export const TRANSACTION_TIMEFRAMES = ["immediate", "1_month", "3_months", "6_months", "12_months", "unspecified"] as const;
+export const TRANSACTION_TIMEFRAMES = [
+  "immediate",
+  "1_month",
+  "3_months",
+  "6_months",
+  "12_months",
+  "unspecified",
+] as const;
 export const TRANSACTION_TIMEFRAME_LABELS: Record<string, string> = {
   immediate: "Immediate",
   "1_month": "Within 1 month",

@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type CloudflareVideoStatus = Database["public"]["Tables"]["properties"]["Row"]["cloudflare_video_status"];
+type CloudflareVideoStatus =
+  Database["public"]["Tables"]["properties"]["Row"]["cloudflare_video_status"];
 
 /**
  * Property video uploader: requests a one-time Cloudflare Stream upload URL
@@ -44,7 +45,8 @@ export function CloudflareVideoUpload({
         // Edge Functions return a JSON error body on non-2xx responses; the
         // supabase-js client surfaces that as a generic FunctionsHttpError,
         // so read the real message back out of the response when present.
-        let message = data?.error ?? fnError?.message ?? "Could not get a Cloudflare Stream upload URL";
+        let message =
+          data?.error ?? fnError?.message ?? "Could not get a Cloudflare Stream upload URL";
         const context = (fnError as { context?: Response })?.context;
         if (context && typeof context.json === "function") {
           try {
@@ -89,7 +91,13 @@ export function CloudflareVideoUpload({
   }
 
   const fileInput = (
-    <input ref={inputRef} type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+    <input
+      ref={inputRef}
+      type="file"
+      accept="video/mp4,video/quicktime,video/webm"
+      className="hidden"
+      onChange={(e) => handleFiles(e.target.files)}
+    />
   );
 
   if (videoUid && status === "ready") {
@@ -97,13 +105,22 @@ export function CloudflareVideoUpload({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs">
           <span className="flex items-center gap-2 text-foreground">
-            <Video className="h-3.5 w-3.5" /> Video uploaded (Cloudflare Stream: {videoUid.slice(0, 10)}...)
+            <Video className="h-3.5 w-3.5" /> Video uploaded (Cloudflare Stream:{" "}
+            {videoUid.slice(0, 10)}...)
           </span>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => inputRef.current?.click()} className="rounded-md border border-border px-2 py-1 text-[11px] hover:bg-muted">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="rounded-md border border-border px-2 py-1 text-[11px] hover:bg-muted"
+            >
               Replace
             </button>
-            <button type="button" onClick={() => onChange(null, "none")} className="rounded-md border border-border px-2 py-1 text-[11px] text-destructive hover:bg-muted">
+            <button
+              type="button"
+              onClick={() => onChange(null, "none")}
+              className="rounded-md border border-border px-2 py-1 text-[11px] text-destructive hover:bg-muted"
+            >
               <X className="h-3 w-3" />
             </button>
           </div>
@@ -119,10 +136,19 @@ export function CloudflareVideoUpload({
         role="button"
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
         onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          handleFiles(e.dataTransfer.files);
+        }}
         className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed bg-background px-4 py-8 text-center transition-colors ${dragging ? "border-foreground bg-muted" : "border-border"}`}
       >
         {progress !== null ? (
@@ -134,7 +160,9 @@ export function CloudflareVideoUpload({
           <>
             <UploadCloud className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
             <p className="text-xs font-medium text-foreground">Click or drag a video to upload</p>
-            <p className="text-[11px] text-muted-foreground">MP4, MOV or WEBM, hosted on Cloudflare Stream</p>
+            <p className="text-[11px] text-muted-foreground">
+              MP4, MOV or WEBM, hosted on Cloudflare Stream
+            </p>
           </>
         )}
       </div>

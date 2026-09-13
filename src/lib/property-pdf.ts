@@ -59,7 +59,11 @@ export function openPropertyPdf(property: Property, heroImageUrl?: string | null
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 type AdvisorContact = { full_name: string; email?: string | null; phone?: string | null } | null;
@@ -195,9 +199,12 @@ export async function generatePropertyPdfBlob(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
-  const contactLine = [advisor?.phone, advisor?.email].filter(Boolean).join("  ·  ") || APP_CONFIG.companyName;
+  const contactLine =
+    [advisor?.phone, advisor?.email].filter(Boolean).join("  ·  ") || APP_CONFIG.companyName;
   doc.text(contactLine, margin, footerY + 32);
-  doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - margin, footerY + 32, { align: "right" });
+  doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - margin, footerY + 32, {
+    align: "right",
+  });
 
   return doc.output("blob");
 }
@@ -216,7 +223,11 @@ export async function sharePropertyPdf(
   const filename = `${(property.reference_code || property.title).replace(/[^a-zA-Z0-9-_]+/g, "-")}.pdf`;
   const file = new File([blob], filename, { type: "application/pdf" });
 
-  if (typeof navigator !== "undefined" && navigator.share && navigator.canShare?.({ files: [file] })) {
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.share &&
+    navigator.canShare?.({ files: [file] })
+  ) {
     await navigator.share({
       files: [file],
       title: property.title,

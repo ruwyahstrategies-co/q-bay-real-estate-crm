@@ -24,7 +24,9 @@ import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useDevelopments } from "@/hooks/use-developments";
-import { fmtMoney, fmtDate, LEAD_CLASSIFICATIONS, LEAD_WORKFLOWS, type Lead } from "@/lib/db";
+import { fmtMoney, fmtDate, LEAD_CLASSIFICATIONS, LEAD_CLASSIFICATION_LABELS, LEAD_WORKFLOWS, type Lead } from "@/lib/db";
+import { effectiveIntentScore } from "@/lib/intent";
+import { useAreas } from "@/hooks/use-locations";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
@@ -57,6 +59,8 @@ function LeadsPage() {
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
+  const { data: areas = [] } = useAreas();
+  const areaNameById = useMemo(() => new Map(areas.map((a) => [a.id, a.name])), [areas]);
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
@@ -167,7 +171,7 @@ function LeadsPage() {
         <SelectField
           value={classification}
           onChange={(v) => setClassification(v)}
-          options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: titleCase(c) }))}
+          options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c) }))}
           emptyLabel="All types"
           className="w-auto min-w-[110px] text-xs"
         />
@@ -253,11 +257,13 @@ function LeadsPage() {
                     <div>{l.email ?? ""}</div>
                   </td>
                   <td className="px-4 py-3 text-xs">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "-"}</td>
-                  <td className="px-4 py-3 text-xs">{l.preferred_locations?.join(", ") ?? "-"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {(l.preferred_area_id && areaNameById.get(l.preferred_area_id)) || l.preferred_locations?.join(", ") || "-"}
+                  </td>
                   <td className="px-4 py-3 text-xs">{l.preferred_property_types?.join(", ") ?? "-"}</td>
                   <td className="px-4 py-3 text-xs">
                     {intentByLead.has(l.id) ? (
-                      <IntentScore score={intentByLead.get(l.id)} />
+                      <IntentScore score={effectiveIntentScore(intentByLead.get(l.id)!, l)} />
                     ) : (
                       <span className="text-muted-foreground" title="Run AI analysis to score this lead">Not analysed</span>
                     )}

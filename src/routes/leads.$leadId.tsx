@@ -19,7 +19,9 @@ import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions"
 import { useTasks, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads";
 import { usePipelineHistory } from "@/hooks/use-pipeline-history";
-import { fmtDate, fmtDateTime, fmtMoney, stageLabel } from "@/lib/db";
+import { fmtDate, fmtDateTime, fmtMoney, stageLabel, TRANSACTION_TIMEFRAME_LABELS } from "@/lib/db";
+import { effectiveIntentScore } from "@/lib/intent";
+import { useAreas } from "@/hooks/use-locations";
 import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
 import { CallTranscriptCard } from "@/components/call-transcript-card";
 import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
@@ -52,6 +54,7 @@ function LeadProfilePage() {
 
   const { data: lead, isLoading } = useLead(leadId);
   const { data: team = [] } = useTeamMembers();
+  const { data: areas = [] } = useAreas();
   const { data: interactions = [] } = useInteractions({ leadId });
   const { data: tasks = [] } = useTasks({ leadId });
   const { data: files = [] } = useUploads({ leadId });
@@ -77,7 +80,9 @@ function LeadProfilePage() {
   const initials = lead.full_name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
   const currentAnalysis = analyses.find((a) => a.status === "completed");
   const processingAnalysis = analyses.find((a) => a.status === "processing");
-  const intentScore = (currentAnalysis?.output_json as any)?.intentScore ?? null;
+  const baseIntentScore = (currentAnalysis?.output_json as any)?.intentScore ?? null;
+  const intentScore = lead && typeof baseIntentScore === "number" ? effectiveIntentScore(baseIntentScore, lead) : baseIntentScore;
+  const preferredAreaName = lead?.preferred_area_id ? areas.find((a) => a.id === lead.preferred_area_id)?.name : null;
   const isAnalysing = analyseMut.isPending || !!processingAnalysis;
   const handleAnalyse = async () => {
     try {
@@ -197,10 +202,14 @@ function LeadProfilePage() {
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <dt className="text-muted-foreground">Budget</dt>
               <dd>{fmtMoney(lead.budget_min, lead.currency)} - {fmtMoney(lead.budget_max, lead.currency)}</dd>
-              <dt className="text-muted-foreground">Locations</dt><dd>{lead.preferred_locations?.join(", ") ?? "-"}</dd>
+              <dt className="text-muted-foreground">Preferred area</dt>
+              <dd>{preferredAreaName ?? lead.preferred_locations?.join(", ") ?? "-"}</dd>
               <dt className="text-muted-foreground">Types</dt><dd>{lead.preferred_property_types?.join(", ") ?? "-"}</dd>
               <dt className="text-muted-foreground">Purpose</dt><dd>{lead.purchase_purpose ?? "-"}</dd>
               <dt className="text-muted-foreground">Timeline</dt><dd>{lead.buying_timeline ?? "-"}</dd>
+              <dt className="text-muted-foreground">Expected timeframe</dt>
+              <dd>{lead.transaction_timeframe ? TRANSACTION_TIMEFRAME_LABELS[lead.transaction_timeframe] ?? lead.transaction_timeframe : "-"}</dd>
+              <dt className="text-muted-foreground">Intended date</dt><dd>{lead.intended_transaction_date ? fmtDate(lead.intended_transaction_date) : "-"}</dd>
               <dt className="text-muted-foreground">Financing</dt><dd>{lead.financing_status ?? "-"}</dd>
             </dl>
           </Card>

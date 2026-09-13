@@ -19,7 +19,7 @@
 export const MODULES = {
   overview: ["view"],
   leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign"],
-  properties: ["view", "create", "edit", "delete", "publish"],
+  properties: ["view", "create", "edit", "delete", "publish", "hard_delete"],
   developments: ["view", "create", "edit", "delete", "publish"],
   owners: ["view", "create", "edit", "delete"],
   locations: ["view", "manage"],
@@ -85,6 +85,7 @@ export const ACTION_LABELS: Record<string, string> = {
   create: "Create",
   edit: "Edit",
   delete: "Delete",
+  hard_delete: "Permanently delete",
   assign: "Assign",
   move: "Move stage",
   upload: "Upload",
@@ -97,10 +98,20 @@ export const ACTION_LABELS: Record<string, string> = {
   manage_templates: "Manage templates",
 };
 
+// "hard_delete" (permanent property delete) is reserved for Super
+// Administrator specifically - it is deliberately excluded from the general
+// full-access closure so that granting every other action list (Administrator
+// and below) never silently includes it. Only ROLE_PRESETS.super_administrator
+// adds it back.
+const RESTRICTED_FULL_ACCESS_ACTIONS: Partial<Record<ModuleKey, string[]>> = {
+  properties: ["hard_delete"],
+};
+
 export function fullAccessPermissions(): PermissionSet {
   const out: PermissionSet = {};
   for (const key of Object.keys(MODULES) as ModuleKey[]) {
-    out[key] = [...MODULES[key]];
+    const restricted = RESTRICTED_FULL_ACCESS_ACTIONS[key] ?? [];
+    out[key] = MODULES[key].filter((action) => !restricted.includes(action));
   }
   return out;
 }
@@ -114,9 +125,17 @@ function viewOnlyPermissions(modules: ModuleKey[]): PermissionSet {
 const ALL_MODULES = Object.keys(MODULES) as ModuleKey[];
 
 export const ROLE_PRESETS = {
+  super_administrator: {
+    label: "Super Administrator",
+    description: "Everything an Administrator has, plus the sole ability to permanently delete properties. Everyone else sees Share instead of Delete.",
+    permissions: (): PermissionSet => ({
+      ...fullAccessPermissions(),
+      properties: [...MODULES.properties],
+    }),
+  },
   administrator: {
     label: "Administrator",
-    description: "Full, organisation-wide access to every module.",
+    description: "Full, organisation-wide access to every module. Cannot permanently delete properties - only Super Administrator can.",
     permissions: (): PermissionSet => fullAccessPermissions(),
   },
   team_leader: {
@@ -276,7 +295,7 @@ export function isRolePresetKey(value: string | null | undefined): value is Role
 export function defaultPermissionsForRole(role: string | null | undefined): PermissionSet {
   if (isRolePresetKey(role)) return ROLE_PRESETS[role].permissions();
   // Legacy free-text roles from before the permission engine existed.
-  if (role === "owner") return fullAccessPermissions();
+  if (role === "owner") return ROLE_PRESETS.super_administrator.permissions();
   if (role === "manager") return ROLE_PRESETS.sales_manager.permissions();
   if (role === "agent") return ROLE_PRESETS.sales_agent.permissions();
   return ROLE_PRESETS.viewer.permissions();

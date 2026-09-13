@@ -14,6 +14,7 @@ import { usePropertyEvents } from "@/hooks/use-property-events";
 import { useProperties } from "@/hooks/use-properties";
 import { useMarketReports } from "@/hooks/use-market-intelligence";
 import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
+import { effectiveIntentScore } from "@/lib/intent";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
 import { useTasks } from "@/hooks/use-tasks";
@@ -64,10 +65,20 @@ function OverviewPage() {
   const currentByLead = new Map<string, any>();
   for (const a of completedAnalyses) if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
   const currents = Array.from(currentByLead.values());
+  const leadById = new Map(leads.map((l) => [l.id, l]));
   const getStatus = (a: any) => a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
-  const getIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  const getBaseIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  // High Intent reflects effective intent (base AI score blended with how close
+  // the lead's intended transaction date/timeframe is) - buyer_status ("hot")
+  // stays purely the AI's own categorical judgement, untouched, so a lead can
+  // still surface as High Intent as its target date approaches even before the
+  // AI re-classifies it as hot on fresh communication data.
+  const getEffectiveIntent = (a: any) => {
+    const lead = a.lead_id ? leadById.get(a.lead_id) : null;
+    return lead ? effectiveIntentScore(getBaseIntent(a), lead) : getBaseIntent(a);
+  };
   const hotCount = currents.filter((a) => getStatus(a) === "hot").length;
-  const highIntentCount = currents.filter((a) => getIntent(a) >= 70).length;
+  const highIntentCount = currents.filter((a) => getEffectiveIntent(a) >= 70).length;
   const atRiskCount = currents.filter((a) => getStatus(a) === "at_risk").length;
 
   // Demand signals

@@ -11,7 +11,16 @@ import { useProperties } from "@/hooks/use-properties";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import { useDevelopments } from "@/hooks/use-developments";
-import { LEAD_CLASSIFICATIONS, LEAD_WORKFLOWS, type Lead } from "@/lib/db";
+import { useAreas } from "@/hooks/use-locations";
+import {
+  LEAD_CLASSIFICATIONS,
+  LEAD_CLASSIFICATION_LABELS,
+  LEAD_WORKFLOWS,
+  TRANSACTION_TIMEFRAMES,
+  TRANSACTION_TIMEFRAME_LABELS,
+  type Lead,
+} from "@/lib/db";
+import { NATIONALITIES } from "@/lib/nationalities";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -51,6 +60,8 @@ export function AddLeadDrawer({
   const { data: properties = [] } = useProperties({ status: "active" });
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
+  const { data: areas = [] } = useAreas();
+  const activeAreaOptions = areas.filter((a) => a.is_active).map((a) => ({ value: a.id, label: a.name }));
   const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
@@ -71,9 +82,12 @@ export function AddLeadDrawer({
     budget_max: lead?.budget_max ?? null,
     currency: lead?.currency ?? "QAR",
     preferred_locations_str: toCsv(lead?.preferred_locations),
+    preferred_area_id: lead?.preferred_area_id ?? null,
     preferred_property_types: lead?.preferred_property_types ?? null,
     purchase_purpose: lead?.purchase_purpose ?? "",
     buying_timeline: lead?.buying_timeline ?? "",
+    intended_transaction_date: lead?.intended_transaction_date ?? "",
+    transaction_timeframe: lead?.transaction_timeframe ?? "",
     financing_status: lead?.financing_status ?? "",
     lead_source: lead?.lead_source ?? "",
     pipeline_stage: lead?.pipeline_stage ?? "new_lead",
@@ -101,13 +115,21 @@ export function AddLeadDrawer({
       budget_max: lead?.budget_max ?? null,
       currency: lead?.currency ?? "QAR",
       preferred_locations_str: toCsv(lead?.preferred_locations),
+      preferred_area_id: lead?.preferred_area_id ?? null,
       preferred_property_types: lead?.preferred_property_types ?? null,
       purchase_purpose: lead?.purchase_purpose ?? "",
       buying_timeline: lead?.buying_timeline ?? "",
+      intended_transaction_date: lead?.intended_transaction_date ?? "",
+      transaction_timeframe: lead?.transaction_timeframe ?? "",
       financing_status: lead?.financing_status ?? "",
       lead_source: lead?.lead_source ?? "",
       pipeline_stage: lead?.pipeline_stage ?? "new_lead",
       assigned_agent_id: lead?.assigned_agent_id ?? null,
+      classification: lead?.classification ?? "buyer",
+      workflow: lead?.workflow ?? "sales",
+      development_id: lead?.development_id ?? null,
+      telesales_outcome: lead?.telesales_outcome ?? "",
+      telesales_qualified: lead?.telesales_qualified ?? false,
       notes: lead?.notes ?? "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,9 +159,12 @@ export function AddLeadDrawer({
       budget_max: form.budget_max != null && form.budget_max !== ("" as unknown as number) ? Number(form.budget_max) : null,
       currency: form.currency || "QAR",
       preferred_locations: fromCsv(form.preferred_locations_str ?? ""),
+      preferred_area_id: form.preferred_area_id || null,
       preferred_property_types: form.preferred_property_types ?? null,
       purchase_purpose: form.purchase_purpose || null,
       buying_timeline: form.buying_timeline || null,
+      intended_transaction_date: form.intended_transaction_date || null,
+      transaction_timeframe: form.transaction_timeframe || null,
       financing_status: form.financing_status || null,
       lead_source: form.lead_source || null,
       pipeline_stage: form.pipeline_stage || "new_lead",
@@ -194,7 +219,7 @@ export function AddLeadDrawer({
           <SelectField
             value={form.classification ?? "buyer"}
             onChange={(v) => set("classification", (v ?? "buyer") as FormState["classification"])}
-            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: titleCase(c) }))}
+            options={LEAD_CLASSIFICATIONS.map((c) => ({ value: c, label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c) }))}
             allowClear={false}
           />
         </Field>
@@ -231,12 +256,14 @@ export function AddLeadDrawer({
         <Field label="Lead source">
           <input className={inputCls} placeholder="Website, referral..." value={form.lead_source ?? ""} onChange={(e) => set("lead_source", e.target.value)} />
         </Field>
-        <Field label="Budget min">
-          <input className={inputCls} type="number" value={form.budget_min ?? ""} onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value) : null)} />
-        </Field>
-        <Field label="Budget max">
-          <input className={inputCls} type="number" value={form.budget_max ?? ""} onChange={(e) => set("budget_max", e.target.value ? Number(e.target.value) : null)} />
-        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:col-span-2">
+          <Field label="Budget min">
+            <input className={inputCls} type="number" value={form.budget_min ?? ""} onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="Budget max">
+            <input className={inputCls} type="number" value={form.budget_max ?? ""} onChange={(e) => set("budget_max", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+        </div>
         <Field label={`Interested properties (${interestedPropertyIds.length} selected)`} full>
           <div className="max-h-32 overflow-y-auto rounded-lg border border-border bg-canvas p-2">
             {properties.length === 0 ? (
@@ -296,12 +323,28 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Nationality">
-          <input className={inputCls} value={form.nationality ?? ""} onChange={(e) => set("nationality", e.target.value)} />
+          <SearchableSelectField
+            value={form.nationality || null}
+            onChange={(v) => set("nationality", v ?? "")}
+            options={NATIONALITIES.map((n) => ({ value: n, label: n }))}
+            placeholder="Select nationality"
+            searchPlaceholder="Search nationalities..."
+          />
         </Field>
         <Field label="Preferred language">
           <input className={inputCls} placeholder="English" value={form.preferred_language ?? ""} onChange={(e) => set("preferred_language", e.target.value)} />
         </Field>
-        <Field label="Preferred locations (comma separated)" full>
+        <Field label="Preferred location">
+          <SearchableSelectField
+            value={form.preferred_area_id}
+            onChange={(v) => set("preferred_area_id", v)}
+            options={activeAreaOptions}
+            placeholder="Select area"
+            emptyLabel="No preferred area"
+            searchPlaceholder="Search areas..."
+          />
+        </Field>
+        <Field label="Other preferred locations (legacy free text, comma separated)" full>
           <input className={inputCls} value={form.preferred_locations_str ?? ""} onChange={(e) => set("preferred_locations_str", e.target.value)} />
         </Field>
         <Field label="Purchase purpose">
@@ -318,6 +361,22 @@ export function AddLeadDrawer({
             onChange={(v) => set("buying_timeline", v ?? "")}
             options={["Immediate", "1-3 months", "3-6 months", "6-12 months", "Exploring"].map((v) => ({ value: v, label: v }))}
             placeholder="Select timeline"
+          />
+        </Field>
+        <Field label="Expected transaction timeframe">
+          <SelectField
+            value={form.transaction_timeframe}
+            onChange={(v) => set("transaction_timeframe", (v ?? "") as FormState["transaction_timeframe"])}
+            options={TRANSACTION_TIMEFRAMES.map((t) => ({ value: t, label: TRANSACTION_TIMEFRAME_LABELS[t] }))}
+            placeholder="Select timeframe"
+          />
+        </Field>
+        <Field label="Intended purchase/rent date">
+          <input
+            className={inputCls}
+            type="date"
+            value={form.intended_transaction_date ?? ""}
+            onChange={(e) => set("intended_transaction_date", e.target.value)}
           />
         </Field>
         <Field label="Financing status">

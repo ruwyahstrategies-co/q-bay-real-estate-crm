@@ -1058,6 +1058,7 @@ export type Database = {
           financing_status: string | null
           full_name: string
           id: string
+          intended_transaction_date: string | null
           intent_score: number | null
           lead_source: string | null
           nationality: string | null
@@ -1077,6 +1078,7 @@ export type Database = {
           team_id: string | null
           telesales_outcome: string | null
           telesales_qualified: boolean | null
+          transaction_timeframe: string | null
           updated_at: string
           workflow: string
         }
@@ -1096,6 +1098,7 @@ export type Database = {
           financing_status?: string | null
           full_name: string
           id?: string
+          intended_transaction_date?: string | null
           intent_score?: number | null
           lead_source?: string | null
           nationality?: string | null
@@ -1115,6 +1118,7 @@ export type Database = {
           team_id?: string | null
           telesales_outcome?: string | null
           telesales_qualified?: boolean | null
+          transaction_timeframe?: string | null
           updated_at?: string
           workflow?: string
         }
@@ -1134,6 +1138,7 @@ export type Database = {
           financing_status?: string | null
           full_name?: string
           id?: string
+          intended_transaction_date?: string | null
           intent_score?: number | null
           lead_source?: string | null
           nationality?: string | null
@@ -1153,6 +1158,7 @@ export type Database = {
           team_id?: string | null
           telesales_outcome?: string | null
           telesales_qualified?: boolean | null
+          transaction_timeframe?: string | null
           updated_at?: string
           workflow?: string
         }
@@ -1899,8 +1905,15 @@ export type Database = {
           assigned_agent_id: string | null
           assigned_team: string[] | null
           availability: string
+          availability_confirmed_by: string | null
+          availability_last_confirmed_at: string | null
+          availability_next_due_at: string | null
+          available_from: string | null
           bathrooms: number | null
           bedrooms: number | null
+          cloudflare_video_error: string | null
+          cloudflare_video_status: string
+          cloudflare_video_uid: string | null
           completion_status: string | null
           country_id: string | null
           created_at: string
@@ -1916,6 +1929,7 @@ export type Database = {
           hero_video_url: string | null
           highlights: string[] | null
           id: string
+          indoor_majlis: boolean | null
           is_demo: boolean
           is_managed: boolean
           is_published: boolean
@@ -1924,11 +1938,22 @@ export type Database = {
           listing_source: string | null
           location: string | null
           longitude: number | null
+          maids_room: boolean | null
+          majlis: boolean | null
+          mazad_error: string | null
+          mazad_external_id: string | null
+          mazad_status: string
+          mazad_synced_at: string | null
           organisation_id: string | null
+          outdoor_majlis: boolean | null
           owner_id: string | null
           parking_spaces: number | null
           plot_size: number | null
           price: number | null
+          property_finder_error: string | null
+          property_finder_external_id: string | null
+          property_finder_status: string
+          property_finder_synced_at: string | null
           property_type: string | null
           purpose: string
           reference_code: string | null
@@ -1951,8 +1976,15 @@ export type Database = {
           assigned_agent_id?: string | null
           assigned_team?: string[] | null
           availability?: string
+          availability_confirmed_by?: string | null
+          availability_last_confirmed_at?: string | null
+          availability_next_due_at?: string | null
+          available_from?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
+          cloudflare_video_error?: string | null
+          cloudflare_video_status?: string
+          cloudflare_video_uid?: string | null
           completion_status?: string | null
           country_id?: string | null
           created_at?: string
@@ -1968,6 +2000,7 @@ export type Database = {
           hero_video_url?: string | null
           highlights?: string[] | null
           id?: string
+          indoor_majlis?: boolean | null
           is_demo?: boolean
           is_managed?: boolean
           is_published?: boolean
@@ -1976,11 +2009,22 @@ export type Database = {
           listing_source?: string | null
           location?: string | null
           longitude?: number | null
+          maids_room?: boolean | null
+          majlis?: boolean | null
+          mazad_error?: string | null
+          mazad_external_id?: string | null
+          mazad_status?: string
+          mazad_synced_at?: string | null
           organisation_id?: string | null
+          outdoor_majlis?: boolean | null
           owner_id?: string | null
           parking_spaces?: number | null
           plot_size?: number | null
           price?: number | null
+          property_finder_error?: string | null
+          property_finder_external_id?: string | null
+          property_finder_status?: string
+          property_finder_synced_at?: string | null
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
@@ -2003,8 +2047,15 @@ export type Database = {
           assigned_agent_id?: string | null
           assigned_team?: string[] | null
           availability?: string
+          availability_confirmed_by?: string | null
+          availability_last_confirmed_at?: string | null
+          availability_next_due_at?: string | null
+          available_from?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
+          cloudflare_video_error?: string | null
+          cloudflare_video_status?: string
+          cloudflare_video_uid?: string | null
           completion_status?: string | null
           country_id?: string | null
           created_at?: string
@@ -2020,6 +2071,7 @@ export type Database = {
           hero_video_url?: string | null
           highlights?: string[] | null
           id?: string
+          indoor_majlis?: boolean | null
           is_demo?: boolean
           is_managed?: boolean
           is_published?: boolean
@@ -2028,11 +2080,22 @@ export type Database = {
           listing_source?: string | null
           location?: string | null
           longitude?: number | null
+          maids_room?: boolean | null
+          majlis?: boolean | null
+          mazad_error?: string | null
+          mazad_external_id?: string | null
+          mazad_status?: string
+          mazad_synced_at?: string | null
           organisation_id?: string | null
+          outdoor_majlis?: boolean | null
           owner_id?: string | null
           parking_spaces?: number | null
           plot_size?: number | null
           price?: number | null
+          property_finder_error?: string | null
+          property_finder_external_id?: string | null
+          property_finder_status?: string
+          property_finder_synced_at?: string | null
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
@@ -2064,6 +2127,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "properties_availability_confirmed_by_fkey"
+            columns: ["availability_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "properties_country_id_fkey"
             columns: ["country_id"]
             isOneToOne: false
@@ -2089,6 +2159,77 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_availability_confirmations: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          organisation_id: string | null
+          owner_notification_channel: string | null
+          owner_notified_at: string | null
+          property_id: string
+          requested_at: string
+          responded_at: string | null
+          responded_by: string | null
+          response: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organisation_id?: string | null
+          owner_notification_channel?: string | null
+          owner_notified_at?: string | null
+          property_id: string
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organisation_id?: string | null
+          owner_notification_channel?: string | null
+          owner_notified_at?: string | null
+          property_id?: string
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_availability_confirmations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_availability_confirmations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_availability_confirmations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_availability_confirmations_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2418,12 +2559,14 @@ export type Database = {
       property_submissions: {
         Row: {
           area_id: string | null
+          available_from: string | null
           bathrooms: number | null
           bedrooms: number | null
           converted_property_id: string | null
           country_id: string | null
           created_at: string
           currency: string | null
+          custom_area: string | null
           description: string | null
           development_id: string | null
           documents: Json
@@ -2456,12 +2599,14 @@ export type Database = {
         }
         Insert: {
           area_id?: string | null
+          available_from?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           converted_property_id?: string | null
           country_id?: string | null
           created_at?: string
           currency?: string | null
+          custom_area?: string | null
           description?: string | null
           development_id?: string | null
           documents?: Json
@@ -2494,12 +2639,14 @@ export type Database = {
         }
         Update: {
           area_id?: string | null
+          available_from?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           converted_property_id?: string | null
           country_id?: string | null
           created_at?: string
           currency?: string | null
+          custom_area?: string | null
           description?: string | null
           development_id?: string | null
           documents?: Json
@@ -3261,6 +3408,7 @@ export type Database = {
           lead_id: string | null
           metadata: Json
           mime_type: string | null
+          offer_id: string | null
           organisation_id: string | null
           owner_id: string | null
           processing_error: string | null
@@ -3284,6 +3432,7 @@ export type Database = {
           lead_id?: string | null
           metadata?: Json
           mime_type?: string | null
+          offer_id?: string | null
           organisation_id?: string | null
           owner_id?: string | null
           processing_error?: string | null
@@ -3307,6 +3456,7 @@ export type Database = {
           lead_id?: string | null
           metadata?: Json
           mime_type?: string | null
+          offer_id?: string | null
           organisation_id?: string | null
           owner_id?: string | null
           processing_error?: string | null
@@ -3326,6 +3476,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploads_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
             referencedColumns: ["id"]
           },
           {
@@ -3614,6 +3771,14 @@ export type Database = {
       has_permission: {
         Args: { _action: string; _module: string }
         Returns: boolean
+      }
+      lead_effective_intent_score: {
+        Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
+        Returns: number
+      }
+      lead_time_proximity_factor: {
+        Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
+        Returns: number
       }
       mark_overdue_rent_items: { Args: never; Returns: number }
       match_properties_for_lead: {

@@ -115,14 +115,55 @@ export const INVOICE_STATUSES = [
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;
 
-export const LEAD_CLASSIFICATIONS = ["buyer", "renter", "investor", "commercial"] as const;
+export const LEAD_CLASSIFICATIONS = ["buyer", "renter", "owner", "investor", "commercial"] as const;
+export const LEAD_CLASSIFICATION_LABELS: Record<string, string> = {
+  buyer: "Buyer",
+  renter: "Renter",
+  owner: "Property Owner",
+  investor: "Investor",
+  commercial: "Commercial",
+  tenant: "Renter", // legacy value from earlier demo data, treated as an alias of "renter"
+};
 export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;
-export const PROPERTY_PURPOSES = ["sale", "rent", "commercial", "off_plan_resale"] as const;
+export const PROPERTY_PURPOSES = ["sale", "rent", "commercial", "off_plan", "off_plan_resale"] as const;
 export const PROPERTY_PURPOSE_LABELS: Record<string, string> = {
   sale: "Sale",
   rent: "Rent",
   commercial: "Commercial",
+  off_plan: "Off-Plan",
   off_plan_resale: "Off-Plan Resale",
+};
+export const SUBMISSION_PURPOSES = ["sell", "rent", "let"] as const;
+export const SUBMISSION_PURPOSE_LABELS: Record<string, string> = {
+  sell: "Sell",
+  rent: "Rent",
+  let: "Let",
+};
+export const PROPERTY_AVAILABILITIES = ["available", "reserved", "sold", "rented", "unavailable"] as const;
+export const PROPERTY_AVAILABILITY_LABELS: Record<string, string> = {
+  available: "Available",
+  reserved: "Reserved",
+  sold: "Sold",
+  rented: "Rented",
+  unavailable: "Unavailable",
+  needs_confirmation: "Needs Confirmation",
+};
+export const PUBLICATION_DESTINATION_STATUSES = ["not_configured", "queued", "published", "failed", "unpublished"] as const;
+export const PUBLICATION_DESTINATION_STATUS_LABELS: Record<string, string> = {
+  not_configured: "Not configured",
+  queued: "Queued",
+  published: "Published",
+  failed: "Failed",
+  unpublished: "Unpublished",
+};
+export const TRANSACTION_TIMEFRAMES = ["immediate", "1_month", "3_months", "6_months", "12_months", "unspecified"] as const;
+export const TRANSACTION_TIMEFRAME_LABELS: Record<string, string> = {
+  immediate: "Immediate",
+  "1_month": "Within 1 month",
+  "3_months": "Within 3 months",
+  "6_months": "Within 6 months",
+  "12_months": "Within 12 months",
+  unspecified: "Not sure yet",
 };
 export const VIEWING_STATUSES = [
   "scheduled",

@@ -148,6 +148,12 @@ export const PROPERTY_AVAILABILITY_LABELS: Record<string, string> = {
   unavailable: "Unavailable",
   needs_confirmation: "Needs Confirmation",
 };
+/** True once a property's availability confirmation is overdue (or has never been confirmed but was created long enough ago to need one). */
+export function isConfirmationOverdue(property: Pick<Property, "availability_next_due_at">): boolean {
+  if (!property.availability_next_due_at) return false;
+  return new Date(property.availability_next_due_at).getTime() < Date.now();
+}
+
 export const PUBLICATION_DESTINATION_STATUSES = ["not_configured", "queued", "published", "failed", "unpublished"] as const;
 export const PUBLICATION_DESTINATION_STATUS_LABELS: Record<string, string> = {
   not_configured: "Not configured",

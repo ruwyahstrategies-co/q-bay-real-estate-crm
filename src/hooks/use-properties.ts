@@ -133,6 +133,20 @@ export function useArchiveProperty() {
   });
 }
 
+export function useRestoreProperty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb
+        .from("properties")
+        .update({ status: "active", archived_at: null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
+  });
+}
+
 /** Live preview of the reference code a new/edited property will get once saved (owner+agent both selected). Purely informational - the real value is reserved server-side on insert/update. */
 export function usePropertyReferencePreview(ownerId: string | null | undefined, agentId: string | null | undefined) {
   return useQuery({

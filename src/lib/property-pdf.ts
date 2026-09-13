@@ -1,8 +1,9 @@
-// Property PDF / share-sheet generation - no paid PDF service. Opens a
-// print-ready window; the user saves it as a PDF via the browser's native
-// print dialog (Ctrl/Cmd+P -> Save as PDF), which works everywhere with zero
-// added dependencies or server cost.
+// Property PDF / share-sheet generation - no paid PDF service. openPropertyPdf
+// opens a print-ready window (Ctrl/Cmd+P -> Save as PDF) for the "Download
+// PDF" action. sharePropertyPdf below generates a real PDF Blob with jsPDF -
+// the only way to hand a file to the Web Share API - for the Share action.
 
+import jsPDF from "jspdf";
 import type { Property } from "./db";
 import { fmtMoney } from "./db";
 import { APP_CONFIG } from "./config";
@@ -59,4 +60,178 @@ export function openPropertyPdf(property: Property, heroImageUrl?: string | null
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+type AdvisorContact = { full_name: string; email?: string | null; phone?: string | null } | null;
+
+async function toDataUrl(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url, { mode: "cors" });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+const BRAND_GREEN: [number, number, number] = [10, 70, 35];
+const MUTED: [number, number, number] = [114, 114, 114];
+
+/** Builds the real Q-Bay branded Property PDF as a Blob, from the current live Property record. */
+export async function generatePropertyPdfBlob(
+  property: Property,
+  heroImageUrl?: string | null,
+  advisor?: AdvisorContact,
+): Promise<Blob> {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  let y = 0;
+
+  doc.setFillColor(...BRAND_GREEN);
+  doc.rect(0, 0, pageWidth, 64, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(APP_CONFIG.companyName, margin, 40);
+  y = 90;
+
+  if (heroImageUrl) {
+    const dataUrl = await toDataUrl(heroImageUrl);
+    if (dataUrl) {
+      try {
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight = imgWidth * 0.55;
+        doc.addImage(dataUrl, "JPEG", margin, y, imgWidth, imgHeight, undefined, "FAST");
+        y += imgHeight + 20;
+      } catch {
+        // Corrupt/unsupported image data - continue without it rather than fail the whole PDF.
+      }
+    }
+  }
+
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text(property.title, margin, y);
+  y += 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(...MUTED);
+  const refLine = [property.reference_code, property.location].filter(Boolean).join("  ·  ");
+  if (refLine) {
+    doc.text(refLine, margin, y);
+    y += 22;
+  }
+
+  doc.setTextColor(...BRAND_GREEN);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text(fmtMoney(property.price, property.currency), margin, y);
+  y += 28;
+
+  const specs: [string, string][] = [
+    ["Type", property.property_type ?? "-"],
+    ["Bedrooms", property.bedrooms != null ? String(property.bedrooms) : "-"],
+    ["Bathrooms", property.bathrooms != null ? String(property.bathrooms) : "-"],
+    ["Size", property.size ? `${property.size} ${property.size_unit ?? ""}` : "-"],
+    ["Availability", property.availability ?? "-"],
+    ["Developer", property.developer ?? "-"],
+  ];
+  doc.setFontSize(9);
+  const colWidth = (pageWidth - margin * 2) / 3;
+  specs.forEach(([label, value], i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const x = margin + col * colWidth;
+    const rowY = y + row * 34;
+    doc.setTextColor(...MUTED);
+    doc.setFont("helvetica", "normal");
+    doc.text(label.toUpperCase(), x, rowY);
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold");
+    doc.text(value, x, rowY + 13);
+  });
+  y += Math.ceil(specs.length / 3) * 34 + 16;
+
+  if (property.description) {
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(property.description, pageWidth - margin * 2);
+    doc.text(lines, margin, y);
+    y += lines.length * 13 + 16;
+  }
+
+  if (property.amenities?.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Amenities & highlights", margin, y);
+    y += 16;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const amenityText = property.amenities.join("   ·   ");
+    const lines = doc.splitTextToSize(amenityText, pageWidth - margin * 2);
+    doc.text(lines, margin, y);
+    y += lines.length * 12 + 16;
+  }
+
+  // Advisor / contact block, pinned near the bottom of the page.
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerY = pageHeight - 70;
+  doc.setDrawColor(230, 230, 225);
+  doc.line(margin, footerY, pageWidth - margin, footerY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(20, 20, 20);
+  doc.text(advisor?.full_name ?? APP_CONFIG.companyName, margin, footerY + 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  const contactLine = [advisor?.phone, advisor?.email].filter(Boolean).join("  ·  ") || APP_CONFIG.companyName;
+  doc.text(contactLine, margin, footerY + 32);
+  doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - margin, footerY + 32, { align: "right" });
+
+  return doc.output("blob");
+}
+
+/**
+ * Shares the live Property PDF via the Web Share API when a file share
+ * target is supported, otherwise falls back to a direct download - never a
+ * plain URL, since the PDF itself is what was requested.
+ */
+export async function sharePropertyPdf(
+  property: Property,
+  heroImageUrl?: string | null,
+  advisor?: AdvisorContact,
+): Promise<"shared" | "downloaded"> {
+  const blob = await generatePropertyPdfBlob(property, heroImageUrl, advisor);
+  const filename = `${(property.reference_code || property.title).replace(/[^a-zA-Z0-9-_]+/g, "-")}.pdf`;
+  const file = new File([blob], filename, { type: "application/pdf" });
+
+  if (typeof navigator !== "undefined" && navigator.share && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({
+      files: [file],
+      title: property.title,
+      text: `${property.title} - ${APP_CONFIG.companyName}`,
+    });
+    return "shared";
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return "downloaded";
 }

@@ -49,6 +49,42 @@ export function PipelineStageBadge({ stage }: { stage: string }) {
   return <StatusBadge variant={map[stage] ?? "neutral"}>{stage}</StatusBadge>;
 }
 
+const AVAILABILITY_RING: Record<string, { dot: string; label: string }> = {
+  available: { dot: "bg-emerald-500", label: "Available" },
+  reserved: { dot: "bg-amber-500", label: "Reserved" },
+  sold: { dot: "bg-slate-500", label: "Sold" },
+  rented: { dot: "bg-blue-500", label: "Rented" },
+  unavailable: { dot: "bg-red-500", label: "Unavailable" },
+  needs_confirmation: { dot: "bg-purple-500", label: "Needs Confirmation" },
+};
+
+/**
+ * Compact presence-style availability indicator - a colored ring never
+ * carries meaning alone, so the label always renders alongside it (title
+ * attribute + visible text), matching the accessibility requirement.
+ */
+export function AvailabilityRing({
+  availability,
+  needsConfirmation,
+  className,
+  labelClassName,
+}: {
+  availability: string | null | undefined;
+  /** True when the property's availability confirmation is overdue - takes visual precedence over the stored availability value without changing it. */
+  needsConfirmation?: boolean;
+  className?: string;
+  labelClassName?: string;
+}) {
+  const key = needsConfirmation ? "needs_confirmation" : (availability ?? "available");
+  const info = AVAILABILITY_RING[key] ?? AVAILABILITY_RING.available;
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)} title={info.label}>
+      <span className={cn("inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-canvas", info.dot)} aria-hidden="true" />
+      <span className={cn("text-xs text-foreground", labelClassName)}>{info.label}</span>
+    </span>
+  );
+}
+
 export function IntentScore({ score }: { score?: number | null }) {
   if (score == null) {
     return <span className="text-xs text-muted-foreground">-</span>;

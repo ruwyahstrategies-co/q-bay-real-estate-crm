@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, LayoutGrid, Rows3, Building2, Pencil, Archive, Trash2, Upload, Download, FileText } from "lucide-react";
+import { Plus, LayoutGrid, Rows3, Building2, Pencil, Archive, ArchiveRestore, Trash2, Share2, Upload, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -12,17 +12,25 @@ import { PropertyImporter } from "@/components/property-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { SelectField } from "@/components/select-field";
+import { AvailabilityRing } from "@/components/status-badge";
 import { usePermissions } from "@/hooks/use-auth";
+import { useTeamMembers } from "@/hooks/use-team";
 import { cn } from "@/lib/utils";
-import { useProperties, useArchiveProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
+import { useProperties, useArchiveProperty, useRestoreProperty, useDeleteProperty, usePropertyThumbnails } from "@/hooks/use-properties";
 import { downloadCsv } from "@/lib/csv-export";
-import { openPropertyPdf } from "@/lib/property-pdf";
-import { fmtMoney, type Property } from "@/lib/db";
+import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
+import { fmtMoney, isConfirmationOverdue, type Property } from "@/lib/db";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties" }] }),
   component: PropertiesPage,
 });
+
+const STATUS_FILTERS = [
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+  { value: "all", label: "All" },
+] as const;
 
 function PropertiesPage() {
   const navigate = useNavigate();
@@ -31,17 +39,30 @@ function PropertiesPage() {
   const [edit, setEdit] = useState<Property | null>(null);
   const [search, setSearch] = useState("");
   const [type, setType] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
   const [importerOpen, setImporterOpen] = useState(false);
-  const { data: properties = [], isLoading } = useProperties({ search, type });
+  const { data: properties = [], isLoading } = useProperties({ search, type, status: statusFilter });
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
+  const { data: team = [] } = useTeamMembers();
   const archive = useArchiveProperty();
+  const restore = useRestoreProperty();
   const del = useDeleteProperty();
   const { can } = usePermissions();
   const canCreate = can("properties", "create");
   const canEdit = can("properties", "edit");
-  const canDelete = can("properties", "delete");
+  const canHardDelete = can("properties", "hard_delete");
+
+  async function handleShare(p: Property) {
+    const agent = team.find((m) => m.id === p.assigned_agent_id);
+    try {
+      const result = await sharePropertyPdf(p, thumbnails[p.id], agent ? { full_name: agent.full_name, email: agent.email, phone: agent.phone } : null);
+      if (result === "downloaded") toast.success("PDF downloaded - share it from your downloads");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   return (
     <AppShell>
@@ -109,6 +130,21 @@ function PropertiesPage() {
           emptyLabel="All types"
           className="w-44"
         />
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setStatusFilter(f.value)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                statusFilter === f.value ? "bg-canvas text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
           <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "table" && "bg-canvas")} onClick={() => setView("table")} aria-label="Table view">
             <Rows3 className="h-3.5 w-3.5" />
@@ -148,13 +184,33 @@ function PropertiesPage() {
               <td className="px-4 py-3 text-xs">{fmtMoney(p.price, p.currency)}</td>
               <td className="px-4 py-3 text-xs">{p.bedrooms ?? "-"}</td>
               <td className="px-4 py-3 text-xs">{p.size ? `${p.size} ${p.size_unit ?? ""}` : "-"}</td>
-              <td className="px-4 py-3 text-xs capitalize">{p.availability}</td>
+              <td className="px-4 py-3 text-xs">
+                <AvailabilityRing availability={p.availability} needsConfirmation={isConfirmationOverdue(p)} />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
                   <button className="rounded-md p-1.5 hover:bg-muted" title="Download PDF" onClick={() => openPropertyPdf(p, thumbnails[p.id])}><FileText className="h-3.5 w-3.5" /></button>
                   {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>}
-                  {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setConfirmArchive(p)}><Archive className="h-3.5 w-3.5" /></button>}
-                  {canDelete && <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setConfirmDelete(p)}><Trash2 className="h-3.5 w-3.5" /></button>}
+                  {canEdit && p.status !== "archived" && (
+                    <button className="rounded-md p-1.5 hover:bg-muted" title="Archive" onClick={() => setConfirmArchive(p)}><Archive className="h-3.5 w-3.5" /></button>
+                  )}
+                  {canEdit && p.status === "archived" && (
+                    <button
+                      className="rounded-md p-1.5 hover:bg-muted"
+                      title="Restore"
+                      onClick={async () => {
+                        try { await restore.mutateAsync(p.id); toast.success("Property restored"); }
+                        catch (e) { toast.error((e as Error).message); }
+                      }}
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {canHardDelete ? (
+                    <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Delete permanently" onClick={() => setConfirmDelete(p)}><Trash2 className="h-3.5 w-3.5" /></button>
+                  ) : (
+                    <button className="rounded-md p-1.5 hover:bg-muted" title="Share" onClick={() => handleShare(p)}><Share2 className="h-3.5 w-3.5" /></button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -176,7 +232,10 @@ function PropertiesPage() {
                 )}
               </div>
               <div className="p-5">
-                <h4 className="text-sm font-semibold">{p.title}</h4>
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-sm font-semibold">{p.title}</h4>
+                  <AvailabilityRing availability={p.availability} needsConfirmation={isConfirmationOverdue(p)} className="flex-shrink-0" labelClassName="sr-only" />
+                </div>
                 <p className="mt-1 text-xs text-muted-foreground">{p.location ?? "-"}</p>
                 <p className="mt-3 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{p.property_type ?? "-"} · {p.bedrooms ?? "?"} bed · {p.size ?? "?"} {p.size_unit ?? ""}</p>

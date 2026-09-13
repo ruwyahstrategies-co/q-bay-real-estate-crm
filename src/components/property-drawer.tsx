@@ -17,7 +17,8 @@ import { useCountries, useAreas } from "@/hooks/use-locations";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
-import { PROPERTY_PURPOSES, PROPERTY_PURPOSE_LABELS, type Property } from "@/lib/db";
+import { PROPERTY_PURPOSES, PROPERTY_PURPOSE_LABELS, PROPERTY_AVAILABILITIES, PROPERTY_AVAILABILITY_LABELS, type Property } from "@/lib/db";
+import { CloudflareVideoUpload } from "./cloudflare-video-upload";
 
 const PROPERTY_TYPE_OPTIONS = [
   "Apartment",
@@ -27,12 +28,7 @@ const PROPERTY_TYPE_OPTIONS = [
   "Plot",
   "Commercial",
 ].map((v) => ({ value: v, label: v }));
-const AVAILABILITY_OPTIONS = [
-  { value: "available", label: "Available" },
-  { value: "reserved", label: "Reserved" },
-  { value: "sold", label: "Sold" },
-  { value: "off_market", label: "Off market" },
-];
+const AVAILABILITY_OPTIONS = PROPERTY_AVAILABILITIES.map((a) => ({ value: a, label: PROPERTY_AVAILABILITY_LABELS[a] }));
 const CURRENCY_OPTIONS = ["QAR", "AED", "USD", "EUR", "GBP"].map((v) => ({ value: v, label: v }));
 const SIZE_UNIT_OPTIONS = [
   { value: "sqm", label: "sqm" },
@@ -108,6 +104,13 @@ function initialForm(property: Property | null | undefined): FormState {
     unit_number: property?.unit_number ?? "",
     parking_spaces: property?.parking_spaces ?? null,
     furnishing_status: property?.furnishing_status ?? null,
+    available_from: property?.available_from ?? "",
+    maids_room: property?.maids_room ?? null,
+    majlis: property?.majlis ?? null,
+    indoor_majlis: property?.indoor_majlis ?? null,
+    outdoor_majlis: property?.outdoor_majlis ?? null,
+    cloudflare_video_uid: property?.cloudflare_video_uid ?? null,
+    cloudflare_video_status: property?.cloudflare_video_status ?? "none",
   };
 }
 
@@ -193,6 +196,8 @@ export function PropertyDrawer({
       assigned_agent_id: form.assigned_agent_id || null,
       hero_image_url: form.hero_image_url || null,
       hero_video_url: form.hero_video_url || null,
+      cloudflare_video_uid: form.cloudflare_video_uid || null,
+      cloudflare_video_status: form.cloudflare_video_status || "none",
       tour_360_url: form.tour_360_url || null,
       latitude: form.latitude ? Number(form.latitude) : null,
       longitude: form.longitude ? Number(form.longitude) : null,
@@ -203,10 +208,15 @@ export function PropertyDrawer({
       floor_number: form.floor_number || null,
       unit_number: form.unit_number || null,
       parking_spaces:
-        form.parking_spaces != null && form.parking_spaces !== ("" as never)
+        form.property_type === "Villa" && form.parking_spaces != null && form.parking_spaces !== ("" as never)
           ? Number(form.parking_spaces)
           : null,
       furnishing_status: form.furnishing_status || null,
+      available_from: form.available_from || null,
+      maids_room: form.property_type === "Apartment" ? !!form.maids_room : null,
+      majlis: form.property_type === "Villa" ? !!form.majlis : null,
+      indoor_majlis: form.property_type === "Villa" ? !!form.indoor_majlis : null,
+      outdoor_majlis: form.property_type === "Villa" ? !!form.outdoor_majlis : null,
     };
     try {
       if (isEdit && property) {
@@ -447,15 +457,6 @@ export function PropertyDrawer({
             onChange={(e) => set("unit_number", e.target.value)}
           />
         </Field>
-        <Field label="Parking spaces">
-          <input
-            className={inputCls}
-            type="number"
-            min={0}
-            value={form.parking_spaces ?? ""}
-            onChange={(e) => set("parking_spaces", e.target.value ? Number(e.target.value) : null)}
-          />
-        </Field>
         <Field label="Furniture status">
           <SelectField
             value={form.furnishing_status}
@@ -464,6 +465,75 @@ export function PropertyDrawer({
             placeholder="Not specified"
           />
         </Field>
+        <Field label="Available from">
+          <input
+            className={inputCls}
+            type="date"
+            value={form.available_from ?? ""}
+            onChange={(e) => set("available_from", e.target.value)}
+          />
+        </Field>
+
+        {form.property_type === "Apartment" && (
+          <>
+            <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Apartment details
+              </p>
+            </div>
+            <Field label="Maid's room">
+              <SelectField
+                value={form.maids_room == null ? null : form.maids_room ? "yes" : "no"}
+                onChange={(v) => set("maids_room", v === "yes")}
+                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                placeholder="Not specified"
+              />
+            </Field>
+          </>
+        )}
+
+        {form.property_type === "Villa" && (
+          <>
+            <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Villa details
+              </p>
+            </div>
+            <Field label="Parking spaces">
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                value={form.parking_spaces ?? ""}
+                onChange={(e) => set("parking_spaces", e.target.value ? Number(e.target.value) : null)}
+              />
+            </Field>
+            <Field label="Majlis">
+              <SelectField
+                value={form.majlis == null ? null : form.majlis ? "yes" : "no"}
+                onChange={(v) => set("majlis", v === "yes")}
+                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                placeholder="Not specified"
+              />
+            </Field>
+            <Field label="Indoor majlis">
+              <SelectField
+                value={form.indoor_majlis == null ? null : form.indoor_majlis ? "yes" : "no"}
+                onChange={(v) => set("indoor_majlis", v === "yes")}
+                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                placeholder="Not specified"
+              />
+            </Field>
+            <Field label="Outdoor majlis">
+              <SelectField
+                value={form.outdoor_majlis == null ? null : form.outdoor_majlis ? "yes" : "no"}
+                onChange={(v) => set("outdoor_majlis", v === "yes")}
+                options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+                placeholder="Not specified"
+              />
+            </Field>
+          </>
+        )}
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -479,7 +549,17 @@ export function PropertyDrawer({
             label="hero image"
           />
         </Field>
-        <Field label="Hero video URL">
+        <Field label="Property video" full>
+          <CloudflareVideoUpload
+            videoUid={form.cloudflare_video_uid ?? null}
+            status={form.cloudflare_video_status ?? "none"}
+            onChange={(uid, status) => {
+              set("cloudflare_video_uid", uid);
+              set("cloudflare_video_status", status);
+            }}
+          />
+        </Field>
+        <Field label="Fallback video URL (used only if no video is uploaded above)">
           <input
             className={inputCls}
             value={form.hero_video_url ?? ""}

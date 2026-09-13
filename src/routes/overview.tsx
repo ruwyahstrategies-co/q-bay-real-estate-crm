@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity, BarChart3, Megaphone } from "lucide-react";
+import { Flame, Target, AlertTriangle, UserPlus, Inbox, ArrowRight, Activity, BarChart3, Megaphone, CheckCircle2, ListChecks } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { DataTable } from "@/components/data-table";
@@ -13,11 +13,19 @@ import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { usePropertyEvents } from "@/hooks/use-property-events";
 import { useProperties } from "@/hooks/use-properties";
 import { useMarketReports } from "@/hooks/use-market-intelligence";
-import { fmtDate, fmtMoney, stageLabel } from "@/lib/db";
+import { fmtDate, fmtMoney, stageLabel, type Task } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
-import { useTasks } from "@/hooks/use-tasks";
+import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { toast } from "sonner";
+
+type TaskWithRelations = Task & {
+  leads: { full_name: string } | null;
+  owners: { name: string } | null;
+  properties: { title: string } | null;
+};
 
 export const Route = createFileRoute("/overview")({
   head: () => ({
@@ -32,6 +40,8 @@ export const Route = createFileRoute("/overview")({
 const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
 
 function OverviewPage() {
+  const navigate = useNavigate();
+  const { teamMember } = useCurrentUser();
   const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
@@ -41,6 +51,36 @@ function OverviewPage() {
   const { data: events = [] } = usePropertyEvents(sinceISO);
   const { data: reports = [] } = useMarketReports();
   const { data: openTasks = [] } = useTasks({ status: "pending" });
+
+  // Today's Tasks: the authenticated user's own due-today tasks/calendar
+  // items, sourced from the same `tasks` table Calendar and the Owner/Lead
+  // task drawers already write to - no separate/duplicate task store.
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const todayEnd = useMemo(() => {
+    const d = new Date(todayStart);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [todayStart]);
+  const { data: todaysTasksRaw = [] } = useTasks({
+    assignedTo: teamMember?.id ?? undefined,
+    dueFrom: todayStart.toISOString(),
+    dueBefore: todayEnd.toISOString(),
+  });
+  const todaysTasks = (todaysTasksRaw as TaskWithRelations[]).filter(
+    (t) => t.status !== "completed" && t.status !== "cancelled",
+  );
+  const updateTodayTask = useUpdateTask();
+
+  function taskLinkTarget(t: TaskWithRelations): { to: string; params: Record<string, string> } | null {
+    if (t.lead_id) return { to: "/leads/$leadId", params: { leadId: t.lead_id } };
+    if (t.owner_id) return { to: "/owners/$ownerId", params: { ownerId: t.owner_id } };
+    if (t.property_id) return { to: "/properties/$propertyId", params: { propertyId: t.property_id } };
+    return null;
+  }
 
   const propertyById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
 
@@ -166,6 +206,72 @@ function OverviewPage() {
           <MetricCard label="New Leads" value={String(newLeadsCount)} tone="blue" icon={<UserPlus className="h-4 w-4" />} />
         </div>
       </div>
+
+      <Card className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{todaysTasks.length}</span>
+            <Link to="/calendar"><Button variant="outline" size="sm">Open calendar</Button></Link>
+          </div>
+        </div>
+        {todaysTasks.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {todaysTasks.map((t) => {
+              const target = taskLinkTarget(t);
+              const related = t.leads?.full_name ?? t.owners?.name ?? t.properties?.title ?? null;
+              const row = (
+                <div className="flex items-center gap-3 py-2.5 text-sm">
+                  <button
+                    type="button"
+                    title="Mark complete"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      updateTodayTask.mutate(
+                        { id: t.id, patch: { status: "completed", completed_at: new Date().toISOString() } },
+                        {
+                          onSuccess: () => toast.success("Task completed"),
+                          onError: (err) => toast.error((err as Error).message),
+                        },
+                      );
+                    }}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{t.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {t.task_type ? `${t.task_type} · ` : ""}
+                      {t.due_at ? new Date(t.due_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "No time set"}
+                      {related ? ` · ${related}` : ""}
+                    </p>
+                  </div>
+                  <span className="flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{t.status.replace(/_/g, " ")}</span>
+                </div>
+              );
+              return target ? (
+                <li
+                  key={t.id}
+                  className="cursor-pointer px-1 hover:bg-background/60"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
+                  onClick={() => navigate(target as any)}
+                >
+                  {row}
+                </li>
+              ) : (
+                <li key={t.id} className="px-1">{row}</li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">

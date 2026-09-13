@@ -15,6 +15,7 @@ export function UploadDropzone({
   ownerId,
   tenantId,
   propertyLeaseId,
+  offerId,
   onUploaded,
 }: {
   title: string;
@@ -25,6 +26,7 @@ export function UploadDropzone({
   ownerId?: string | null;
   tenantId?: string | null;
   propertyLeaseId?: string | null;
+  offerId?: string | null;
   onUploaded?: (uploadId: string) => void;
 }) {
   const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -44,6 +46,7 @@ export function UploadDropzone({
           ownerId,
           tenantId,
           propertyLeaseId,
+          offerId,
         });
         toast.success(`Uploaded ${file.name}`);
         onUploaded?.(row.id);

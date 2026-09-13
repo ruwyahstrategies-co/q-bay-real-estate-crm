@@ -8,6 +8,7 @@ export const uploadKeys = {
   byProperty: (propertyId: string) => ["uploads", "property", propertyId] as const,
   byTenant: (tenantId: string) => ["uploads", "tenant", tenantId] as const,
   byLease: (leaseId: string) => ["uploads", "lease", leaseId] as const,
+  byOffer: (offerId: string) => ["uploads", "offer", offerId] as const,
 };
 
 export function useUploads(opts?: {
@@ -16,11 +17,12 @@ export function useUploads(opts?: {
   ownerId?: string;
   tenantId?: string;
   propertyLeaseId?: string;
+  offerId?: string;
   category?: string | null;
 }) {
-  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, category } = opts ?? {};
+  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, category } = opts ?? {};
   return useQuery({
-    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, tenantId, propertyLeaseId, category }),
+    queryKey: uploadKeys.list({ leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, category }),
     queryFn: async (): Promise<Upload[]> => {
       let q = sb.from("uploads").select("*").order("created_at", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);
@@ -28,6 +30,7 @@ export function useUploads(opts?: {
       if (ownerId) q = q.eq("owner_id", ownerId);
       if (tenantId) q = q.eq("tenant_id", tenantId);
       if (propertyLeaseId) q = q.eq("property_lease_id", propertyLeaseId);
+      if (offerId) q = q.eq("offer_id", offerId);
       if (category) q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
@@ -62,6 +65,7 @@ export function useUploadFile() {
       ownerId,
       tenantId,
       propertyLeaseId,
+      offerId,
       uploadedBy,
     }: {
       file: File;
@@ -71,6 +75,7 @@ export function useUploadFile() {
       ownerId?: string | null;
       tenantId?: string | null;
       propertyLeaseId?: string | null;
+      offerId?: string | null;
       uploadedBy?: string | null;
     }): Promise<Upload> => {
       const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -127,6 +132,7 @@ export function useUploadFile() {
         owner_id: ownerId ?? null,
         tenant_id: tenantId ?? null,
         property_lease_id: propertyLeaseId ?? null,
+        offer_id: offerId ?? null,
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,

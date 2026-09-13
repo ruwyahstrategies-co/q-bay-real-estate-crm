@@ -700,6 +700,7 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
   const [propertyId, setPropertyId] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
   const canCreate = can("offers", "create");
   const canEdit = can("offers", "edit");
   const interests = ((refs?.interests ?? []) as any[]);
@@ -756,24 +757,84 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
       ) : (
         <div className="space-y-2">
           {offers.map((o) => (
-            <Card key={o.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <p className="text-sm font-medium">{o.amount ? `${o.currency ?? "QAR"} ${o.amount.toLocaleString()}` : "Offer"}</p>
-                <p className="text-xs text-muted-foreground capitalize">{o.status.replace(/_/g, " ")} · {fmtDate(o.offer_date)}</p>
-                {o.notes && <p className="text-xs text-muted-foreground mt-1">{o.notes}</p>}
+            <Card key={o.id} className="py-3">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className="flex-1 text-left"
+                  onClick={() => setExpandedOfferId((cur) => (cur === o.id ? null : o.id))}
+                >
+                  <p className="text-sm font-medium">{o.amount ? `${o.currency ?? "QAR"} ${o.amount.toLocaleString()}` : "Offer"}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{o.status.replace(/_/g, " ")} · {fmtDate(o.offer_date)}</p>
+                  {o.notes && <p className="text-xs text-muted-foreground mt-1">{o.notes}</p>}
+                </button>
+                {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
+                  <SelectField
+                    className="h-8 w-36 text-xs"
+                    value={o.status}
+                    onChange={(v) => update.mutate({ id: o.id, patch: { status: v ?? o.status } })}
+                    options={OFFER_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
+                    allowClear={false}
+                  />
+                )}
               </div>
-              {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
-                <SelectField
-                  className="h-8 w-36 text-xs"
-                  value={o.status}
-                  onChange={(v) => update.mutate({ id: o.id, patch: { status: v ?? o.status } })}
-                  options={OFFER_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
-                  allowClear={false}
-                />
+              {expandedOfferId === o.id && (
+                <OfferAttachments offerId={o.id} canUpload={canCreate || canEdit} />
               )}
             </Card>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function OfferAttachments({
+  offerId,
+  canUpload,
+}: {
+  offerId: string;
+  canUpload: boolean;
+}) {
+  const { data: files = [] } = useUploads({ offerId });
+  const del = useDeleteUpload();
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Attachments</p>
+      {files.length === 0 ? (
+        <p className="mb-2 text-xs text-muted-foreground">No files attached to this offer yet.</p>
+      ) : (
+        <ul className="mb-2 space-y-1">
+          {files.map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-canvas px-3 py-1.5 text-xs">
+              <button type="button" className="truncate text-left hover:underline" onClick={() => downloadUpload(f)}>
+                {f.filename}
+              </button>
+              <button
+                type="button"
+                className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={async () => {
+                  try {
+                    await del.mutateAsync(f);
+                    toast.success("Attachment removed");
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {canUpload && (
+        <UploadDropzone
+          title="Upload supporting document"
+          description="PDF, Word, or image - up to 40MB"
+          categoryKey="offer_attachments"
+          offerId={offerId}
+        />
       )}
     </div>
   );

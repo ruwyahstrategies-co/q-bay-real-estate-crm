@@ -299,6 +299,13 @@ export const UPLOAD_CATEGORIES = {
     extensions: ["jpg", "jpeg", "png", "webp"],
     maxMb: 20,
   },
+  offer_attachments: {
+    title: "Offer attachments",
+    bucket: "offer-attachments",
+    accept: ".pdf,.docx,.jpg,.jpeg,.png,.webp",
+    extensions: ["pdf", "docx", "jpg", "jpeg", "png", "webp"],
+    maxMb: 40,
+  },
 } as const;
 
 export type UploadCategoryKey = keyof typeof UPLOAD_CATEGORIES;

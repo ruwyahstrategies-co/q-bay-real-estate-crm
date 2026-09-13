@@ -216,10 +216,12 @@ export function PropertyDrawer({
       tower_name: form.tower_name || null,
       floor_number: form.floor_number || null,
       unit_number: form.unit_number || null,
+      // Only editable in the UI for Villas now, but never force-null it for
+      // other types on save - a handful of existing non-Villa properties
+      // already have a real parking_spaces value and resaving them (e.g. to
+      // change price) must not silently wipe it.
       parking_spaces:
-        form.property_type === "Villa" &&
-        form.parking_spaces != null &&
-        form.parking_spaces !== ("" as never)
+        form.parking_spaces != null && form.parking_spaces !== ("" as never)
           ? Number(form.parking_spaces)
           : null,
       furnishing_status: form.furnishing_status || null,

@@ -122,8 +122,15 @@ function TeamPage() {
                     className={`rounded-full px-2 py-0.5 text-[11px] ${m.is_active ? "bg-pastel-green" : "bg-muted"}`}
                     disabled={!canManage}
                     onClick={async () => {
-                      try { await update.mutateAsync({ id: m.id, patch: { is_active: !m.is_active } }); }
-                      catch (e) { toast.error((e as Error).message); }
+                      // Reactivating needs no reassignment check. Deactivating does:
+                      // route through the same reassignment dialog the delete icon uses,
+                      // so an agent's leads/properties/tasks are never silently orphaned.
+                      if (!m.is_active) {
+                        try { await update.mutateAsync({ id: m.id, patch: { is_active: true } }); }
+                        catch (e) { toast.error((e as Error).message); }
+                        return;
+                      }
+                      setReassignTarget(m);
                     }}
                   >
                     {m.is_active ? "Active" : "Inactive"}

@@ -151,6 +151,10 @@ export function TeamMemberDrawer({
         return;
       }
 
+      // Deactivating a member who still holds a login must go through the
+      // reassignment flow (Team page delete icon) so their leads/properties/
+      // tasks are never silently orphaned - this form never deactivates directly.
+      const blockedDeactivation = isEdit && !!member && member.is_active && !isActive;
       const payload = {
         full_name: name,
         email: email || null,
@@ -158,14 +162,17 @@ export function TeamMemberDrawer({
         role: rolePreset,
         team_id: teamId || null,
         permissions,
-        is_active: isActive,
+        is_active: blockedDeactivation ? true : isActive,
         notes: notes || null,
       };
 
       if (isEdit && member) {
         await update.mutateAsync({ id: member.id, patch: payload });
-        if (hasLogin && isActive !== member.is_active) {
+        if (hasLogin && !blockedDeactivation && isActive !== member.is_active) {
           await setActive.mutateAsync({ team_member_id: member.id, is_active: isActive });
+        }
+        if (blockedDeactivation) {
+          toast.warning("Status left as Active. To deactivate a member with assigned records, use the delete icon on the Team page - it checks for reassignment first.");
         }
         if (!hasLogin && createLogin) {
           if (!tempPassword || tempPassword.length < 8) {

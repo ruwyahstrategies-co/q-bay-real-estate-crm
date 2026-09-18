@@ -191,17 +191,19 @@ export function useConvertSubmission() {
         .eq("property_submission_id", submission.id)
         .eq("category", "submission_photo")
         .eq("storage_provider", "r2");
+      let photoPromotionFailures = 0;
+      const photoPromotionTotal = r2Photos?.length ?? 0;
       if (r2Photos && r2Photos.length > 0) {
         const results = await Promise.allSettled(
           r2Photos.map((u) => promoteSubmissionPhoto({ uploadId: u.id, propertyId: property.id })),
         );
-        const failures = results.filter((r) => r.status === "rejected").length;
-        if (failures > 0) {
-          console.warn(`[convert-submission] ${failures}/${r2Photos.length} submission photo(s) failed to promote`);
+        photoPromotionFailures = results.filter((r) => r.status === "rejected").length;
+        if (photoPromotionFailures > 0) {
+          console.warn(`[convert-submission] ${photoPromotionFailures}/${photoPromotionTotal} submission photo(s) failed to promote`);
         }
       }
 
-      return property;
+      return { property, photoPromotionFailures, photoPromotionTotal };
     },
     onSuccess: (_property, submission) => {
       qc.invalidateQueries({ queryKey: submissionKeys.all });

@@ -9,7 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveActiveCaller, hasPermission } from "../_shared/auth.ts";
-import { getR2Config, bucketForScope, buildObjectKey, copyObject } from "../_shared/r2.ts";
+import { getR2Config, bucketForScope, buildObjectKey, copyObject, resolvePublicUrl } from "../_shared/r2.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
       storage_path: destKey,
       storage_provider: "r2",
       bucket_scope: "public",
+      public_url: resolvePublicUrl(cfg, publicBucket, destKey),
       mime_type: upload.mime_type,
       file_size: upload.file_size,
       width: upload.width,

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { FileSignature, Check, X as XIcon } from "lucide-react";
+import { FileSignature, Check, X as XIcon, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -9,8 +9,9 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { SelectField } from "@/components/select-field";
+import { OfferAttachmentsDrawer } from "@/components/offer-attachments-drawer";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
-import { useOffers, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
+import { useOffers, useUpdateOffer, OFFER_STATUSES, type Offer } from "@/hooks/use-offers";
 import { fmtDateTime } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ function OffersPage() {
   });
   const update = useUpdateOffer();
   const canEdit = can("offers", "edit");
+  const [attachmentsTarget, setAttachmentsTarget] = useState<(typeof offers)[number] | null>(null);
 
   const setStatusOn = async (id: string, next: string) => {
     try {
@@ -99,20 +101,32 @@ function OffersPage() {
                 <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", STATUS_COLORS[o.status] ?? "bg-muted")}>{o.status.replace(/_/g, " ")}</span>
               </td>
               <td className="px-4 py-3">
-                {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
-                  <div className="flex items-center gap-1">
-                    <button className="rounded-md p-1.5 hover:bg-muted" title="Mark accepted" onClick={() => setStatusOn(o.id, "accepted")}>
-                      <Check className="h-3.5 w-3.5" />
-                    </button>
-                    <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Mark rejected" onClick={() => setStatusOn(o.id, "rejected")}>
-                      <XIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1">
+                  <button className="rounded-md p-1.5 hover:bg-muted" title="Attachments" onClick={() => setAttachmentsTarget(o)}>
+                    <Paperclip className="h-3.5 w-3.5" />
+                  </button>
+                  {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (
+                    <>
+                      <button className="rounded-md p-1.5 hover:bg-muted" title="Mark accepted" onClick={() => setStatusOn(o.id, "accepted")}>
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Mark rejected" onClick={() => setStatusOn(o.id, "rejected")}>
+                        <XIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
         </DataTable>
+        {attachmentsTarget && (
+          <OfferAttachmentsDrawer
+            open={!!attachmentsTarget}
+            onOpenChange={(v) => !v && setAttachmentsTarget(null)}
+            offer={attachmentsTarget as Offer & { leads?: { full_name: string } | null }}
+          />
+        )}
       </PermissionGate>
     </AppShell>
   );

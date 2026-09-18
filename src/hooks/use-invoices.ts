@@ -10,9 +10,14 @@ export function useInvoices(type?: "receivable" | "payable") {
   return useQuery({
     queryKey: [...invoiceKeys.all, type ?? "all"],
     queryFn: async () => {
+      // invoices has two FKs into team_members (agent_id, created_by), so the
+      // embed must name which relationship to follow - PostgREST rejects the
+      // bare "team_members(...)" form as ambiguous (error PGRST201).
       let q = sb
         .from("invoices")
-        .select("*, owners(name), leads(full_name), properties(title, reference_code), team_members(full_name)")
+        .select(
+          "*, owners(name), leads(full_name), properties(title, reference_code), team_members:team_members!invoices_agent_id_fkey(full_name)",
+        )
         .order("due_date", { ascending: true, nullsFirst: false });
       if (type) q = q.eq("type", type);
       const { data, error } = await q;

@@ -724,8 +724,14 @@ export function SubmissionDetailDrawer({
                       size="sm"
                       onClick={async () => {
                         try {
-                          await convert.mutateAsync(submission);
-                          toast.success("Converted to a property");
+                          const result = await convert.mutateAsync(submission);
+                          if (result.photoPromotionFailures > 0) {
+                            toast.warning(
+                              `Converted to a property, but ${result.photoPromotionFailures}/${result.photoPromotionTotal} photo(s) failed to copy to the gallery - retry from the submission's Photos section.`,
+                            );
+                          } else {
+                            toast.success("Converted to a property");
+                          }
                           onOpenChange(false);
                         } catch (e) {
                           toast.error((e as Error).message);

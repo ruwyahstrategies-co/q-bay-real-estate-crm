@@ -3,11 +3,14 @@ self.addEventListener("notificationclick", (event) => {
   const target = event.notification.data?.url || "/overview";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
       for (const client of windows) {
         if ("focus" in client) {
-          client.postMessage({ type: "QBAY_NOTIFICATION_CLICK", url: target });
-          return client.focus();
+          await client.focus();
+          if ("navigate" in client) {
+            return client.navigate(target);
+          }
+          return client;
         }
       }
       return clients.openWindow ? clients.openWindow(target) : undefined;

@@ -116,7 +116,10 @@ set search_path = public
 as $$
 begin
   if new.assigned_agent_id is not null
-     and (tg_op = 'INSERT' or new.assigned_agent_id is distinct from old.assigned_agent_id) then
+     and (
+       tg_op = 'INSERT'
+       or (tg_op = 'UPDATE' and new.assigned_agent_id is distinct from old.assigned_agent_id)
+     ) then
     perform public.enqueue_staff_notification(
       new.assigned_agent_id,
       'Lead assigned to you',
@@ -148,7 +151,10 @@ declare
   v_due text;
 begin
   if new.assigned_to is not null
-     and (tg_op = 'INSERT' or new.assigned_to is distinct from old.assigned_to) then
+     and (
+       tg_op = 'INSERT'
+       or (tg_op = 'UPDATE' and new.assigned_to is distinct from old.assigned_to)
+     ) then
     v_due := case
       when new.due_at is null then null
       else 'Due ' || to_char(new.due_at at time zone 'Asia/Qatar', 'DD Mon YYYY, HH24:MI')
@@ -187,7 +193,10 @@ declare
   v_body text;
 begin
   if new.assigned_agent_id is not null
-     and (tg_op = 'INSERT' or new.assigned_agent_id is distinct from old.assigned_agent_id) then
+     and (
+       tg_op = 'INSERT'
+       or (tg_op = 'UPDATE' and new.assigned_agent_id is distinct from old.assigned_agent_id)
+     ) then
 
     select full_name into v_lead_name from public.leads where id = new.lead_id;
     select title into v_property_title from public.properties where id = new.property_id;

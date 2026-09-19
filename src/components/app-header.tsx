@@ -1,6 +1,7 @@
-import { Bell, Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/notification-bell";
 
 const titles: Record<string, string> = {
   "/overview": "Overview",
@@ -50,12 +51,7 @@ export function AppHeader() {
         >
           <Search className="h-[16px] w-[16px]" strokeWidth={2} />
         </button>
-        <button
-          aria-label="Notifications"
-          className="glass flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-white/80"
-        >
-          <Bell className="h-[16px] w-[16px]" strokeWidth={2} />
-        </button>
+        <NotificationBell />
         <button
           className="glass flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-foreground transition hover:bg-white/80"
           aria-label="Account"

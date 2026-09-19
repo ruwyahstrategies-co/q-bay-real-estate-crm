@@ -133,7 +133,7 @@ export function HeroImageField({
           <UploadCloud className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
         )}
         <p className="text-xs font-medium text-foreground">{upload.isPending ? "Uploading..." : "Click or drag an image to upload"}</p>
-        <p className="text-[11px] text-muted-foreground">JPG, PNG or WEBP - max 20MB</p>
+        <p className="text-[11px] text-muted-foreground">JPG, PNG or WEBP - max 200MB</p>
       </div>
       {fileInput}
       <button type="button" onClick={() => setUrlMode(true)} className={linkCls}>

@@ -30,8 +30,8 @@ function json(body: unknown, status = 200) {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const SUBMISSION_KINDS: Record<string, { entityType: string; scope: "private"; subpath: string; maxMb: number; mimePrefixes: string[] }> = {
-  voice_note: { entityType: "submissions", scope: "private", subpath: "voice", maxMb: 15, mimePrefixes: ["audio/"] },
-  submission_photo: { entityType: "submissions", scope: "private", subpath: "images", maxMb: 20, mimePrefixes: ["image/"] },
+  voice_note: { entityType: "submissions", scope: "private", subpath: "voice", maxMb: 200, mimePrefixes: ["audio/"] },
+  submission_photo: { entityType: "submissions", scope: "private", subpath: "images", maxMb: 200, mimePrefixes: ["image/"] },
 };
 
 type Body = {

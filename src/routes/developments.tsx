@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Building, Trash2, Pencil, X, Globe, EyeOff } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/developments")({
 const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 function DevelopmentsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Development | null>(null);
@@ -66,7 +67,24 @@ function DevelopmentsPage() {
         empty={<EmptyState icon={<Building className="h-4 w-4" />} title="No developments yet" description="Add a development to link properties and track enquiries." />}
       >
         {developments.map((d) => (
-          <tr key={d.id} className="border-b border-border last:border-0 hover:bg-background/60">
+          <tr
+            key={d.id}
+            role="link"
+            tabIndex={0}
+            aria-label={`Open ${d.name}`}
+            className="cursor-pointer border-b border-border last:border-0 hover:bg-background/60 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button,a")) return;
+              navigate({ to: "/developments/$developmentId", params: { developmentId: d.id } });
+            }}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate({ to: "/developments/$developmentId", params: { developmentId: d.id } });
+              }
+            }}
+          >
             <td className="px-4 py-3 text-sm font-medium">
               <Link to="/developments/$developmentId" params={{ developmentId: d.id }} className="hover:underline">{d.name}</Link>
             </td>

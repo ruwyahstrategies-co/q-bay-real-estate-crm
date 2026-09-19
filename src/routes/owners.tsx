@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Contact2, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 function OwnersPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Owner | null>(null);
@@ -88,6 +89,9 @@ function OwnersPage() {
               owner={o}
               canEdit={canEdit}
               canDelete={canDelete}
+              onOpen={() =>
+                navigate({ to: "/owners/$ownerId", params: { ownerId: o.id } })
+              }
               onEdit={() => {
                 setEdit(o);
                 setOpen(true);
@@ -126,18 +130,36 @@ function OwnerRow({
   owner,
   canEdit,
   canDelete,
+  onOpen,
   onEdit,
   onDelete,
 }: {
   owner: Owner;
   canEdit: boolean;
   canDelete: boolean;
+  onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { data: properties = [] } = useOwnerProperties(owner.id);
   return (
-    <tr className="border-b border-border last:border-0 hover:bg-background/60">
+    <tr
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${owner.name}`}
+      className="cursor-pointer border-b border-border last:border-0 hover:bg-background/60 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("button,a")) return;
+        onOpen();
+      }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{owner.code ?? "-"}</td>
       <td className="px-4 py-3 text-sm font-medium">
         <Link to="/owners/$ownerId" params={{ ownerId: owner.id }} className="hover:underline">

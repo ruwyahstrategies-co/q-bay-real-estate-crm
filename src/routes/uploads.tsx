@@ -104,7 +104,7 @@ function UploadsPage() {
       <div className="mt-8">
         <h3 className="mb-3 text-[16px] font-semibold">Recent uploads</h3>
         <DataTable
-          columns={["File", "Category", "Size", "Status", "Uploaded", "Actions"]}
+          columns={["File", "Category", "Storage", "Size", "Status", "Uploaded", "Actions"]}
           empty={
             <EmptyState compact icon={<Inbox className="h-4 w-4" />} title="No uploads yet" description="Files you upload will be listed here with their processing status." />
           }
@@ -114,6 +114,9 @@ function UploadsPage() {
                 <tr key={u.id} className="border-b border-border last:border-0 hover:bg-background/60">
                   <td className="px-4 py-3 text-sm">{u.filename}</td>
                   <td className="px-4 py-3 text-xs">{u.category}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {u.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}
+                  </td>
                   <td className="px-4 py-3 text-xs">{fmtSize(u.file_size)}</td>
                   <td className="px-4 py-3 text-xs capitalize">{u.processing_status.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(u.created_at)}</td>

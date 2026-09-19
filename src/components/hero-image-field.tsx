@@ -11,8 +11,9 @@ const urlInputCls =
 
 /**
  * Staff-facing hero image control for property and development forms.
- * Upload is the primary path (drag/drop or browse, straight into Supabase
- * Storage via the existing uploads architecture); a raw URL stays available
+ * Upload is the primary path (drag/drop or browse). Property/development
+ * media is Cloudflare R2-required; Supabase stores the metadata row only.
+ * A raw URL stays available
  * as a secondary fallback behind "Use image URL instead".
  */
 export function HeroImageField({
@@ -39,7 +40,9 @@ export function HeroImageField({
     try {
       const row = await upload.mutateAsync({ file, categoryKey, propertyId });
       onChange(row.public_url);
-      toast.success("Image uploaded");
+      toast.success(
+        `Image uploaded to ${row.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}`,
+      );
     } catch (err) {
       toast.error(err instanceof UploadValidationError ? err.message : (err as Error).message);
     } finally {

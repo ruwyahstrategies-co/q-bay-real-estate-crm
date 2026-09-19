@@ -48,7 +48,9 @@ export function UploadDropzone({
           propertyLeaseId,
           offerId,
         });
-        toast.success(`Uploaded ${file.name}`);
+        toast.success(
+          `Uploaded ${file.name} to ${row.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}`,
+        );
         onUploaded?.(row.id);
       } catch (err) {
         if (err instanceof UploadValidationError) {

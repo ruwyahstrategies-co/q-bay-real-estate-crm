@@ -55,6 +55,20 @@ function extOf(name: string): string {
 
 export class UploadValidationError extends Error {}
 
+/**
+ * Media that must never silently fall back to Supabase Storage.
+ * If R2 is unavailable/misconfigured, fail loudly so staff know the upload
+ * did not reach Cloudflare. Documents can still use the legacy Supabase
+ * fallback while the older storage path remains supported.
+ */
+const R2_REQUIRED_CATEGORIES = new Set<UploadCategoryKey>([
+  "property_media",
+  "development_media",
+  "blog_images",
+  "call_recordings",
+  "brochures",
+]);
+
 async function readTextSafe(file: File): Promise<string | null> {
   try {
     return await file.text();
@@ -157,7 +171,13 @@ export function useUploadFile() {
         return data;
       } catch (err) {
         if (!(err instanceof R2NotConfiguredError)) throw err;
-        // R2 not configured yet - fall through to legacy Supabase Storage.
+        if (R2_REQUIRED_CATEGORIES.has(categoryKey)) {
+          throw new Error(
+            `Cloudflare R2 is required for ${cat.title}. The upload was NOT saved to Supabase Storage. Check the R2 Edge Function secrets/bucket configuration and try again.`,
+          );
+        }
+        // Important/legacy document categories may still use Supabase Storage
+        // as a compatibility fallback when R2 is genuinely unavailable.
       }
 
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");

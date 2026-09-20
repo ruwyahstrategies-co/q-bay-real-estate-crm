@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Dices, KeyRound, ShieldCheck } from "lucide-react";
+import { X, Dices, KeyRound, ShieldCheck, BookmarkPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
@@ -13,6 +13,11 @@ import {
   useSetStaffActive,
 } from "@/hooks/use-team";
 import { useTeams } from "@/hooks/use-teams";
+import {
+  usePermissionPresets,
+  useCreatePermissionPreset,
+  useDeletePermissionPreset,
+} from "@/hooks/use-permission-presets";
 import type { StaffTeamMember } from "@/lib/db-extensions";
 import {
   MODULES,
@@ -24,6 +29,7 @@ import {
   type RolePresetKey,
   defaultPermissionsForRole,
   isRolePresetKey,
+  sanitizePermissions,
 } from "@/lib/permissions";
 
 const inputCls =
@@ -77,6 +83,20 @@ export function TeamMemberDrawer({
   const [notes, setNotes] = useState(member?.notes ?? "");
   const [teamId, setTeamId] = useState<string>((member as any)?.team_id ?? "");
   const { data: teams = [] } = useTeams();
+  const [joiningDate, setJoiningDate] = useState(member?.joining_date ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(member?.date_of_birth ?? "");
+
+  // Saved permission presets are templates: applying one copies its
+  // permissions into the grid below and touches nothing else on the form.
+  const { data: savedPresets = [] } = usePermissionPresets();
+  const createPreset = useCreatePermissionPreset();
+  const deletePreset = useDeletePermissionPreset();
+  const [appliedPresetId, setAppliedPresetId] = useState<string | null>(null);
+  const [presetEdited, setPresetEdited] = useState(false);
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [presetDescription, setPresetDescription] = useState("");
+  const appliedPreset = savedPresets.find((p) => p.id === appliedPresetId) ?? null;
 
   const [createLogin, setCreateLogin] = useState(!isEdit);
   const [tempPassword, setTempPassword] = useState("");
@@ -97,6 +117,13 @@ export function TeamMemberDrawer({
     setIsActive(member?.is_active ?? true);
     setNotes(member?.notes ?? "");
     setTeamId((member as any)?.team_id ?? "");
+    setJoiningDate(member?.joining_date ?? "");
+    setDateOfBirth(member?.date_of_birth ?? "");
+    setAppliedPresetId(null);
+    setPresetEdited(false);
+    setSavePresetOpen(false);
+    setPresetName("");
+    setPresetDescription("");
     setCreateLogin(!member?.id);
     setTempPassword("");
     setResetOpen(false);
@@ -104,12 +131,70 @@ export function TeamMemberDrawer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, member?.id]);
 
+  // The built-in role preset and a saved preset both just fill the permission
+  // grid; whichever was chosen last wins, and the user can still edit the grid.
   function applyRolePreset(key: RolePresetKey) {
     setRolePreset(key);
     setPermissions(ROLE_PRESETS[key].permissions());
+    setAppliedPresetId(null);
+    setPresetEdited(false);
+  }
+
+  function applySavedPreset(id: string | null) {
+    if (!id) {
+      setAppliedPresetId(null);
+      setPresetEdited(false);
+      return;
+    }
+    const preset = savedPresets.find((p) => p.id === id);
+    if (!preset) return;
+    setPermissions(sanitizePermissions(preset.permissions));
+    setAppliedPresetId(preset.id);
+    setPresetEdited(false);
+  }
+
+  async function handleSavePreset() {
+    const name = presetName.trim();
+    if (!name) return toast.error("Give the preset a name");
+    try {
+      const saved = await createPreset.mutateAsync({
+        name,
+        description: presetDescription,
+        permissions,
+      });
+      setAppliedPresetId(saved.id);
+      setPresetEdited(false);
+      setSavePresetOpen(false);
+      setPresetName("");
+      setPresetDescription("");
+      toast.success(`Preset "${saved.name}" saved`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  // Enter inside the preset inputs saves the preset, never the whole member form.
+  function presetEnter(e: React.KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    void handleSavePreset();
+  }
+
+  async function handleDeletePreset() {
+    if (!appliedPreset) return;
+    if (!window.confirm(`Delete the saved preset "${appliedPreset.name}"? Team members who already use it keep their permissions.`)) return;
+    try {
+      await deletePreset.mutateAsync(appliedPreset.id);
+      setAppliedPresetId(null);
+      setPresetEdited(false);
+      toast.success("Preset deleted");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   }
 
   function toggleAction(module: ModuleKey, action: string) {
+    if (appliedPresetId) setPresetEdited(true);
     setPermissions((prev) => {
       const current = new Set(prev[module] ?? []);
       if (current.has(action)) current.delete(action);
@@ -128,6 +213,12 @@ export function TeamMemberDrawer({
     if ((createLogin || (isEdit && !hasLogin && createLogin)) && !email.trim()) {
       return toast.error("Email is required to create a login");
     }
+    if (dateOfBirth && dateOfBirth > new Date().toISOString().slice(0, 10)) {
+      return toast.error("Date of birth cannot be in the future");
+    }
+    if (dateOfBirth && dateOfBirth < "1900-01-01") {
+      return toast.error("Date of birth looks incorrect");
+    }
 
     try {
       if (!isEdit && createLogin) {
@@ -144,6 +235,9 @@ export function TeamMemberDrawer({
           permissions,
           temporary_password: tempPassword,
           is_active: isActive,
+          joining_date: joiningDate || null,
+          date_of_birth: dateOfBirth || null,
+          notes: notes || null,
         });
         if (res.warning) toast.warning(res.warning);
         toast.success("Staff member created with login access");
@@ -164,6 +258,8 @@ export function TeamMemberDrawer({
         permissions,
         is_active: blockedDeactivation ? true : isActive,
         notes: notes || null,
+        joining_date: joiningDate || null,
+        date_of_birth: dateOfBirth || null,
       };
 
       if (isEdit && member) {
@@ -184,9 +280,13 @@ export function TeamMemberDrawer({
             email: email.trim(),
             phone: phone || null,
             role: rolePreset,
+            team_id: teamId || null,
             permissions,
             temporary_password: tempPassword,
             is_active: isActive,
+            joining_date: joiningDate || null,
+            date_of_birth: dateOfBirth || null,
+            notes: notes || null,
           });
           if (res.warning) toast.warning(res.warning);
         }
@@ -263,6 +363,23 @@ export function TeamMemberDrawer({
               emptyLabel="No team"
             />
           </Field>
+          <Field label="Joining date">
+            <input
+              className={inputCls}
+              type="date"
+              value={joiningDate}
+              onChange={(e) => setJoiningDate(e.target.value)}
+            />
+          </Field>
+          <Field label="Date of birth">
+            <input
+              className={inputCls}
+              type="date"
+              value={dateOfBirth}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+          </Field>
         </div>
 
         <p className="mt-2 text-xs text-muted-foreground">{ROLE_PRESETS[rolePreset].description}</p>
@@ -272,7 +389,84 @@ export function TeamMemberDrawer({
           <h4 className="text-sm font-semibold">Permissions</h4>
           <p className="mt-1 text-xs text-muted-foreground">
             The role preset sets sensible defaults - enable or disable individual modules and actions below.
+            Or start from a saved preset. Presets are templates: the permissions you save here belong to this
+            member alone.
           </p>
+
+          <div className="mt-3 rounded-lg border border-border bg-background p-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+              <Field label="Saved permission preset">
+                <SelectField
+                  value={appliedPresetId}
+                  onChange={applySavedPreset}
+                  options={savedPresets.map((p) => ({ value: p.id, label: p.name }))}
+                  placeholder={savedPresets.length ? "Apply a saved preset..." : "No saved presets yet"}
+                  emptyLabel="None"
+                  disabled={savedPresets.length === 0}
+                />
+              </Field>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSavePresetOpen((v) => !v)}
+                >
+                  <BookmarkPlus className="h-3.5 w-3.5" /> Save current permissions as preset
+                </Button>
+                {appliedPreset && !appliedPreset.is_system && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDeletePreset}
+                    disabled={deletePreset.isPending}
+                    aria-label="Delete saved preset"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            {appliedPreset && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {appliedPreset.description ? `${appliedPreset.description}. ` : ""}
+                Applied "{appliedPreset.name}"{presetEdited ? " (edited since)" : ""}. You can still change any
+                permission below before saving.
+              </p>
+            )}
+            {savePresetOpen && (
+              <div className="mt-3 grid grid-cols-1 gap-2 border-t border-border pt-3">
+                <Field label="Preset name *">
+                  <input
+                    className={inputCls}
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    onKeyDown={presetEnter}
+                    placeholder="e.g. Senior Sales Agent"
+                    maxLength={80}
+                  />
+                </Field>
+                <Field label="Description (optional)">
+                  <input
+                    className={inputCls}
+                    value={presetDescription}
+                    onChange={(e) => setPresetDescription(e.target.value)}
+                    onKeyDown={presetEnter}
+                    maxLength={200}
+                  />
+                </Field>
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="sm" disabled={createPreset.isPending} onClick={handleSavePreset}>
+                    {createPreset.isPending ? "Saving..." : "Save preset"}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSavePresetOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="mt-3 overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs">
               <tbody>

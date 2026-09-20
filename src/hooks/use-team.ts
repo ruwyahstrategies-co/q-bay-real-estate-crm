@@ -82,6 +82,9 @@ export type CreateStaffUserInput = {
   permissions: PermissionSet;
   temporary_password: string;
   is_active: boolean;
+  joining_date?: string | null;
+  date_of_birth?: string | null;
+  notes?: string | null;
 };
 
 /** Creates a real Supabase Auth login for a staff member via a secure edge function. */

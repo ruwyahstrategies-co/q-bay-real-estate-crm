@@ -82,7 +82,12 @@ type CreateStaffBody = {
   team_id?: string | null;
   permissions?: Record<string, string[]> | null;
   is_active?: boolean;
+  joining_date?: string | null;
+  date_of_birth?: string | null;
+  notes?: string | null;
 };
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -106,6 +111,12 @@ Deno.serve(async (req) => {
   const team_id: string | null = body?.team_id || null;
   const permissions = body?.permissions ?? null;
   const is_active: boolean = body?.is_active ?? true;
+  const joining_date: string | null = body?.joining_date || null;
+  const date_of_birth: string | null = body?.date_of_birth || null;
+  const notes: string | null = body?.notes || null;
+
+  if (joining_date && !ISO_DATE.test(joining_date)) return json({ error: "joining_date must be YYYY-MM-DD" }, 400);
+  if (date_of_birth && !ISO_DATE.test(date_of_birth)) return json({ error: "date_of_birth must be YYYY-MM-DD" }, 400);
 
   if (!full_name) return json({ error: "full_name is required" }, 400);
   if (!email) return json({ error: "email is required" }, 400);
@@ -135,6 +146,11 @@ Deno.serve(async (req) => {
   const { data: existingMember } = await service.from("team_members").select("id").ilike("email", email).maybeSingle();
 
   const payload: Record<string, unknown> = { full_name, email, phone, role, team_id, is_active, user_id: authUserId, permissions };
+  // Optional profile fields are only written when supplied, so linking a login
+  // to an existing member never wipes values that were already saved.
+  if (body?.joining_date !== undefined) payload.joining_date = joining_date;
+  if (body?.date_of_birth !== undefined) payload.date_of_birth = date_of_birth;
+  if (body?.notes !== undefined) payload.notes = notes;
 
   const { data, error } = existingMember
     ? await service.from("team_members").update(payload).eq("id", existingMember.id).select().single()

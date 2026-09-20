@@ -56,7 +56,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   properties: "Properties",
   developments: "Developments",
   owners: "Owners",
-  locations: "Countries & Areas",
+  locations: "Countries, Areas & Places",
   viewings: "Viewings",
   offers: "Offers",
   pipeline: "Pipeline",
@@ -322,6 +322,23 @@ export function canSeeBeyondOwn(
   module: ModuleKey,
 ): boolean {
   return can(permissions, module, "view_team") || can(permissions, module, "view_all");
+}
+
+/**
+ * Narrows arbitrary JSON (for example a saved preset) to a valid PermissionSet:
+ * unknown modules and unknown actions are dropped, duplicates removed.
+ */
+export function sanitizePermissions(input: unknown): PermissionSet {
+  const out: PermissionSet = {};
+  if (!input || typeof input !== "object" || Array.isArray(input)) return out;
+  for (const key of Object.keys(MODULES) as ModuleKey[]) {
+    const raw = (input as Record<string, unknown>)[key];
+    if (!Array.isArray(raw)) continue;
+    const allowed: readonly string[] = MODULES[key];
+    const actions = raw.filter((a): a is string => typeof a === "string" && allowed.includes(a));
+    if (actions.length) out[key] = Array.from(new Set(actions));
+  }
+  return out;
 }
 
 export function mergePermissions(base: PermissionSet, overrides: PermissionSet): PermissionSet {

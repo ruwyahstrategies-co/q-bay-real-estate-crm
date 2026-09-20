@@ -15,6 +15,8 @@ import { AvailabilityRing } from "@/components/status-badge";
 import { PropertyPublicationDestinations } from "@/components/property-publication-destinations";
 import { PropertyAvailabilityConfirmation } from "@/components/property-availability-confirmation";
 import { PropertyLeadsSection } from "@/components/property-leads-section";
+import { SharePropertyDrawer } from "@/components/share-property-drawer";
+import { PropertySharesSection } from "@/components/share-history";
 import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
 import { sb, fmtMoney, isConfirmationOverdue } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,6 +43,7 @@ function PropertyDetailPage() {
   const { data: team = [] } = useTeamMembers();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const qc = useQueryClient();
   const deleteUpload = useDeleteUpload();
   const deleteProperty = useDeleteProperty();
@@ -144,7 +147,10 @@ function PropertyDetailPage() {
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
               )}
-              {canHardDelete ? (
+              <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5" /> Share
+              </Button>
+              {canHardDelete && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -152,10 +158,6 @@ function PropertyDetailPage() {
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Delete
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={handleShare}>
-                  <Share2 className="h-3.5 w-3.5" /> Share
                 </Button>
               )}
             </div>
@@ -331,10 +333,17 @@ function PropertyDetailPage() {
         </div>
 
         <PropertyLeadsSection propertyId={propertyId} />
+        <PropertySharesSection propertyId={propertyId} />
         <PropertyReferences propertyId={propertyId} />
         <PropertyMatches propertyId={propertyId} />
 
         <PropertyDrawer open={editOpen} onOpenChange={setEditOpen} property={property} />
+        <SharePropertyDrawer
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          property={property}
+          onSharePdf={handleShare}
+        />
         <ConfirmDialog
           open={confirmDelete}
           title="Permanently delete property?"

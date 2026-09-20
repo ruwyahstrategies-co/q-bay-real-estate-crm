@@ -77,9 +77,15 @@ export function useVerifyWhatsapp() {
   });
 }
 
+export type SendWhatsappInput = { lead_id?: string; to: string; message?: string; template_name?: string; template_language?: string; template_params?: string[] };
+
+/** Plain (non-hook) send through the caller's own WhatsApp connection; throws unless Meta accepted the message. */
+export function sendWhatsappMessage(input: SendWhatsappInput) {
+  return invoke<{ ok: true; message_id: string | null }>("whatsapp-send", input);
+}
+
 export function useSendWhatsapp() {
   return useMutation({
-    mutationFn: (input: { lead_id?: string; to: string; message?: string; template_name?: string; template_language?: string; template_params?: string[] }) =>
-      invoke<{ ok: true; message_id: string | null }>("whatsapp-send", input),
+    mutationFn: (input: SendWhatsappInput) => sendWhatsappMessage(input),
   });
 }

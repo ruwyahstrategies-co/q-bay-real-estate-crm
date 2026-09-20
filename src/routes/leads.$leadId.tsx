@@ -31,9 +31,10 @@ import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads
 import { usePipelineHistory } from "@/hooks/use-pipeline-history";
 import { fmtDate, fmtDateTime, fmtMoney, stageLabel, TRANSACTION_TIMEFRAME_LABELS } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
-import { useAreas } from "@/hooks/use-locations";
+import { useAreas, usePlaces } from "@/hooks/use-locations";
 import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
 import { CallTranscriptCard } from "@/components/call-transcript-card";
+import { LeadSharedPropertiesSection } from "@/components/share-history";
 import { useLeadAnalyses, useAnalyseLead } from "@/hooks/use-ai-analyses";
 import { useLeadReferences } from "@/hooks/use-references";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
@@ -81,6 +82,7 @@ function LeadProfilePage() {
   const { data: lead, isLoading } = useLead(leadId);
   const { data: team = [] } = useTeamMembers();
   const { data: areas = [] } = useAreas();
+  const { data: places = [] } = usePlaces();
   const { data: interactions = [] } = useInteractions({ leadId });
   const { data: tasks = [] } = useTasks({ leadId });
   const { data: files = [] } = useUploads({ leadId });
@@ -124,6 +126,9 @@ function LeadProfilePage() {
       : baseIntentScore;
   const preferredAreaName = lead?.preferred_area_id
     ? areas.find((a) => a.id === lead.preferred_area_id)?.name
+    : null;
+  const preferredPlaceName = lead?.preferred_place_id
+    ? places.find((p) => p.id === lead.preferred_place_id)?.name
     : null;
   const isAnalysing = analyseMut.isPending || !!processingAnalysis;
   const handleAnalyse = async () => {
@@ -290,7 +295,11 @@ function LeadProfilePage() {
                   {fmtMoney(lead.budget_max, lead.currency)}
                 </dd>
                 <dt className="text-muted-foreground">Preferred area</dt>
-                <dd>{preferredAreaName ?? lead.preferred_locations?.join(", ") ?? "-"}</dd>
+                <dd>
+                  {preferredAreaName
+                    ? [preferredAreaName, preferredPlaceName].filter(Boolean).join(" / ")
+                    : (lead.preferred_locations?.join(", ") ?? "-")}
+                </dd>
                 <dt className="text-muted-foreground">Types</dt>
                 <dd>{lead.preferred_property_types?.join(", ") ?? "-"}</dd>
                 <dt className="text-muted-foreground">Purpose</dt>
@@ -320,6 +329,9 @@ function LeadProfilePage() {
                 </p>
               </Card>
             )}
+            <div className="md:col-span-2">
+              <LeadSharedPropertiesSection leadId={lead.id} />
+            </div>
             <LeadPropertyMatches leadId={lead.id} />
           </div>
         )}

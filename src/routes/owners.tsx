@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Contact2, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -19,6 +19,7 @@ import {
   useOwnerProperties,
 } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useRowSelection } from "@/hooks/use-row-selection";
 import { SearchableSelectField } from "@/components/select-field";
 import type { Owner } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,11 @@ function OwnersPage() {
   const [edit, setEdit] = useState<Owner | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Owner | null>(null);
   const { data: owners = [] } = useOwners(search);
+  const selection = useRowSelection(owners.map((o) => o.id));
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = selection.someSelected;
+  }, [selection.someSelected]);
   const del = useDeleteOwner();
   const { can } = usePermissions();
   const canCreate = can("owners", "create");
@@ -73,7 +79,25 @@ function OwnersPage() {
             className={cn(inputCls, "w-full max-w-xs")}
           />
         </div>
+        {selection.count > 0 && (
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
+            <span>{selection.count} selected</span>
+            <button className="ml-auto text-muted-foreground hover:underline" onClick={selection.clear}>
+              Clear
+            </button>
+          </div>
+        )}
         <DataTable
+          leadingHeader={
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              aria-label="Select all owners"
+              checked={selection.allSelected}
+              disabled={owners.length === 0}
+              onChange={(e) => selection.toggleAll(e.target.checked)}
+            />
+          }
           columns={["Code", "Name", "Type", "Company", "Phone", "Email", "Actions"]}
           empty={
             <EmptyState
@@ -87,6 +111,8 @@ function OwnersPage() {
             <OwnerRow
               key={o.id}
               owner={o}
+              selected={selection.selected.has(o.id)}
+              onSelectedChange={(checked) => selection.toggle(o.id, checked)}
               canEdit={canEdit}
               canDelete={canDelete}
               onOpen={() =>
@@ -128,6 +154,8 @@ function OwnersPage() {
 
 function OwnerRow({
   owner,
+  selected,
+  onSelectedChange,
   canEdit,
   canDelete,
   onOpen,
@@ -135,6 +163,8 @@ function OwnerRow({
   onDelete,
 }: {
   owner: Owner;
+  selected: boolean;
+  onSelectedChange: (checked: boolean) => void;
   canEdit: boolean;
   canDelete: boolean;
   onOpen: () => void;
@@ -149,7 +179,7 @@ function OwnerRow({
       aria-label={`Open ${owner.name}`}
       className="cursor-pointer border-b border-border last:border-0 hover:bg-background/60 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest("button,a")) return;
+        if ((e.target as HTMLElement).closest("button,a,input,label")) return;
         onOpen();
       }}
       onKeyDown={(e) => {
@@ -160,6 +190,14 @@ function OwnerRow({
         }
       }}
     >
+      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          aria-label={`Select ${owner.name}`}
+          checked={selected}
+          onChange={(e) => onSelectedChange(e.target.checked)}
+        />
+      </td>
       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{owner.code ?? "-"}</td>
       <td className="px-4 py-3 text-sm font-medium">
         <Link to="/owners/$ownerId" params={{ ownerId: owner.id }} className="hover:underline">

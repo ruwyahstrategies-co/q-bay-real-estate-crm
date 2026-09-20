@@ -6,11 +6,14 @@ export function DataTable({
   children,
   empty,
   className,
+  leadingHeader,
 }: {
   columns: string[];
   children?: ReactNode;
   empty?: ReactNode;
   className?: string;
+  /** Optional first header cell (for example a select-all checkbox). */
+  leadingHeader?: ReactNode;
 }) {
   const hasRows = !!children;
   return (
@@ -24,6 +27,7 @@ export function DataTable({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-background/60">
+              {leadingHeader !== undefined && <th className="w-10 px-4 py-3 text-left">{leadingHeader}</th>}
               {columns.map((c) => (
                 <th
                   key={c}

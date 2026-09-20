@@ -146,6 +146,7 @@ export function useConvertSubmission() {
           description: submission.description,
           country_id: submission.country_id,
           area_id: submission.area_id,
+          place_id: submission.place_id,
           development_id: submission.development_id,
           owner_id: submission.owner_id,
           assigned_agent_id: assignedAgentId,

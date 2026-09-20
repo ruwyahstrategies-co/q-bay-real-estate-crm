@@ -25,6 +25,9 @@ import {
   useUpdateCountry,
   useCreateArea,
   useUpdateArea,
+  usePlaces,
+  useCreatePlace,
+  useUpdatePlace,
 } from "@/hooks/use-locations";
 import {
   useScheduledNotifications,
@@ -514,6 +517,80 @@ function MapboxSection({ canManage }: { canManage: boolean }) {
   );
 }
 
+function slugFor(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || `item-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function locationErrorMessage(e: unknown, what: string): string {
+  const err = e as { code?: string; message?: string };
+  if (err?.code === "23505") return `That ${what} already exists here.`;
+  return err?.message ?? "Something went wrong";
+}
+
+/** One row: the label selects it (when selectable), the status pill toggles active. */
+function LocationRow({
+  label,
+  selected,
+  isActive,
+  canManage,
+  onSelect,
+  onToggleActive,
+  extra,
+}: {
+  label: string;
+  selected: boolean;
+  isActive: boolean;
+  canManage: boolean;
+  onSelect?: () => void;
+  onToggleActive: () => void;
+  extra?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border bg-background px-3 py-1.5",
+        selected ? "border-foreground ring-1 ring-foreground/30" : "border-border",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        {onSelect ? (
+          <button
+            type="button"
+            aria-pressed={selected}
+            className={cn("flex-1 py-0.5 text-left text-xs", selected && "font-semibold")}
+            onClick={onSelect}
+          >
+            {label}
+            {selected && (
+              <span className="ml-2 text-[10px] font-normal text-muted-foreground">Selected</span>
+            )}
+          </button>
+        ) : (
+          <span className="flex-1 py-0.5 text-xs">{label}</span>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!canManage}
+            onClick={onToggleActive}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px]",
+              isActive ? "bg-pastel-green" : "bg-muted text-muted-foreground",
+            )}
+          >
+            {isActive ? "Active" : "Inactive"}
+          </button>
+          {extra}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LocationsSection({ canManage }: { canManage: boolean }) {
   const { data: countries = [] } = useCountries();
   const createCountry = useCreateCountry();
@@ -525,9 +602,22 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
   const updateArea = useUpdateArea();
   const [newArea, setNewArea] = useState("");
   const [editingArea, setEditingArea] = useState<string | null>(null);
+  const [selectedArea, setSelectedArea] = useState<string>("");
+  const { data: places = [] } = usePlaces(selectedArea || undefined);
+  const createPlace = useCreatePlace();
+  const updatePlace = useUpdatePlace();
+  const [newPlace, setNewPlace] = useState("");
+
+  const countryName = countries.find((c) => c.id === selectedCountry)?.name;
+  const areaName = areas.find((a) => a.id === selectedArea)?.name;
 
   return (
     <div className="mt-4 max-w-2xl space-y-5 text-sm">
+      <p className="text-xs text-muted-foreground">
+        Locations work in three levels: Country, then Area, then Place. Select a row to see what
+        sits inside it.
+      </p>
+
       <div>
         <div className="mb-2 flex items-center gap-2">
           <MapPinned className="h-4 w-4" />
@@ -535,29 +625,21 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
         </div>
         <div className="space-y-1.5">
           {countries.map((c) => (
-            <div
+            <LocationRow
               key={c.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5"
-            >
-              <button
-                className={cn("text-xs", selectedCountry === c.id && "font-semibold")}
-                onClick={() => setSelectedCountry(c.id)}
-              >
-                {c.name}
-              </button>
-              <button
-                disabled={!canManage}
-                onClick={() =>
-                  updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })
-                }
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px]",
-                  c.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground",
-                )}
-              >
-                {c.is_active ? "Active" : "Inactive"}
-              </button>
-            </div>
+              label={c.name}
+              selected={selectedCountry === c.id}
+              isActive={c.is_active}
+              canManage={canManage}
+              onSelect={() => {
+                setSelectedCountry(c.id);
+                setSelectedArea("");
+                setEditingArea(null);
+              }}
+              onToggleActive={() =>
+                updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })
+              }
+            />
           ))}
         </div>
         {canManage && (
@@ -576,12 +658,12 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                 try {
                   await createCountry.mutateAsync({
                     name,
-                    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                    slug: slugFor(name),
                     display_order: countries.length,
                   });
                   setNewCountry("");
                 } catch (e) {
-                  toast.error((e as Error).message);
+                  toast.error(locationErrorMessage(e, "country"));
                 }
               }}
             >
@@ -593,42 +675,41 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
 
       {selectedCountry && (
         <div>
-          <h4 className="mb-2 font-semibold">
-            Areas in {countries.find((c) => c.id === selectedCountry)?.name}
-          </h4>
+          <h4 className="mb-2 font-semibold">Areas in {countryName}</h4>
+          {areas.length === 0 && (
+            <p className="mb-2 text-xs text-muted-foreground">No areas in {countryName} yet.</p>
+          )}
           <div className="space-y-1.5">
             {areas.map((a) => (
-              <div key={a.id} className="rounded-lg border border-border bg-background px-3 py-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs">{a.name}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={!canManage}
-                      onClick={() =>
-                        updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })
-                      }
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[11px]",
-                        a.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {a.is_active ? "Active" : "Inactive"}
-                    </button>
-                    {canManage && (
+              <div key={a.id}>
+                <LocationRow
+                  label={a.name}
+                  selected={selectedArea === a.id}
+                  isActive={a.is_active}
+                  canManage={canManage}
+                  onSelect={() => setSelectedArea(a.id)}
+                  onToggleActive={() =>
+                    updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })
+                  }
+                  extra={
+                    canManage ? (
                       <button
+                        type="button"
                         className="text-[11px] text-muted-foreground hover:text-foreground"
                         onClick={() => setEditingArea(editingArea === a.id ? null : a.id)}
                       >
                         {editingArea === a.id ? "Close" : "Website content"}
                       </button>
-                    )}
-                  </div>
-                </div>
+                    ) : undefined
+                  }
+                />
                 {editingArea === a.id && (
-                  <AreaContentEditor
-                    area={a}
-                    onSave={(patch) => updateArea.mutate({ id: a.id, patch })}
-                  />
+                  <div className="mt-1 rounded-lg border border-border bg-background px-3 py-1.5">
+                    <AreaContentEditor
+                      area={a}
+                      onSave={(patch) => updateArea.mutate({ id: a.id, patch })}
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -650,12 +731,65 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                     await createArea.mutateAsync({
                       country_id: selectedCountry,
                       name,
-                      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                      slug: slugFor(name),
                       display_order: areas.length,
                     });
                     setNewArea("");
                   } catch (e) {
-                    toast.error((e as Error).message);
+                    toast.error(locationErrorMessage(e, "area"));
+                  }
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedCountry && selectedArea && (
+        <div>
+          <h4 className="mb-2 font-semibold">Places in {areaName}</h4>
+          {places.length === 0 && (
+            <p className="mb-2 text-xs text-muted-foreground">No places in {areaName} yet.</p>
+          )}
+          <div className="space-y-1.5">
+            {places.map((p) => (
+              <LocationRow
+                key={p.id}
+                label={p.name}
+                selected={false}
+                isActive={p.is_active}
+                canManage={canManage}
+                onToggleActive={() =>
+                  updatePlace.mutate({ id: p.id, patch: { is_active: !p.is_active } })
+                }
+              />
+            ))}
+          </div>
+          {canManage && (
+            <div className="mt-2 flex gap-2">
+              <input
+                className={inputCls}
+                value={newPlace}
+                onChange={(e) => setNewPlace(e.target.value)}
+                placeholder="New place..."
+              />
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const name = newPlace.trim();
+                  if (!name) return;
+                  try {
+                    await createPlace.mutateAsync({
+                      area_id: selectedArea,
+                      name,
+                      slug: slugFor(name),
+                      display_order: places.length,
+                    });
+                    setNewPlace("");
+                  } catch (e) {
+                    toast.error(locationErrorMessage(e, "place"));
                   }
                 }}
               >

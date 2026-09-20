@@ -24,7 +24,7 @@ import {
 } from "@/hooks/use-submissions";
 import { getR2SignedReadUrl } from "@/lib/r2";
 import { useDevelopments } from "@/hooks/use-developments";
-import { useAreas } from "@/hooks/use-locations";
+import { useAreas, usePlaces } from "@/hooks/use-locations";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -268,6 +268,7 @@ export function SubmissionDetailDrawer({
   const convert = useConvertSubmission();
   const { data: developments = [] } = useDevelopments({ publishedOnly: false });
   const { data: areas = [] } = useAreas();
+  const { data: places = [] } = usePlaces();
   const { data: r2Uploads = [] } = useSubmissionUploads(submission?.id);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<PropertySubmission>>({});
@@ -300,6 +301,7 @@ export function SubmissionDetailDrawer({
           property_type: form.property_type,
           purpose: form.purpose,
           area_id: form.area_id,
+          place_id: form.area_id ? form.place_id : null,
           custom_area: form.custom_area,
           location: form.location,
           available_from: form.available_from,
@@ -415,7 +417,12 @@ export function SubmissionDetailDrawer({
               <SearchableSelectField
                 value={form.area_id ?? null}
                 onChange={(v) =>
-                  setForm((p) => ({ ...p, area_id: v, custom_area: v ? null : p.custom_area }))
+                  setForm((p) => ({
+                    ...p,
+                    area_id: v,
+                    place_id: v === p.area_id ? p.place_id : null,
+                    custom_area: v ? null : p.custom_area,
+                  }))
                 }
                 options={areas
                   .filter((a) => a.is_active)
@@ -423,6 +430,18 @@ export function SubmissionDetailDrawer({
                 placeholder="Select a canonical area"
                 emptyLabel="No canonical area"
                 searchPlaceholder="Search areas..."
+              />
+            </Field>
+            <Field label="Place (optional)">
+              <SelectField
+                value={form.place_id ?? null}
+                onChange={(v) => setForm((p) => ({ ...p, place_id: v }))}
+                options={places
+                  .filter((pl) => pl.area_id === form.area_id && (pl.is_active || pl.id === form.place_id))
+                  .map((pl) => ({ value: pl.id, label: pl.name }))}
+                placeholder={form.area_id ? "Select place" : "Select an area first"}
+                emptyLabel="No place"
+                disabled={!form.area_id}
               />
             </Field>
             <Field label="Custom area (if not in the list above)">
@@ -599,6 +618,14 @@ export function SubmissionDetailDrawer({
                     : submission.custom_area
                       ? `${submission.custom_area} (custom)`
                       : null
+                }
+              />
+              <Info
+                label="Place"
+                value={
+                  submission.place_id
+                    ? (places.find((pl) => pl.id === submission.place_id)?.name ?? null)
+                    : null
                 }
               />
               <Info label="Location" value={submission.location} />

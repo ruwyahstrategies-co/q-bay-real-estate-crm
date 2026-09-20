@@ -15,7 +15,7 @@ import { GoogleMapsLinkField } from "@/components/google-maps-link-field";
 import { HeroImageField } from "@/components/hero-image-field";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
-import { useCountries, useAreas } from "@/hooks/use-locations";
+import { CountryAreaPlaceFields } from "@/components/location-fields";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import {
@@ -141,15 +141,14 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
   const create = useCreateDevelopment();
   const update = useUpdateDevelopment();
   const isEdit = !!development?.id;
-  const { data: countries = [] } = useCountries();
   const { data: owners = [] } = useOwners();
   const { data: team = [] } = useTeamMembers();
 
   const [name, setName] = useState(development?.name ?? "");
   const [developer, setDeveloper] = useState(development?.developer ?? "");
   const [countryId, setCountryId] = useState(development?.country_id ?? "");
-  const { data: areas = [] } = useAreas(countryId || undefined);
   const [areaId, setAreaId] = useState(development?.area_id ?? "");
+  const [placeId, setPlaceId] = useState(development?.place_id ?? "");
   const [ownerId, setOwnerId] = useState(development?.owner_id ?? "");
   const [agentId, setAgentId] = useState(development?.assigned_agent_id ?? "");
   const [priceFrom, setPriceFrom] = useState(development?.price_from?.toString() ?? "");
@@ -169,6 +168,7 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
     setDeveloper(development?.developer ?? "");
     setCountryId(development?.country_id ?? "");
     setAreaId(development?.area_id ?? "");
+    setPlaceId(development?.place_id ?? "");
     setOwnerId(development?.owner_id ?? "");
     setAgentId(development?.assigned_agent_id ?? "");
     setPriceFrom(development?.price_from?.toString() ?? "");
@@ -194,6 +194,7 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
       developer: developer || null,
       country_id: countryId || null,
       area_id: areaId || null,
+      place_id: placeId || null,
       owner_id: ownerId || null,
       assigned_agent_id: agentId || null,
       price_from: priceFrom ? Number(priceFrom) : null,
@@ -233,14 +234,10 @@ function DevelopmentDrawer({ open, onOpenChange, development }: { open: boolean;
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Owner</span>
           <SearchableSelectField value={ownerId} onChange={(v) => setOwnerId(v ?? "")} options={owners.map((o) => ({ value: o.id, label: o.name }))} placeholder="Select owner" searchPlaceholder="Search owners..." />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Country</span>
-          <SelectField value={countryId} onChange={(v) => { setCountryId(v ?? ""); setAreaId(""); }} options={countries.map((c) => ({ value: c.id, label: c.name }))} placeholder="Select country" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Area</span>
-          <SelectField value={areaId} onChange={(v) => setAreaId(v ?? "")} options={areas.map((a) => ({ value: a.id, label: a.name }))} placeholder="Select area" disabled={!countryId} />
-        </label>
+        <CountryAreaPlaceFields
+          value={{ countryId: countryId || null, areaId: areaId || null, placeId: placeId || null }}
+          onChange={(l) => { setCountryId(l.countryId ?? ""); setAreaId(l.areaId ?? ""); setPlaceId(l.placeId ?? ""); }}
+        />
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Assigned agent</span>
           <SearchableSelectField value={agentId} onChange={(v) => setAgentId(v ?? "")} options={team.map((m) => ({ value: m.id, label: m.full_name }))} placeholder="Select agent" searchPlaceholder="Search agents..." />

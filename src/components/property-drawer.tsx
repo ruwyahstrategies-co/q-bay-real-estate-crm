@@ -13,7 +13,7 @@ import {
   useUpdateProperty,
   usePropertyReferencePreview,
 } from "@/hooks/use-properties";
-import { useCountries, useAreas } from "@/hooks/use-locations";
+import { CountryAreaPlaceFields } from "./location-fields";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -97,6 +97,7 @@ function initialForm(property: Property | null | undefined): FormState {
     purpose: property?.purpose ?? "sale",
     country_id: property?.country_id ?? null,
     area_id: property?.area_id ?? null,
+    place_id: property?.place_id ?? null,
     development_id: property?.development_id ?? null,
     owner_id: property?.owner_id ?? null,
     assigned_agent_id: property?.assigned_agent_id ?? null,
@@ -137,13 +138,11 @@ export function PropertyDrawer({
   const create = useCreateProperty();
   const update = useUpdateProperty();
   const isEdit = !!property?.id;
-  const { data: countries = [] } = useCountries();
   const { data: developments = [] } = useDevelopments();
   const { data: owners = [] } = useOwners();
   const { data: team = [] } = useTeamMembers();
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
-  const { data: areas = [] } = useAreas(form.country_id || undefined);
   const { data: referencePreview } = usePropertyReferencePreview(
     form.owner_id,
     form.assigned_agent_id,
@@ -200,6 +199,7 @@ export function PropertyDrawer({
       purpose: form.purpose || "sale",
       country_id: form.country_id || null,
       area_id: form.area_id || null,
+      place_id: form.place_id || null,
       development_id: form.development_id || null,
       owner_id: form.owner_id || null,
       assigned_agent_id: form.assigned_agent_id || null,
@@ -353,26 +353,10 @@ export function PropertyDrawer({
             allowClear={false}
           />
         </Field>
-        <Field label="Country">
-          <SelectField
-            value={form.country_id}
-            onChange={(v) => {
-              set("country_id", v);
-              set("area_id", null);
-            }}
-            options={countries.map((c) => ({ value: c.id, label: c.name }))}
-            placeholder="Select country"
-          />
-        </Field>
-        <Field label="Area">
-          <SelectField
-            value={form.area_id}
-            onChange={(v) => set("area_id", v)}
-            options={areas.map((a) => ({ value: a.id, label: a.name }))}
-            placeholder="Select area"
-            disabled={!form.country_id}
-          />
-        </Field>
+        <CountryAreaPlaceFields
+          value={{ countryId: form.country_id ?? null, areaId: form.area_id ?? null, placeId: form.place_id ?? null }}
+          onChange={(l) => setForm((p) => ({ ...p, country_id: l.countryId, area_id: l.areaId, place_id: l.placeId }))}
+        />
         <Field label="Development">
           <SearchableSelectField
             value={form.development_id}

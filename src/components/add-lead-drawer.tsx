@@ -11,7 +11,7 @@ import { useProperties } from "@/hooks/use-properties";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import { useDevelopments } from "@/hooks/use-developments";
-import { useAreas } from "@/hooks/use-locations";
+import { CountryAreaPlaceFields } from "./location-fields";
 import {
   LEAD_CLASSIFICATIONS,
   LEAD_CLASSIFICATION_LABELS,
@@ -73,10 +73,6 @@ export function AddLeadDrawer({
   const { data: properties = [] } = useProperties({ status: "active" });
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
-  const { data: areas = [] } = useAreas();
-  const activeAreaOptions = areas
-    .filter((a) => a.is_active)
-    .map((a) => ({ value: a.id, label: a.name }));
   const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
@@ -97,7 +93,9 @@ export function AddLeadDrawer({
     budget_max: lead?.budget_max ?? null,
     currency: lead?.currency ?? "QAR",
     preferred_locations_str: toCsv(lead?.preferred_locations),
+    preferred_country_id: lead?.preferred_country_id ?? null,
     preferred_area_id: lead?.preferred_area_id ?? null,
+    preferred_place_id: lead?.preferred_place_id ?? null,
     preferred_property_types: lead?.preferred_property_types ?? null,
     purchase_purpose: lead?.purchase_purpose ?? "",
     buying_timeline: lead?.buying_timeline ?? "",
@@ -130,7 +128,9 @@ export function AddLeadDrawer({
       budget_max: lead?.budget_max ?? null,
       currency: lead?.currency ?? "QAR",
       preferred_locations_str: toCsv(lead?.preferred_locations),
+      preferred_country_id: lead?.preferred_country_id ?? null,
       preferred_area_id: lead?.preferred_area_id ?? null,
+      preferred_place_id: lead?.preferred_place_id ?? null,
       preferred_property_types: lead?.preferred_property_types ?? null,
       purchase_purpose: lead?.purchase_purpose ?? "",
       buying_timeline: lead?.buying_timeline ?? "",
@@ -180,7 +180,9 @@ export function AddLeadDrawer({
           : null,
       currency: form.currency || "QAR",
       preferred_locations: fromCsv(form.preferred_locations_str ?? ""),
+      preferred_country_id: form.preferred_country_id || null,
       preferred_area_id: form.preferred_area_id || null,
+      preferred_place_id: form.preferred_place_id || null,
       preferred_property_types: form.preferred_property_types ?? null,
       purchase_purpose: form.purchase_purpose || null,
       buying_timeline: form.buying_timeline || null,
@@ -429,16 +431,21 @@ export function AddLeadDrawer({
             onChange={(e) => set("preferred_language", e.target.value)}
           />
         </Field>
-        <Field label="Preferred location">
-          <SearchableSelectField
-            value={form.preferred_area_id}
-            onChange={(v) => set("preferred_area_id", v)}
-            options={activeAreaOptions}
-            placeholder="Select area"
-            emptyLabel="No preferred area"
-            searchPlaceholder="Search areas..."
-          />
-        </Field>
+        <CountryAreaPlaceFields
+          value={{
+            countryId: form.preferred_country_id ?? null,
+            areaId: form.preferred_area_id ?? null,
+            placeId: form.preferred_place_id ?? null,
+          }}
+          onChange={(l) =>
+            setForm((p) => ({
+              ...p,
+              preferred_country_id: l.countryId,
+              preferred_area_id: l.areaId,
+              preferred_place_id: l.placeId,
+            }))
+          }
+        />
         <Field label="Other preferred locations (legacy free text, comma separated)" full>
           <input
             className={inputCls}

@@ -445,6 +445,7 @@ export type Database = {
           organisation_id: string | null
           owner_id: string | null
           payment_plan: Json | null
+          place_id: string | null
           price_from: number | null
           price_to: number | null
           property_types: string[] | null
@@ -479,6 +480,7 @@ export type Database = {
           organisation_id?: string | null
           owner_id?: string | null
           payment_plan?: Json | null
+          place_id?: string | null
           price_from?: number | null
           price_to?: number | null
           property_types?: string[] | null
@@ -513,6 +515,7 @@ export type Database = {
           organisation_id?: string | null
           owner_id?: string | null
           payment_plan?: Json | null
+          place_id?: string | null
           price_from?: number | null
           price_to?: number | null
           property_types?: string[] | null
@@ -558,6 +561,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -1071,6 +1081,7 @@ export type Database = {
           preferred_country_id: string | null
           preferred_language: string | null
           preferred_locations: string[] | null
+          preferred_place_id: string | null
           preferred_property_types: string[] | null
           priority: string | null
           purchase_purpose: string | null
@@ -1111,6 +1122,7 @@ export type Database = {
           preferred_country_id?: string | null
           preferred_language?: string | null
           preferred_locations?: string[] | null
+          preferred_place_id?: string | null
           preferred_property_types?: string[] | null
           priority?: string | null
           purchase_purpose?: string | null
@@ -1151,6 +1163,7 @@ export type Database = {
           preferred_country_id?: string | null
           preferred_language?: string | null
           preferred_locations?: string[] | null
+          preferred_place_id?: string | null
           preferred_property_types?: string[] | null
           priority?: string | null
           purchase_purpose?: string | null
@@ -1203,6 +1216,13 @@ export type Database = {
             columns: ["preferred_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_preferred_place_id_fkey"
+            columns: ["preferred_place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -1805,6 +1825,47 @@ export type Database = {
           },
         ]
       }
+      permission_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_presets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_history: {
         Row: {
           changed_at: string
@@ -1897,6 +1958,47 @@ export type Database = {
           },
         ]
       }
+      places: {
+        Row: {
+          area_id: string
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "places_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           amenities: string[] | null
@@ -1948,6 +2050,7 @@ export type Database = {
           outdoor_majlis: boolean | null
           owner_id: string | null
           parking_spaces: number | null
+          place_id: string | null
           plot_size: number | null
           price: number | null
           property_finder_error: string | null
@@ -2019,6 +2122,7 @@ export type Database = {
           outdoor_majlis?: boolean | null
           owner_id?: string | null
           parking_spaces?: number | null
+          place_id?: string | null
           plot_size?: number | null
           price?: number | null
           property_finder_error?: string | null
@@ -2090,6 +2194,7 @@ export type Database = {
           outdoor_majlis?: boolean | null
           owner_id?: string | null
           parking_spaces?: number | null
+          place_id?: string | null
           plot_size?: number | null
           price?: number | null
           property_finder_error?: string | null
@@ -2159,6 +2264,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2559,6 +2671,80 @@ export type Database = {
         }
         Relationships: []
       }
+      property_shares: {
+        Row: {
+          channel: string
+          created_at: string
+          delivery_error: string | null
+          external_message_id: string | null
+          id: string
+          lead_id: string
+          message: string | null
+          property_id: string
+          share_batch_id: string
+          shared_at: string
+          shared_by: string | null
+          status: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          delivery_error?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id: string
+          message?: string | null
+          property_id: string
+          share_batch_id: string
+          shared_at?: string
+          shared_by?: string | null
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivery_error?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id?: string
+          message?: string | null
+          property_id?: string
+          share_batch_id?: string
+          shared_at?: string
+          shared_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_shares_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_shares_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_shares_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_submissions: {
         Row: {
           area_id: string | null
@@ -2585,6 +2771,7 @@ export type Database = {
           owner_id_number: string | null
           parking_spaces: number | null
           phone: string | null
+          place_id: string | null
           price: number | null
           property_type: string | null
           purpose: string | null
@@ -2625,6 +2812,7 @@ export type Database = {
           owner_id_number?: string | null
           parking_spaces?: number | null
           phone?: string | null
+          place_id?: string | null
           price?: number | null
           property_type?: string | null
           purpose?: string | null
@@ -2665,6 +2853,7 @@ export type Database = {
           owner_id_number?: string | null
           parking_spaces?: number | null
           phone?: string | null
+          place_id?: string | null
           price?: number | null
           property_type?: string | null
           purpose?: string | null
@@ -2721,6 +2910,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_submissions_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -3159,10 +3355,12 @@ export type Database = {
           avatar_url: string | null
           code: string | null
           created_at: string
+          date_of_birth: string | null
           email: string | null
           full_name: string
           id: string
           is_active: boolean
+          joining_date: string | null
           notes: string | null
           organisation_id: string | null
           permissions: Json | null
@@ -3176,10 +3374,12 @@ export type Database = {
           avatar_url?: string | null
           code?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email?: string | null
           full_name: string
           id?: string
           is_active?: boolean
+          joining_date?: string | null
           notes?: string | null
           organisation_id?: string | null
           permissions?: Json | null
@@ -3193,10 +3393,12 @@ export type Database = {
           avatar_url?: string | null
           code?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
+          joining_date?: string | null
           notes?: string | null
           organisation_id?: string | null
           permissions?: Json | null

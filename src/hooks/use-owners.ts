@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sb, type OwnerInsert, type OwnerUpdate } from "@/lib/db";
-import { OWNER_COLUMNS, attachOwnerPhones, type SafeOwner } from "@/lib/owner-privacy";
+import { OWNER_COLUMNS, attachOwnerPrivateFields, type SafeOwner } from "@/lib/owner-privacy";
 
 export const ownerKeys = {
   all: ["owners"] as const,
@@ -16,7 +16,7 @@ export function useOwners(search = "") {
       if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
       const { data, error } = await q;
       if (error) throw error;
-      return attachOwnerPhones((data ?? []) as never);
+      return attachOwnerPrivateFields((data ?? []) as never);
     },
   });
 }
@@ -29,7 +29,7 @@ export function useOwner(id: string | undefined) {
       const { data, error } = await sb.from("owners").select(OWNER_COLUMNS).eq("id", id!).maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      const [owner] = await attachOwnerPhones([data as never]);
+      const [owner] = await attachOwnerPrivateFields([data as never]);
       return owner;
     },
   });

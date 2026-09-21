@@ -131,7 +131,7 @@ export function useDeleteLead() {
 export function useConvertLeadToOwner() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (lead: Lead): Promise<Omit<Owner, "phone">> => {
+    mutationFn: async (lead: Lead): Promise<Omit<Owner, "phone" | "id_number">> => {
       if (lead.converted_owner_id) {
         const { data, error } = await sb
           .from("owners")

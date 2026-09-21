@@ -2,43 +2,63 @@ import { sb } from "@/lib/db";
 import type { Owner } from "@/lib/db";
 
 /**
- * Every owners column except phone. The database no longer lets client roles read
- * owners.phone directly, so any query against owners must list columns explicitly
- * (select("*") is rejected) and obtain phones through get_owner_phones().
+ * Every owners column except the private ones (phone, id_number). The database does not
+ * let client roles read those directly, so any query against owners must list columns
+ * explicitly (select("*") is rejected) and obtain private fields through the RPCs below.
  */
 export const OWNER_COLUMNS =
-  "id, name, company, email, notes, created_at, updated_at, code, is_developer, address, assigned_agent_id, source_lead_id, is_demo, id_number";
+  "id, name, company, email, notes, created_at, updated_at, code, is_developer, address, assigned_agent_id, source_lead_id, is_demo";
 
 export const OWNER_PHONE_HIDDEN_LABEL = "Hidden";
 
-/** An owner row where phone is only populated when the caller is entitled to it. */
-export type SafeOwner = Owner & { phone_hidden: boolean };
+/**
+ * An owner row where phone and id_number are only populated when the caller is entitled
+ * to them. phone_hidden is true when the server withheld them.
+ */
+export type SafeOwner = Owner & { phone_hidden: boolean; id_number_hidden: boolean };
 
-type OwnerWithoutPhone = Omit<Owner, "phone">;
+type OwnerWithoutPrivate = Omit<Owner, "phone" | "id_number">;
 
-/** Fetches phones the caller may see. Owners the caller may not see are absent from the map. */
+const uniqueIds = (ids: string[]) => Array.from(new Set(ids.filter(Boolean)));
+
+/** Phones the caller may see. Owners the caller may not see are absent from the map. */
 export async function fetchOwnerPhones(ownerIds: string[]): Promise<Map<string, string | null>> {
-  const ids = Array.from(new Set(ownerIds.filter(Boolean)));
+  const ids = uniqueIds(ownerIds);
   const map = new Map<string, string | null>();
   if (ids.length === 0) return map;
-  // Cast until src/integrations/supabase/types.ts is regenerated to include this RPC.
-  const rpc = sb.rpc as unknown as (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: Error | null }>;
-  const { data, error } = await rpc.call(sb, "get_owner_phones", { _owner_ids: ids });
+  const { data, error } = await sb.rpc("get_owner_phones", { _owner_ids: ids });
   if (error) throw error;
-  for (const row of (data ?? []) as { owner_id: string; phone: string | null }[]) {
+  for (const row of data ?? []) {
     map.set(row.owner_id, row.phone);
   }
   return map;
 }
 
-export async function attachOwnerPhones(rows: OwnerWithoutPhone[]): Promise<SafeOwner[]> {
-  const phones = await fetchOwnerPhones(rows.map((r) => r.id));
-  return rows.map((r) => ({
-    ...r,
-    phone: phones.get(r.id) ?? null,
-    phone_hidden: !phones.has(r.id),
-  }));
+/** Phone and id_number the caller may see. Owners the caller may not see are absent. */
+export async function fetchOwnerPrivateFields(
+  ownerIds: string[],
+): Promise<Map<string, { phone: string | null; id_number: string | null }>> {
+  const ids = uniqueIds(ownerIds);
+  const map = new Map<string, { phone: string | null; id_number: string | null }>();
+  if (ids.length === 0) return map;
+  const { data, error } = await sb.rpc("get_owner_private_fields", { _owner_ids: ids });
+  if (error) throw error;
+  for (const row of data ?? []) {
+    map.set(row.owner_id, { phone: row.phone, id_number: row.id_number });
+  }
+  return map;
+}
+
+export async function attachOwnerPrivateFields(rows: OwnerWithoutPrivate[]): Promise<SafeOwner[]> {
+  const priv = await fetchOwnerPrivateFields(rows.map((r) => r.id));
+  return rows.map((r) => {
+    const p = priv.get(r.id);
+    return {
+      ...r,
+      phone: p?.phone ?? null,
+      id_number: p?.id_number ?? null,
+      phone_hidden: !p,
+      id_number_hidden: !p,
+    };
+  });
 }

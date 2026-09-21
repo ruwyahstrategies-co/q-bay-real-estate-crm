@@ -300,7 +300,7 @@ function OwnerDrawer({
       ...(phoneHidden ? {} : { phone: normalizePhone(phone) || null }),
       email: email || null,
       address: address || null,
-      id_number: idNumber || null,
+      ...(isEdit && owner?.id_number_hidden ? {} : { id_number: idNumber || null }),
       is_developer: isDeveloper,
       assigned_agent_id: assignedAgentId || null,
       notes: notes || null,
@@ -404,11 +404,21 @@ function OwnerDrawer({
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             ID number
           </span>
-          <input
-            className={inputCls}
-            value={idNumber ?? ""}
-            onChange={(e) => setIdNumber(e.target.value)}
-          />
+          {isEdit && owner?.id_number_hidden ? (
+            <input
+              className={cn(inputCls, "text-muted-foreground")}
+              value={OWNER_PHONE_HIDDEN_LABEL}
+              disabled
+              readOnly
+              aria-label="ID number hidden"
+            />
+          ) : (
+            <input
+              className={inputCls}
+              value={idNumber ?? ""}
+              onChange={(e) => setIdNumber(e.target.value)}
+            />
+          )}
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

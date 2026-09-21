@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { sb, PIPELINE_STAGES } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { leadsKeys } from "@/hooks/use-leads";
+import { phoneError } from "@/lib/phone";
 
 type Row = Record<string, string>;
 
@@ -173,7 +174,17 @@ export function LeadImporter({ open, onOpenChange }: { open: boolean; onOpenChan
         errors.push(`Row ${idx + 2}: missing full_name`);
         return;
       }
-      const phoneRaw = mapping.phone ? String(row[mapping.phone] ?? "").trim() : "";
+      const phoneRaw = mapping.phone
+        ? String(row[mapping.phone] ?? "")
+            .replace(/\s+/g, " ")
+            .trim()
+        : "";
+      const phoneProblem = phoneError(phoneRaw);
+      if (phoneProblem) {
+        invalid++;
+        errors.push(`Row ${idx + 2}: ${phoneProblem.toLowerCase()}`);
+        return;
+      }
       const emailRaw = mapping.email ? String(row[mapping.email] ?? "").trim() : "";
       const phoneNorm = normalisePhone(phoneRaw);
       const emailNorm = emailRaw.toLowerCase();

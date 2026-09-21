@@ -38,10 +38,13 @@ import { useDevelopments } from "@/hooks/use-developments";
 import {
   fmtMoney,
   fmtDate,
-  LEAD_CLASSIFICATIONS,
   LEAD_CLASSIFICATION_LABELS,
+  LEAD_INTENTS,
+  LEAD_INTENT_LABELS,
   LEAD_WORKFLOWS,
+  classificationsForIntent,
   type Lead,
+  type LeadIntent,
 } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
 import { useAreas } from "@/hooks/use-locations";
@@ -64,6 +67,7 @@ function LeadsPage() {
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<string | null>(null);
   const [agent, setAgent] = useState<string | null>(null);
+  const [intent, setIntent] = useState<LeadIntent>("sale");
   const [classification, setClassification] = useState<string | null>(null);
   const [workflow, setWorkflow] = useState<string | null>(null);
   const [developmentId, setDevelopmentId] = useState<string | null>(null);
@@ -79,6 +83,7 @@ function LeadsPage() {
     classification,
     workflow,
     developmentId,
+    intent,
   });
   const { data: team = [] } = useTeamMembers();
   const { data: developments = [] } = useDevelopments();
@@ -121,8 +126,8 @@ function LeadsPage() {
     <AppShell>
       <PermissionGate module="leads" action="view" page>
         <PageHeader
-          eyebrow="Buyers"
-          title="All Leads"
+          eyebrow={intent === "rent" ? "Renters" : "Buyers"}
+          title={intent === "rent" ? "Rent Leads" : "Sale Leads"}
           description="Centralised buyer database with intent, budget and stage."
           actions={
             <>
@@ -134,6 +139,7 @@ function LeadsPage() {
                     { key: "full_name", label: "Full name" },
                     { key: "phone", label: "Phone" },
                     { key: "email", label: "Email" },
+                    { key: "transaction_intent", label: "Sale / Rent" },
                     { key: "classification", label: "Classification" },
                     { key: "workflow", label: "Workflow" },
                     { key: "budget_min", label: "Budget min" },
@@ -170,6 +176,36 @@ function LeadsPage() {
           }
         />
 
+        <div
+          role="tablist"
+          aria-label="Lead intent"
+          className="mb-3 inline-flex items-center gap-1 rounded-xl border border-border bg-canvas p-1"
+        >
+          {LEAD_INTENTS.map((i) => (
+            <button
+              key={i}
+              role="tab"
+              type="button"
+              aria-selected={intent === i}
+              onClick={() => {
+                setIntent(i);
+                if (classification && !classificationsForIntent(i).includes(classification)) {
+                  setClassification(null);
+                }
+                setSelected(new Set());
+              }}
+              className={cn(
+                "h-8 min-w-[88px] rounded-lg px-4 text-xs font-semibold uppercase tracking-wide transition-colors",
+                intent === i
+                  ? "bg-qbay text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {LEAD_INTENT_LABELS[i]}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
           <div className="relative flex-1 min-w-[200px]">
             <input
@@ -198,7 +234,7 @@ function LeadsPage() {
           <SelectField
             value={classification}
             onChange={(v) => setClassification(v)}
-            options={LEAD_CLASSIFICATIONS.map((c) => ({
+            options={classificationsForIntent(intent).map((c) => ({
               value: c,
               label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
             }))}
@@ -455,7 +491,7 @@ function LeadsPage() {
           </div>
         )}
 
-        <AddLeadDrawer open={open} onOpenChange={setOpen} lead={editLead} />
+        <AddLeadDrawer open={open} onOpenChange={setOpen} lead={editLead} defaultIntent={intent} />
         <LeadImporter open={importerOpen} onOpenChange={setImporterOpen} />
         <BroadcastDialog
           open={broadcastOpen}

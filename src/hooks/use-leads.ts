@@ -16,10 +16,11 @@ export function useLeads(opts?: {
   classification?: string | null;
   workflow?: string | null;
   developmentId?: string | null;
+  intent?: "sale" | "rent" | null;
 }) {
-  const { search = "", stage = null, agent = null, status = "active", classification = null, workflow = null, developmentId = null } = opts ?? {};
+  const { search = "", stage = null, agent = null, status = "active", classification = null, workflow = null, developmentId = null, intent = null } = opts ?? {};
   return useQuery({
-    queryKey: leadsKeys.list({ search, stage, agent, status, classification, workflow, developmentId }),
+    queryKey: leadsKeys.list({ search, stage, agent, status, classification, workflow, developmentId, intent }),
     queryFn: async (): Promise<Lead[]> => {
       let q = sb.from("leads").select("*").order("created_at", { ascending: false });
       if (status !== "all") q = q.eq("status", status);
@@ -28,6 +29,7 @@ export function useLeads(opts?: {
       if (classification) q = q.eq("classification", classification);
       if (workflow) q = q.eq("workflow", workflow);
       if (developmentId) q = q.eq("development_id", developmentId);
+      if (intent) q = q.eq("transaction_intent", intent);
       if (search.trim()) {
         const term = `%${search.trim()}%`;
         q = q.or(`full_name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
@@ -140,6 +142,10 @@ export function useConvertLeadToOwner() {
           .single();
         if (error) throw error;
         return data;
+      }
+
+      if (!lead.phone || !lead.phone.trim()) {
+        throw new Error("Add a phone number to this lead before converting it to an owner.");
       }
 
       let developmentName: string | null = null;

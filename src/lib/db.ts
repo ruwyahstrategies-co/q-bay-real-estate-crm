@@ -132,6 +132,20 @@ export const LEAD_CLASSIFICATION_LABELS: Record<string, string> = {
   tenant: "Renter", // legacy value from earlier demo data, treated as an alias of "renter"
 };
 export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;
+
+/** Top-level lead split: what the lead wants to do. Stored in leads.transaction_intent. */
+export const LEAD_INTENTS = ["sale", "rent"] as const;
+export type LeadIntent = (typeof LEAD_INTENTS)[number];
+export const LEAD_INTENT_LABELS: Record<LeadIntent, string> = { sale: "Sale", rent: "Rent" };
+/**
+ * Classifications offered under each intent. Investor, Commercial and Property Owner are
+ * available under both; Buyer only makes sense for Sale and Renter only for Rent.
+ */
+export function classificationsForIntent(intent: LeadIntent): readonly string[] {
+  return intent === "rent"
+    ? ["renter", "investor", "commercial", "owner"]
+    : ["buyer", "investor", "commercial", "owner"];
+}
 export const PROPERTY_PURPOSES = [
   "sale",
   "rent",
@@ -345,6 +359,15 @@ export const UPLOAD_CATEGORIES = {
     accept: ".pdf,.docx,.jpg,.jpeg,.png,.webp",
     extensions: ["pdf", "docx", "jpg", "jpeg", "png", "webp"],
     maxMb: 200,
+  },
+  // Staff profile pictures live only in Cloudflare R2 (public media bucket). The Supabase
+  // bucket below is a required placeholder: R2_REQUIRED_CATEGORIES prevents any fallback to it.
+  staff_avatars: {
+    title: "Profile pictures",
+    bucket: "blog-images",
+    accept: ".jpg,.jpeg,.png,.webp",
+    extensions: ["jpg", "jpeg", "png", "webp"],
+    maxMb: 10,
   },
 } as const;
 

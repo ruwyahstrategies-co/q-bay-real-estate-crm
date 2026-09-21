@@ -12,10 +12,14 @@ import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import { useDevelopments } from "@/hooks/use-developments";
 import { CountryAreaPlaceFields } from "./location-fields";
+import { normalizePhone, phoneError } from "@/lib/phone";
 import {
-  LEAD_CLASSIFICATIONS,
   LEAD_CLASSIFICATION_LABELS,
+  LEAD_INTENTS,
+  LEAD_INTENT_LABELS,
   LEAD_WORKFLOWS,
+  classificationsForIntent,
+  type LeadIntent,
   TRANSACTION_TIMEFRAMES,
   TRANSACTION_TIMEFRAME_LABELS,
   type Lead,
@@ -62,10 +66,13 @@ export function AddLeadDrawer({
   open,
   onOpenChange,
   lead,
+  defaultIntent = "sale",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   lead?: Lead | null;
+  /** Pre-selects Sale or Rent for a new lead, matching the tab the user is on. */
+  defaultIntent?: LeadIntent;
 }) {
   const create = useCreateLead();
   const update = useUpdateLead();
@@ -105,7 +112,8 @@ export function AddLeadDrawer({
     lead_source: lead?.lead_source ?? "",
     pipeline_stage: lead?.pipeline_stage ?? "new_lead",
     assigned_agent_id: lead?.assigned_agent_id ?? null,
-    classification: lead?.classification ?? "buyer",
+    transaction_intent: lead?.transaction_intent ?? defaultIntent,
+    classification: lead?.classification ?? (defaultIntent === "rent" ? "renter" : "buyer"),
     workflow: lead?.workflow ?? "sales",
     development_id: lead?.development_id ?? null,
     telesales_outcome: lead?.telesales_outcome ?? "",
@@ -140,7 +148,8 @@ export function AddLeadDrawer({
       lead_source: lead?.lead_source ?? "",
       pipeline_stage: lead?.pipeline_stage ?? "new_lead",
       assigned_agent_id: lead?.assigned_agent_id ?? null,
-      classification: lead?.classification ?? "buyer",
+      transaction_intent: lead?.transaction_intent ?? defaultIntent,
+      classification: lead?.classification ?? (defaultIntent === "rent" ? "renter" : "buyer"),
       workflow: lead?.workflow ?? "sales",
       development_id: lead?.development_id ?? null,
       telesales_outcome: lead?.telesales_outcome ?? "",
@@ -164,9 +173,19 @@ export function AddLeadDrawer({
       toast.error("Full name is required");
       return;
     }
+    // Phone is mandatory for new leads and whenever an existing phone is edited. A legacy lead
+    // saved without one can still be edited for other fields.
+    const hadPhone = !!normalizePhone(lead?.phone);
+    if (!isEdit || hadPhone || normalizePhone(form.phone)) {
+      const err = phoneError(form.phone);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     const payload = {
       full_name: name,
-      phone: form.phone || null,
+      phone: normalizePhone(form.phone) || null,
       email: form.email || null,
       nationality: form.nationality || null,
       preferred_language: form.preferred_language || null,
@@ -192,6 +211,7 @@ export function AddLeadDrawer({
       lead_source: form.lead_source || null,
       pipeline_stage: form.pipeline_stage || "new_lead",
       assigned_agent_id: form.assigned_agent_id || null,
+      transaction_intent: (form.transaction_intent as LeadIntent) || "sale",
       classification: form.classification || "buyer",
       workflow: form.workflow || "sales",
       development_id: form.development_id || null,
@@ -254,19 +274,41 @@ export function AddLeadDrawer({
             required
           />
         </Field>
-        <Field label="Phone number">
+        <Field label="Phone number *">
           <input
             className={inputCls}
+            type="tel"
             placeholder="+974..."
             value={form.phone ?? ""}
             onChange={(e) => set("phone", e.target.value)}
+            required={!isEdit || !!normalizePhone(lead?.phone)}
+          />
+        </Field>
+        <Field label="Sale or Rent">
+          <SelectField
+            value={form.transaction_intent ?? "sale"}
+            onChange={(v) => {
+              const next = ((v ?? "sale") as LeadIntent) || "sale";
+              setForm((p) => ({
+                ...p,
+                transaction_intent: next,
+                // Keep the classification valid for the chosen side.
+                classification: classificationsForIntent(next).includes(p.classification ?? "")
+                  ? p.classification
+                  : next === "rent"
+                    ? "renter"
+                    : "buyer",
+              }));
+            }}
+            options={LEAD_INTENTS.map((i) => ({ value: i, label: LEAD_INTENT_LABELS[i] }))}
+            allowClear={false}
           />
         </Field>
         <Field label="Classification">
           <SelectField
             value={form.classification ?? "buyer"}
             onChange={(v) => set("classification", (v ?? "buyer") as FormState["classification"])}
-            options={LEAD_CLASSIFICATIONS.map((c) => ({
+            options={classificationsForIntent((form.transaction_intent as LeadIntent) ?? "sale").map((c) => ({
               value: c,
               label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
             }))}

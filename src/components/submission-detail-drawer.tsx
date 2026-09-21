@@ -257,7 +257,7 @@ export function SubmissionDetailDrawer({
   onOpenChange,
   canReview,
 }: {
-  submission: PropertySubmission | null;
+  submission: (PropertySubmission & { id_number_hidden?: boolean }) | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   canReview: boolean;
@@ -297,7 +297,8 @@ export function SubmissionDetailDrawer({
           full_name: form.full_name,
           phone: form.phone,
           email: form.email,
-          owner_id_number: form.owner_id_number,
+          // A hidden ID number is never written back, so an untouched form cannot wipe it.
+          ...(submission!.id_number_hidden ? {} : { owner_id_number: form.owner_id_number }),
           property_type: form.property_type,
           purpose: form.purpose,
           area_id: form.area_id,
@@ -389,11 +390,21 @@ export function SubmissionDetailDrawer({
               />
             </Field>
             <Field label="ID number">
-              <input
-                className={inputCls}
-                value={form.owner_id_number ?? ""}
-                onChange={(e) => setForm((p) => ({ ...p, owner_id_number: e.target.value }))}
-              />
+              {submission.id_number_hidden ? (
+                <input
+                  className={inputCls}
+                  value="Hidden"
+                  disabled
+                  readOnly
+                  aria-label="ID number hidden"
+                />
+              ) : (
+                <input
+                  className={inputCls}
+                  value={form.owner_id_number ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, owner_id_number: e.target.value }))}
+                />
+              )}
             </Field>
             <Field label="Property type">
               <input
@@ -600,7 +611,7 @@ export function SubmissionDetailDrawer({
               <Info label="Owner" value={submission.full_name} />
               <Info label="Mobile" value={submission.phone} />
               <Info label="Email" value={submission.email} />
-              <Info label="ID number" value={submission.owner_id_number} />
+              <Info label="ID number" value={submission.id_number_hidden ? "Hidden" : submission.owner_id_number} />
               <Info
                 label="Purpose"
                 value={

@@ -4099,6 +4099,10 @@ export type Database = {
         Returns: string
       }
       can_view_owner_phone: { Args: { _owner_id: string }; Returns: boolean }
+      can_view_submission_id: {
+        Args: { _submission_id: string }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
@@ -4160,6 +4164,13 @@ export type Database = {
           seller_owner_id: string
           status: string
           updated_at: string
+        }[]
+      }
+      get_submission_id_numbers: {
+        Args: { _ids: string[] }
+        Returns: {
+          owner_id_number: string
+          submission_id: string
         }[]
       }
       has_permission: {

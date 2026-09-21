@@ -1,5 +1,5 @@
 import { sb } from "@/lib/db";
-import type { Owner } from "@/lib/db";
+import type { Owner, PropertySubmission } from "@/lib/db";
 
 /**
  * Every owners column except the private ones (phone, id_number). The database does not
@@ -47,6 +47,33 @@ export async function fetchOwnerPrivateFields(
     map.set(row.owner_id, { phone: row.phone, id_number: row.id_number });
   }
   return map;
+}
+
+/**
+ * Every property_submissions column except owner_id_number, which is a second copy of the owner's
+ * national ID and follows the same access rule. The database rejects select("*") on this table.
+ */
+export const SUBMISSION_COLUMNS =
+  "id, website_profile_id, full_name, phone, email, country_id, area_id, location, property_type, purpose, price, currency, bedrooms, bathrooms, size, description, media, documents, status, reviewed_by, review_notes, converted_property_id, submitted_at, last_refreshed_at, created_at, updated_at, tower_name, floor_number, unit_number, parking_spaces, furnishing_status, owner_id, development_id, source, terms_accepted, custom_area, available_from, place_id";
+
+/** A submission where owner_id_number is only populated when the caller is entitled to it. */
+export type SafeSubmission = PropertySubmission & { id_number_hidden?: boolean };
+
+export async function attachSubmissionIdNumbers(
+  rows: Omit<PropertySubmission, "owner_id_number">[],
+): Promise<SafeSubmission[]> {
+  const ids = uniqueIds(rows.map((r) => r.id));
+  const visible = new Map<string, string | null>();
+  if (ids.length > 0) {
+    const { data, error } = await sb.rpc("get_submission_id_numbers", { _ids: ids });
+    if (error) throw error;
+    for (const row of data ?? []) visible.set(row.submission_id, row.owner_id_number);
+  }
+  return rows.map((r) => ({
+    ...r,
+    owner_id_number: visible.get(r.id) ?? null,
+    id_number_hidden: !visible.has(r.id),
+  }));
 }
 
 export async function attachOwnerPrivateFields(rows: OwnerWithoutPrivate[]): Promise<SafeOwner[]> {

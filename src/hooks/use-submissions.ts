@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sb, type PropertySubmission, type PropertySubmissionUpdate, type Upload } from "@/lib/db";
 import { promoteSubmissionPhoto } from "@/lib/r2";
+import { SUBMISSION_COLUMNS, attachSubmissionIdNumbers, type SafeSubmission } from "@/lib/owner-privacy";
 
 export const submissionKeys = {
   all: ["property_submissions"] as const,
@@ -10,13 +11,13 @@ export const submissionKeys = {
 export function useSubmissions() {
   return useQuery({
     queryKey: submissionKeys.list(),
-    queryFn: async (): Promise<PropertySubmission[]> => {
+    queryFn: async (): Promise<SafeSubmission[]> => {
       const { data, error } = await sb
         .from("property_submissions")
-        .select("*")
+        .select(SUBMISSION_COLUMNS)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return attachSubmissionIdNumbers((data ?? []) as never);
     },
   });
 }
@@ -26,14 +27,14 @@ export function useOwnerSubmissions(ownerId: string | undefined) {
   return useQuery({
     queryKey: ["property_submissions", "owner", ownerId ?? "none"],
     enabled: !!ownerId,
-    queryFn: async (): Promise<PropertySubmission[]> => {
+    queryFn: async (): Promise<SafeSubmission[]> => {
       const { data, error } = await sb
         .from("property_submissions")
-        .select("*")
+        .select(SUBMISSION_COLUMNS)
         .eq("owner_id", ownerId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return attachSubmissionIdNumbers((data ?? []) as never);
     },
   });
 }
@@ -67,7 +68,7 @@ export function useUpdateSubmission() {
         .from("property_submissions")
         .update(patch)
         .eq("id", id)
-        .select()
+        .select(SUBMISSION_COLUMNS)
         .single();
       if (error) throw error;
       return data;
@@ -95,7 +96,7 @@ export function useReviewSubmission() {
         .from("property_submissions")
         .update({ status, review_notes, reviewed_by })
         .eq("id", id)
-        .select()
+        .select(SUBMISSION_COLUMNS)
         .single();
       if (error) throw error;
       return data;

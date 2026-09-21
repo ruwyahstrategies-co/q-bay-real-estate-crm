@@ -1089,6 +1089,7 @@ export type Database = {
           team_id: string | null
           telesales_outcome: string | null
           telesales_qualified: boolean | null
+          transaction_intent: string
           transaction_timeframe: string | null
           updated_at: string
           workflow: string
@@ -1130,6 +1131,7 @@ export type Database = {
           team_id?: string | null
           telesales_outcome?: string | null
           telesales_qualified?: boolean | null
+          transaction_intent?: string
           transaction_timeframe?: string | null
           updated_at?: string
           workflow?: string
@@ -1171,6 +1173,7 @@ export type Database = {
           team_id?: string | null
           telesales_outcome?: string | null
           telesales_qualified?: boolean | null
+          transaction_intent?: string
           transaction_timeframe?: string | null
           updated_at?: string
           workflow?: string
@@ -2011,6 +2014,7 @@ export type Database = {
           availability_last_confirmed_at: string | null
           availability_next_due_at: string | null
           available_from: string | null
+          balcony: boolean | null
           bathrooms: number | null
           bedrooms: number | null
           cloudflare_video_error: string | null
@@ -2083,6 +2087,7 @@ export type Database = {
           availability_last_confirmed_at?: string | null
           availability_next_due_at?: string | null
           available_from?: string | null
+          balcony?: boolean | null
           bathrooms?: number | null
           bedrooms?: number | null
           cloudflare_video_error?: string | null
@@ -2155,6 +2160,7 @@ export type Database = {
           availability_last_confirmed_at?: string | null
           availability_next_due_at?: string | null
           available_from?: string | null
+          balcony?: boolean | null
           bathrooms?: number | null
           bedrooms?: number | null
           cloudflare_video_error?: string | null
@@ -3187,6 +3193,59 @@ export type Database = {
           },
         ]
       }
+      staff_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          event_key: string
+          href: string | null
+          id: string
+          kind: string
+          read_at: string | null
+          related_id: string | null
+          related_table: string | null
+          team_member_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          event_key?: string
+          href?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          team_member_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          event_key?: string
+          href?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          team_member_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notifications_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_sessions: {
         Row: {
           check_in_latitude: number | null
@@ -3512,7 +3571,11 @@ export type Database = {
       transactions: {
         Row: {
           agent_id: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          buyer_phone: string | null
           closed_at: string | null
+          commission_rate: number | null
           commission_value: number | null
           created_at: string
           currency: string | null
@@ -3522,7 +3585,11 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           organisation_id: string | null
+          payment_details: string | null
+          payment_status: string | null
           property_id: string | null
+          recorded_by: string | null
+          seller_owner_id: string | null
           status: string
           transaction_type: string
           transaction_value: number | null
@@ -3530,7 +3597,11 @@ export type Database = {
         }
         Insert: {
           agent_id?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
           closed_at?: string | null
+          commission_rate?: number | null
           commission_value?: number | null
           created_at?: string
           currency?: string | null
@@ -3540,7 +3611,11 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organisation_id?: string | null
+          payment_details?: string | null
+          payment_status?: string | null
           property_id?: string | null
+          recorded_by?: string | null
+          seller_owner_id?: string | null
           status?: string
           transaction_type?: string
           transaction_value?: number | null
@@ -3548,7 +3623,11 @@ export type Database = {
         }
         Update: {
           agent_id?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
           closed_at?: string | null
+          commission_rate?: number | null
           commission_value?: number | null
           created_at?: string
           currency?: string | null
@@ -3558,7 +3637,11 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           organisation_id?: string | null
+          payment_details?: string | null
+          payment_status?: string | null
           property_id?: string | null
+          recorded_by?: string | null
+          seller_owner_id?: string | null
           status?: string
           transaction_type?: string
           transaction_value?: number | null
@@ -3600,6 +3683,20 @@ export type Database = {
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
           },
+          {
+            foreignKeyName: "transactions_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_seller_owner_id_fkey"
+            columns: ["seller_owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
         ]
       }
       uploads: {
@@ -3629,6 +3726,7 @@ export type Database = {
           storage_path: string
           storage_provider: string
           tenant_id: string | null
+          transaction_id: string | null
           updated_at: string
           uploaded_by: string | null
           width: number | null
@@ -3659,6 +3757,7 @@ export type Database = {
           storage_path: string
           storage_provider?: string
           tenant_id?: string | null
+          transaction_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
           width?: number | null
@@ -3689,6 +3788,7 @@ export type Database = {
           storage_path?: string
           storage_provider?: string
           tenant_id?: string | null
+          transaction_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
           width?: number | null
@@ -3755,6 +3855,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploads_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -3991,6 +4098,7 @@ export type Database = {
         Args: { _seed: string; _table: string }
         Returns: string
       }
+      can_view_owner_phone: { Args: { _owner_id: string }; Returns: boolean }
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
@@ -3998,10 +4106,67 @@ export type Database = {
       current_team_id: { Args: never; Returns: string }
       current_team_member_id: { Args: never; Returns: string }
       current_team_permissions: { Args: never; Returns: Json }
+      enqueue_staff_notification: {
+        Args: {
+          p_body: string
+          p_event_key: string
+          p_href: string
+          p_kind: string
+          p_related_id: string
+          p_related_table: string
+          p_team_member_id: string
+          p_title: string
+        }
+        Returns: undefined
+      }
+      export_team_member_data: { Args: { _member_id: string }; Returns: Json }
+      get_owner_phones: {
+        Args: { _owner_ids: string[] }
+        Returns: {
+          owner_id: string
+          phone: string
+        }[]
+      }
+      get_owner_private_fields: {
+        Args: { _owner_ids: string[] }
+        Returns: {
+          id_number: string
+          owner_id: string
+          phone: string
+        }[]
+      }
+      get_property_sales: {
+        Args: { _property_id: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          buyer_email: string
+          buyer_name: string
+          buyer_phone: string
+          commission_amount: number
+          commission_rate: number
+          created_at: string
+          currency: string
+          id: string
+          notes: string
+          payment_details: string
+          payment_status: string
+          private_visible: boolean
+          property_id: string
+          recorded_by: string
+          sale_date: string
+          sale_price: number
+          seller_name: string
+          seller_owner_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
       has_permission: {
         Args: { _action: string; _module: string }
         Returns: boolean
       }
+      is_owner_phone_elevated: { Args: never; Returns: boolean }
       lead_effective_intent_score: {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: number
@@ -4115,6 +4280,7 @@ export type Database = {
           assigned_agent_role: string
           availability: string
           available_from: string
+          balcony: boolean
           bathrooms: number
           bedrooms: number
           cloudflare_video_status: string
@@ -4177,6 +4343,37 @@ export type Database = {
         }
         Returns: Json
       }
+      record_property_sale: {
+        Args: {
+          _agent_id: string
+          _buyer_email: string
+          _buyer_name: string
+          _buyer_phone: string
+          _commission_amount: number
+          _commission_rate: number
+          _currency: string
+          _lead_id?: string
+          _notes: string
+          _payment_details: string
+          _payment_status: string
+          _property_id: string
+          _sale_date: string
+          _sale_id?: string
+          _sale_price: number
+        }
+        Returns: string
+      }
+      search_owners: {
+        Args: { _limit?: number; _query: string }
+        Returns: {
+          code: string
+          company: string
+          id: string
+          name: string
+          phone: string
+          phone_hidden: boolean
+        }[]
+      }
       similar_properties: {
         Args: { _limit?: number; _property_id: string }
         Returns: {
@@ -4186,6 +4383,16 @@ export type Database = {
         }[]
       }
       slugify: { Args: { _input: string }; Returns: string }
+      update_my_profile: {
+        Args: {
+          _avatar_url?: string
+          _date_of_birth: string
+          _full_name: string
+          _phone: string
+          _remove_avatar?: boolean
+        }
+        Returns: undefined
+      }
       vault_create_secret: {
         Args: { _name: string; _secret: string }
         Returns: string

@@ -19,7 +19,7 @@ export function Button({
         "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" ? "h-8 px-3 text-xs" : "h-9 px-4 text-sm",
         variant === "primary" &&
-          "bg-foreground text-primary-foreground hover:bg-foreground/90",
+          "bg-qbay text-white shadow-sm hover:bg-qbay/90",
         variant === "secondary" && "bg-muted text-foreground hover:bg-muted/70",
         variant === "outline" &&
           "border border-border bg-canvas text-foreground hover:bg-muted",
@@ -40,7 +40,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-canvas p-5",
+        "rounded-2xl border border-border bg-canvas p-5 shadow-[0_1px_2px_rgba(10,70,35,0.05)]",
         className,
       )}
     >

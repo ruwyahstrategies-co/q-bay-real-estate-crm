@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "neutral" | "blue" | "green" | "amber" | "red" | "purple";
+type Variant =
+  | "neutral"
+  | "blue"
+  | "green"
+  | "amber"
+  | "red"
+  | "purple"
+  | "teal"
+  | "orange"
+  | "slate"
+  | "indigo";
 
 const variants: Record<Variant, string> = {
   neutral: "bg-muted text-foreground",
@@ -10,6 +20,10 @@ const variants: Record<Variant, string> = {
   amber: "bg-pastel-cream text-foreground",
   red: "bg-[#FADCDA] text-foreground",
   purple: "bg-pastel-purple text-foreground",
+  teal: "bg-pastel-teal text-foreground",
+  orange: "bg-pastel-orange text-foreground",
+  slate: "bg-pastel-slate text-foreground",
+  indigo: "bg-pastel-indigo text-foreground",
 };
 
 export function StatusBadge({
@@ -38,11 +52,11 @@ export function PipelineStageBadge({ stage }: { stage: string }) {
   const map: Record<string, Variant> = {
     "New Lead": "blue",
     Contacted: "purple",
-    Qualified: "green",
-    "Property Matching": "blue",
+    Qualified: "teal",
+    "Property Matching": "slate",
     "Viewing Scheduled": "amber",
-    Negotiation: "amber",
-    Documentation: "purple",
+    Negotiation: "orange",
+    Documentation: "indigo",
     Won: "green",
     Lost: "red",
   };
@@ -50,7 +64,7 @@ export function PipelineStageBadge({ stage }: { stage: string }) {
 }
 
 const AVAILABILITY_RING: Record<string, { dot: string; label: string }> = {
-  available: { dot: "bg-emerald-500", label: "Available" },
+  available: { dot: "bg-qbay", label: "Available" },
   reserved: { dot: "bg-amber-500", label: "Reserved" },
   sold: { dot: "bg-slate-500", label: "Sold" },
   rented: { dot: "bg-blue-500", label: "Rented" },

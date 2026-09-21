@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import { BrandMark } from "./brand-mark";
+import qbayLogo from "@/assets/qbay-logo.png";
 import { usePermissions, useCurrentUser, signOut } from "@/hooks/use-auth";
 import type { ModuleKey } from "@/lib/permissions";
 
@@ -173,20 +173,30 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-30 hidden h-screen flex-col bg-sidebar py-5 transition-[width] duration-200 ease-out md:flex",
+        "fixed left-0 top-0 z-30 hidden h-screen flex-col bg-sidebar py-5 shadow-[8px_0_40px_-16px_rgba(10,70,35,0.6)] transition-[width] duration-200 ease-out md:flex",
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
     >
-      <div className={cn("flex items-center gap-2.5", collapsed ? "justify-center px-0" : "px-5")}>
-        <Link to="/overview" className="flex h-11 w-11 flex-shrink-0 items-center justify-center" aria-label={APP_CONFIG.productName}>
-          <BrandMark className="h-8 w-8 text-white" />
+      <div className={cn("flex items-center", collapsed ? "justify-center px-0" : "px-5")}>
+        <Link
+          to="/overview"
+          className={cn(
+            "flex flex-shrink-0 items-center overflow-hidden",
+            collapsed ? "h-11 w-11 justify-center" : "h-12 w-full justify-start",
+          )}
+          aria-label={APP_CONFIG.productName}
+        >
+          {/* The real Q-Bay logo. Collapsed, only its Q glyph (left edge of the same image) shows. */}
+          <img
+            src={qbayLogo}
+            alt="Q-Bay Real Estate"
+            className={cn(
+              "h-11 w-auto max-w-none select-none",
+              collapsed && "h-10 w-11 object-cover object-left",
+            )}
+            draggable={false}
+          />
         </Link>
-        {!collapsed && (
-          <div className="min-w-0 overflow-hidden">
-            <p className="truncate text-sm font-semibold leading-tight text-white">{APP_CONFIG.companyName}</p>
-            <p className="truncate text-[11px] leading-tight text-white/45">{APP_CONFIG.productDescriptor}</p>
-          </div>
-        )}
       </div>
 
       <nav className={cn("mt-8 flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden scrollbar-dark", collapsed ? "items-center px-2" : "px-3")}>
@@ -206,7 +216,7 @@ export function AppSidebar({
                     to={group.to}
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
-                      active ? "bg-pastel-cream text-foreground" : "text-white/55 hover:bg-white/5 hover:text-white",
+                      active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55 hover:bg-white/5 hover:text-white",
                     )}
                     aria-label={group.label}
                   >
@@ -216,7 +226,7 @@ export function AppSidebar({
                   <div
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg text-sm",
-                      active ? "bg-pastel-cream text-foreground" : "text-white/55",
+                      active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55",
                     )}
                     aria-label={group.label}
                   >
@@ -256,7 +266,7 @@ export function AppSidebar({
               <div
                 className={cn(
                   "flex h-10 items-center rounded-lg text-sm transition-colors",
-                  active ? "bg-pastel-cream text-foreground" : "text-white/55 hover:bg-white/5 hover:text-white",
+                  active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55 hover:bg-white/5 hover:text-white",
                 )}
               >
                 {ownPageVisible && group.to ? (
@@ -304,7 +314,7 @@ export function AppSidebar({
                             to={child.to}
                             className={cn(
                               "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
-                              childActiveOne ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white",
+                              childActiveOne ? "bg-qbay/70 text-white" : "text-white/50 hover:bg-white/5 hover:text-white",
                             )}
                           >
                             <ChildIcon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.9} />
@@ -335,7 +345,7 @@ export function AppSidebar({
         </button>
 
         <div className={cn("flex items-center gap-2.5 rounded-lg py-1.5", collapsed ? "justify-center" : "px-1")}>
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-pastel-purple text-[11px] font-semibold text-foreground">
+          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-qbay-soft text-[11px] font-semibold text-qbay">
             {initials}
           </span>
           {!collapsed && (

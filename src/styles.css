@@ -33,16 +33,31 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
-  --color-pastel-blue: #DDEFFA;
-  --color-pastel-purple: #E8DDF4;
-  --color-pastel-green: #DCEEDD;
+  --color-pastel-blue: #D9ECFA;
+  --color-pastel-purple: #E6DBF4;
+  --color-pastel-green: #CFE8D6;
   --color-pastel-cream: #F3EDCE;
+  --color-pastel-teal: #CDEBE6;
+  --color-pastel-orange: #FBE0CB;
+  --color-pastel-slate: #E2E6EC;
+  --color-pastel-indigo: #DEE1F7;
+
+  /* Q-Bay brand green (#0A4623) and its tints */
+  --color-qbay: var(--qbay-green);
+  --color-qbay-deep: var(--qbay-green-deep);
+  --color-qbay-soft: var(--qbay-green-soft);
+  --color-qbay-tint: var(--qbay-green-tint);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #FAFAF8;
+  --qbay-green: #0A4623;
+  --qbay-green-deep: #072F18;
+  --qbay-green-soft: #DCEBE0;
+  --qbay-green-tint: #EEF5F0;
+
+  --background: #F6F8F5;
   --foreground: #121212;
   --canvas: #FFFFFF;
   --card: #FFFFFF;
@@ -51,18 +66,18 @@
   --popover-foreground: #121212;
   --primary: #121212;
   --primary-foreground: #FAFAF8;
-  --secondary: #F3F3F0;
+  --secondary: #EFF3EF;
   --secondary-foreground: #121212;
-  --muted: #F3F3F0;
+  --muted: #EFF3EF;
   --muted-foreground: #727272;
-  --accent: #F3F3F0;
+  --accent: #E6F0E9;
   --accent-foreground: #121212;
   --destructive: #C8463C;
   --destructive-foreground: #FFFFFF;
-  --border: #E9E9E5;
-  --input: #E9E9E5;
-  --ring: #121212;
-  --sidebar: #171717;
+  --border: #DFE7E1;
+  --input: #DFE7E1;
+  --ring: #0A4623;
+  --sidebar: #0D1B13;
   --sidebar-foreground: #FAFAF8;
 }
 

@@ -286,7 +286,7 @@ function ManagedPropertiesTab() {
                   </Link>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Owner: {p.owners?.name ?? "-"}
-                    {p.owners?.phone ? ` · ${p.owners.phone}` : ""}
+                    {p.owners?.phone ? ` · ${p.owners.phone}` : p.owner_id ? " · Phone hidden" : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

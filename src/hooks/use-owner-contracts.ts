@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sb, type ContractTemplate, type OwnerContract, type OwnerContractInsert, type OwnerContractUpdate } from "@/lib/db";
+import { fetchOwnerPhones } from "@/lib/owner-privacy";
 
 export const contractKeys = {
   templates: ["contract_templates"] as const,
@@ -99,13 +100,19 @@ export function useExpiringOwnerContracts(withinDays = 30) {
       const cutoff = new Date(Date.now() + withinDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const { data, error } = await sb
         .from("owner_contracts")
-        .select("*, owners(name, phone), properties(title, reference_code)")
+        .select("*, owners(name), properties(title, reference_code)")
         .in("status", ["generated", "signed"])
         .not("expiry_date", "is", null)
         .lte("expiry_date", cutoff)
         .order("expiry_date", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      // Phones come from the authorization-checked RPC, never from a joined owners select.
+      const rows = data ?? [];
+      const phones = await fetchOwnerPhones(rows.map((r) => r.owner_id));
+      return rows.map((r) => ({
+        ...r,
+        owners: r.owners ? { ...r.owners, phone: phones.get(r.owner_id) ?? null } : r.owners,
+      }));
     },
   });
 }

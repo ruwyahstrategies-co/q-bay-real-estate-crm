@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sb, type LeadInsert, type LeadUpdate, type Lead, type Owner } from "@/lib/db";
+import { OWNER_COLUMNS } from "@/lib/owner-privacy";
 
 export const leadsKeys = {
   all: ["leads"] as const,
@@ -130,9 +131,13 @@ export function useDeleteLead() {
 export function useConvertLeadToOwner() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (lead: Lead): Promise<Owner> => {
+    mutationFn: async (lead: Lead): Promise<Omit<Owner, "phone">> => {
       if (lead.converted_owner_id) {
-        const { data, error } = await sb.from("owners").select("*").eq("id", lead.converted_owner_id).single();
+        const { data, error } = await sb
+          .from("owners")
+          .select(OWNER_COLUMNS)
+          .eq("id", lead.converted_owner_id)
+          .single();
         if (error) throw error;
         return data;
       }
@@ -159,7 +164,7 @@ export function useConvertLeadToOwner() {
           source_lead_id: lead.id,
           notes: notesParts.join(" "),
         })
-        .select()
+        .select(OWNER_COLUMNS)
         .single();
       if (insertErr) throw insertErr;
 

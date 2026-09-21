@@ -9,157 +9,42 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AccountingRouteImport } from './routes/accounting'
-import { Route as AiInsightsRouteImport } from './routes/ai-insights'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as ConversationsRouteImport } from './routes/conversations'
-import { Route as DevelopmentsRouteImport } from './routes/developments'
-import { Route as JournalRouteImport } from './routes/journal'
-import { Route as LeaderboardRouteImport } from './routes/leaderboard'
-import { Route as LeadsRouteImport } from './routes/leads'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as MarketingRouteImport } from './routes/marketing'
-import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-intelligence'
-import { Route as OffersRouteImport } from './routes/offers'
-import { Route as OverviewRouteImport } from './routes/overview'
-import { Route as OwnersRouteImport } from './routes/owners'
-import { Route as PipelineRouteImport } from './routes/pipeline'
-import { Route as PropertiesRouteImport } from './routes/properties'
-import { Route as PropertyDemandRouteImport } from './routes/property-demand'
-import { Route as PropertyManagementRouteImport } from './routes/property-management'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as StaffActivityRouteImport } from './routes/staff-activity'
-import { Route as TeamRouteImport } from './routes/team'
-import { Route as UploadsRouteImport } from './routes/uploads'
-import { Route as ViewingsRouteImport } from './routes/viewings'
 import { Route as WebsiteEnquiriesRouteImport } from './routes/website-enquiries'
-import { Route as DevelopmentsDevelopmentIdRouteImport } from './routes/developments.$developmentId'
-import { Route as LeadsIndexRouteImport } from './routes/leads.index'
-import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
-import { Route as OwnersOwnerIdRouteImport } from './routes/owners.$ownerId'
+import { Route as ViewingsRouteImport } from './routes/viewings'
+import { Route as UploadsRouteImport } from './routes/uploads'
+import { Route as TeamRouteImport } from './routes/team'
+import { Route as StaffActivityRouteImport } from './routes/staff-activity'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PropertyManagementRouteImport } from './routes/property-management'
+import { Route as PropertyDemandRouteImport } from './routes/property-demand'
+import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as OwnersRouteImport } from './routes/owners'
+import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as OffersRouteImport } from './routes/offers'
+import { Route as MarketingIntelligenceRouteImport } from './routes/marketing-intelligence'
+import { Route as MarketingRouteImport } from './routes/marketing'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as JournalRouteImport } from './routes/journal'
+import { Route as DevelopmentsRouteImport } from './routes/developments'
+import { Route as ConversationsRouteImport } from './routes/conversations'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AiInsightsRouteImport } from './routes/ai-insights'
+import { Route as AccountingRouteImport } from './routes/accounting'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as LeadsIndexRouteImport } from './routes/leads.index'
 import { Route as PropertiesPropertyIdRouteImport } from './routes/properties.$propertyId'
+import { Route as OwnersOwnerIdRouteImport } from './routes/owners.$ownerId'
+import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
+import { Route as DevelopmentsDevelopmentIdRouteImport } from './routes/developments.$developmentId'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountingRoute = AccountingRouteImport.update({
-  id: '/accounting',
-  path: '/accounting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AiInsightsRoute = AiInsightsRouteImport.update({
-  id: '/ai-insights',
-  path: '/ai-insights',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConversationsRoute = ConversationsRouteImport.update({
-  id: '/conversations',
-  path: '/conversations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevelopmentsRoute = DevelopmentsRouteImport.update({
-  id: '/developments',
-  path: '/developments',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JournalRoute = JournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeaderboardRoute = LeaderboardRouteImport.update({
-  id: '/leaderboard',
-  path: '/leaderboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeadsRoute = LeadsRouteImport.update({
-  id: '/leads',
-  path: '/leads',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketingRoute = MarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketingIntelligenceRoute = MarketingIntelligenceRouteImport.update({
-  id: '/marketing-intelligence',
-  path: '/marketing-intelligence',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OffersRoute = OffersRouteImport.update({
-  id: '/offers',
-  path: '/offers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OverviewRoute = OverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OwnersRoute = OwnersRouteImport.update({
-  id: '/owners',
-  path: '/owners',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PipelineRoute = PipelineRouteImport.update({
-  id: '/pipeline',
-  path: '/pipeline',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PropertiesRoute = PropertiesRouteImport.update({
-  id: '/properties',
-  path: '/properties',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PropertyDemandRoute = PropertyDemandRouteImport.update({
-  id: '/property-demand',
-  path: '/property-demand',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PropertyManagementRoute = PropertyManagementRouteImport.update({
-  id: '/property-management',
-  path: '/property-management',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StaffActivityRoute = StaffActivityRouteImport.update({
-  id: '/staff-activity',
-  path: '/staff-activity',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TeamRoute = TeamRouteImport.update({
-  id: '/team',
-  path: '/team',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UploadsRoute = UploadsRouteImport.update({
-  id: '/uploads',
-  path: '/uploads',
+const WebsiteEnquiriesRoute = WebsiteEnquiriesRouteImport.update({
+  id: '/website-enquiries',
+  path: '/website-enquiries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ViewingsRoute = ViewingsRouteImport.update({
@@ -167,10 +52,150 @@ const ViewingsRoute = ViewingsRouteImport.update({
   path: '/viewings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WebsiteEnquiriesRoute = WebsiteEnquiriesRouteImport.update({
-  id: '/website-enquiries',
-  path: '/website-enquiries',
+const UploadsRoute = UploadsRouteImport.update({
+  id: '/uploads',
+  path: '/uploads',
   getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffActivityRoute = StaffActivityRouteImport.update({
+  id: '/staff-activity',
+  path: '/staff-activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertyManagementRoute = PropertyManagementRouteImport.update({
+  id: '/property-management',
+  path: '/property-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertyDemandRoute = PropertyDemandRouteImport.update({
+  id: '/property-demand',
+  path: '/property-demand',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertiesRoute = PropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OwnersRoute = OwnersRouteImport.update({
+  id: '/owners',
+  path: '/owners',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverviewRoute = OverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingIntelligenceRoute = MarketingIntelligenceRouteImport.update({
+  id: '/marketing-intelligence',
+  path: '/marketing-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopmentsRoute = DevelopmentsRouteImport.update({
+  id: '/developments',
+  path: '/developments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConversationsRoute = ConversationsRouteImport.update({
+  id: '/conversations',
+  path: '/conversations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiInsightsRoute = AiInsightsRouteImport.update({
+  id: '/ai-insights',
+  path: '/ai-insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingRoute = AccountingRouteImport.update({
+  id: '/accounting',
+  path: '/accounting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const LeadsIndexRoute = LeadsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LeadsRoute,
+} as any)
+const PropertiesPropertyIdRoute = PropertiesPropertyIdRouteImport.update({
+  id: '/$propertyId',
+  path: '/$propertyId',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const OwnersOwnerIdRoute = OwnersOwnerIdRouteImport.update({
+  id: '/$ownerId',
+  path: '/$ownerId',
+  getParentRoute: () => OwnersRoute,
+} as any)
+const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
+  id: '/$leadId',
+  path: '/$leadId',
+  getParentRoute: () => LeadsRoute,
 } as any)
 const DevelopmentsDevelopmentIdRoute =
   DevelopmentsDevelopmentIdRouteImport.update({
@@ -178,31 +203,6 @@ const DevelopmentsDevelopmentIdRoute =
     path: '/$developmentId',
     getParentRoute: () => DevelopmentsRoute,
   } as any)
-const LeadsIndexRoute = LeadsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LeadsRoute,
-} as any)
-const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
-  id: '/$leadId',
-  path: '/$leadId',
-  getParentRoute: () => LeadsRoute,
-} as any)
-const OwnersOwnerIdRoute = OwnersOwnerIdRouteImport.update({
-  id: '/$ownerId',
-  path: '/$ownerId',
-  getParentRoute: () => OwnersRoute,
-} as any)
-const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PropertiesRoute,
-} as any)
-const PropertiesPropertyIdRoute = PropertiesPropertyIdRouteImport.update({
-  id: '/$propertyId',
-  path: '/$propertyId',
-  getParentRoute: () => PropertiesRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -439,172 +439,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounting': {
-      id: '/accounting'
-      path: '/accounting'
-      fullPath: '/accounting'
-      preLoaderRoute: typeof AccountingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ai-insights': {
-      id: '/ai-insights'
-      path: '/ai-insights'
-      fullPath: '/ai-insights'
-      preLoaderRoute: typeof AiInsightsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/conversations': {
-      id: '/conversations'
-      path: '/conversations'
-      fullPath: '/conversations'
-      preLoaderRoute: typeof ConversationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/developments': {
-      id: '/developments'
-      path: '/developments'
-      fullPath: '/developments'
-      preLoaderRoute: typeof DevelopmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/journal': {
-      id: '/journal'
-      path: '/journal'
-      fullPath: '/journal'
-      preLoaderRoute: typeof JournalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leaderboard': {
-      id: '/leaderboard'
-      path: '/leaderboard'
-      fullPath: '/leaderboard'
-      preLoaderRoute: typeof LeaderboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leads': {
-      id: '/leads'
-      path: '/leads'
-      fullPath: '/leads'
-      preLoaderRoute: typeof LeadsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketing': {
-      id: '/marketing'
-      path: '/marketing'
-      fullPath: '/marketing'
-      preLoaderRoute: typeof MarketingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketing-intelligence': {
-      id: '/marketing-intelligence'
-      path: '/marketing-intelligence'
-      fullPath: '/marketing-intelligence'
-      preLoaderRoute: typeof MarketingIntelligenceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/offers': {
-      id: '/offers'
-      path: '/offers'
-      fullPath: '/offers'
-      preLoaderRoute: typeof OffersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/overview': {
-      id: '/overview'
-      path: '/overview'
-      fullPath: '/overview'
-      preLoaderRoute: typeof OverviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/owners': {
-      id: '/owners'
-      path: '/owners'
-      fullPath: '/owners'
-      preLoaderRoute: typeof OwnersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pipeline': {
-      id: '/pipeline'
-      path: '/pipeline'
-      fullPath: '/pipeline'
-      preLoaderRoute: typeof PipelineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/properties': {
-      id: '/properties'
-      path: '/properties'
-      fullPath: '/properties'
-      preLoaderRoute: typeof PropertiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/property-demand': {
-      id: '/property-demand'
-      path: '/property-demand'
-      fullPath: '/property-demand'
-      preLoaderRoute: typeof PropertyDemandRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/property-management': {
-      id: '/property-management'
-      path: '/property-management'
-      fullPath: '/property-management'
-      preLoaderRoute: typeof PropertyManagementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/staff-activity': {
-      id: '/staff-activity'
-      path: '/staff-activity'
-      fullPath: '/staff-activity'
-      preLoaderRoute: typeof StaffActivityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/team': {
-      id: '/team'
-      path: '/team'
-      fullPath: '/team'
-      preLoaderRoute: typeof TeamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/uploads': {
-      id: '/uploads'
-      path: '/uploads'
-      fullPath: '/uploads'
-      preLoaderRoute: typeof UploadsRouteImport
+    '/website-enquiries': {
+      id: '/website-enquiries'
+      path: '/website-enquiries'
+      fullPath: '/website-enquiries'
+      preLoaderRoute: typeof WebsiteEnquiriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/viewings': {
@@ -614,40 +453,173 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/website-enquiries': {
-      id: '/website-enquiries'
-      path: '/website-enquiries'
-      fullPath: '/website-enquiries'
-      preLoaderRoute: typeof WebsiteEnquiriesRouteImport
+    '/uploads': {
+      id: '/uploads'
+      path: '/uploads'
+      fullPath: '/uploads'
+      preLoaderRoute: typeof UploadsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/developments/$developmentId': {
-      id: '/developments/$developmentId'
-      path: '/$developmentId'
-      fullPath: '/developments/$developmentId'
-      preLoaderRoute: typeof DevelopmentsDevelopmentIdRouteImport
-      parentRoute: typeof DevelopmentsRoute
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/leads/': {
-      id: '/leads/'
+    '/staff-activity': {
+      id: '/staff-activity'
+      path: '/staff-activity'
+      fullPath: '/staff-activity'
+      preLoaderRoute: typeof StaffActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/property-management': {
+      id: '/property-management'
+      path: '/property-management'
+      fullPath: '/property-management'
+      preLoaderRoute: typeof PropertyManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/property-demand': {
+      id: '/property-demand'
+      path: '/property-demand'
+      fullPath: '/property-demand'
+      preLoaderRoute: typeof PropertyDemandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/properties': {
+      id: '/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/owners': {
+      id: '/owners'
+      path: '/owners'
+      fullPath: '/owners'
+      preLoaderRoute: typeof OwnersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/overview': {
+      id: '/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing-intelligence': {
+      id: '/marketing-intelligence'
+      path: '/marketing-intelligence'
+      fullPath: '/marketing-intelligence'
+      preLoaderRoute: typeof MarketingIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developments': {
+      id: '/developments'
+      path: '/developments'
+      fullPath: '/developments'
+      preLoaderRoute: typeof DevelopmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conversations': {
+      id: '/conversations'
+      path: '/conversations'
+      fullPath: '/conversations'
+      preLoaderRoute: typeof ConversationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-insights': {
+      id: '/ai-insights'
+      path: '/ai-insights'
+      fullPath: '/ai-insights'
+      preLoaderRoute: typeof AiInsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting': {
+      id: '/accounting'
+      path: '/accounting'
+      fullPath: '/accounting'
+      preLoaderRoute: typeof AccountingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/leads/'
-      preLoaderRoute: typeof LeadsIndexRouteImport
-      parentRoute: typeof LeadsRoute
-    }
-    '/leads/$leadId': {
-      id: '/leads/$leadId'
-      path: '/$leadId'
-      fullPath: '/leads/$leadId'
-      preLoaderRoute: typeof LeadsLeadIdRouteImport
-      parentRoute: typeof LeadsRoute
-    }
-    '/owners/$ownerId': {
-      id: '/owners/$ownerId'
-      path: '/$ownerId'
-      fullPath: '/owners/$ownerId'
-      preLoaderRoute: typeof OwnersOwnerIdRouteImport
-      parentRoute: typeof OwnersRoute
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/properties/': {
       id: '/properties/'
@@ -656,12 +628,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropertiesIndexRouteImport
       parentRoute: typeof PropertiesRoute
     }
+    '/leads/': {
+      id: '/leads/'
+      path: '/'
+      fullPath: '/leads/'
+      preLoaderRoute: typeof LeadsIndexRouteImport
+      parentRoute: typeof LeadsRoute
+    }
     '/properties/$propertyId': {
       id: '/properties/$propertyId'
       path: '/$propertyId'
       fullPath: '/properties/$propertyId'
       preLoaderRoute: typeof PropertiesPropertyIdRouteImport
       parentRoute: typeof PropertiesRoute
+    }
+    '/owners/$ownerId': {
+      id: '/owners/$ownerId'
+      path: '/$ownerId'
+      fullPath: '/owners/$ownerId'
+      preLoaderRoute: typeof OwnersOwnerIdRouteImport
+      parentRoute: typeof OwnersRoute
+    }
+    '/leads/$leadId': {
+      id: '/leads/$leadId'
+      path: '/$leadId'
+      fullPath: '/leads/$leadId'
+      preLoaderRoute: typeof LeadsLeadIdRouteImport
+      parentRoute: typeof LeadsRoute
+    }
+    '/developments/$developmentId': {
+      id: '/developments/$developmentId'
+      path: '/$developmentId'
+      fullPath: '/developments/$developmentId'
+      preLoaderRoute: typeof DevelopmentsDevelopmentIdRouteImport
+      parentRoute: typeof DevelopmentsRoute
     }
   }
 }

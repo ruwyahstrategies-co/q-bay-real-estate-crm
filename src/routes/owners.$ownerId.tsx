@@ -152,7 +152,7 @@ function OwnerProfilePage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {owner.phone && (
+              {!owner.phone_hidden && owner.phone && (
                 <a href={`tel:${owner.phone}`}>
                   <Button variant="outline" size="sm">
                     <Phone className="h-3.5 w-3.5" /> Call
@@ -201,7 +201,18 @@ function OwnerProfilePage() {
             <h4 className="text-sm font-semibold">Contact</h4>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <dt className="text-muted-foreground">Phone</dt>
-              <dd>{owner.phone ?? "-"}</dd>
+              <dd>
+                {owner.phone_hidden ? (
+                  <span
+                    className="text-muted-foreground"
+                    title="Only the owner's agent and administrators can see this number"
+                  >
+                    Hidden
+                  </span>
+                ) : (
+                  (owner.phone ?? "-")
+                )}
+              </dd>
               <dt className="text-muted-foreground">Email</dt>
               <dd>{owner.email ?? "-"}</dd>
               <dt className="text-muted-foreground">Address</dt>

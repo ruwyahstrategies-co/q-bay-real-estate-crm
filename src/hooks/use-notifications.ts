@@ -12,7 +12,7 @@ export function useScheduledNotifications(status?: "pending" | "sent" | "failed"
   return useQuery({
     queryKey: [...notificationKeys.scheduled, status ?? "all"],
     queryFn: async () => {
-      let q = sb.from("scheduled_notifications").select("*, owners(name)").order("scheduled_for", { ascending: false }).limit(200);
+      let q = sb.from("scheduled_notifications").select("id, template_key, event_type, owner_id, recipient_name, body, related_table, related_id, status, scheduled_for, sent_at, provider, provider_message_id, error_message, created_at, updated_at, owners(name)").order("scheduled_for", { ascending: false }).limit(200);
       if (status) q = q.eq("status", status);
       const { data, error } = await q;
       if (error) throw error;

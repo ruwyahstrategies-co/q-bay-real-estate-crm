@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { sb, type Owner, type OwnerInsert, type OwnerUpdate } from "@/lib/db";
+import { sb, type OwnerInsert, type OwnerUpdate } from "@/lib/db";
+import { OWNER_COLUMNS, attachOwnerPhones, type SafeOwner } from "@/lib/owner-privacy";
 
 export const ownerKeys = {
   all: ["owners"] as const,
@@ -10,12 +11,12 @@ export const ownerKeys = {
 export function useOwners(search = "") {
   return useQuery({
     queryKey: ownerKeys.list(search),
-    queryFn: async (): Promise<Owner[]> => {
-      let q = sb.from("owners").select("*").order("name", { ascending: true });
+    queryFn: async (): Promise<SafeOwner[]> => {
+      let q = sb.from("owners").select(OWNER_COLUMNS).order("name", { ascending: true });
       if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return attachOwnerPhones((data ?? []) as never);
     },
   });
 }
@@ -24,10 +25,12 @@ export function useOwner(id: string | undefined) {
   return useQuery({
     queryKey: id ? ownerKeys.detail(id) : ["owners", "detail", "none"],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await sb.from("owners").select("*").eq("id", id!).maybeSingle();
+    queryFn: async (): Promise<SafeOwner | null> => {
+      const { data, error } = await sb.from("owners").select(OWNER_COLUMNS).eq("id", id!).maybeSingle();
       if (error) throw error;
-      return data;
+      if (!data) return null;
+      const [owner] = await attachOwnerPhones([data as never]);
+      return owner;
     },
   });
 }
@@ -89,7 +92,7 @@ export function useCreateOwner() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: OwnerInsert) => {
-      const { data, error } = await sb.from("owners").insert(input).select().single();
+      const { data, error } = await sb.from("owners").insert(input).select(OWNER_COLUMNS).single();
       if (error) throw error;
       return data;
     },
@@ -101,7 +104,7 @@ export function useUpdateOwner() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: OwnerUpdate }) => {
-      const { data, error } = await sb.from("owners").update(patch).eq("id", id).select().single();
+      const { data, error } = await sb.from("owners").update(patch).eq("id", id).select(OWNER_COLUMNS).single();
       if (error) throw error;
       return data;
     },

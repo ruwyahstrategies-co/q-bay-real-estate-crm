@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchOwnerPhones } from "@/lib/owner-privacy";
 import {
   sb,
   type PropertyLease,
@@ -29,11 +30,17 @@ export function useManagedProperties() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("properties")
-        .select("*, owners(name, phone, email)")
+        .select("*, owners(name, email)")
         .eq("is_managed", true)
         .order("title");
       if (error) throw error;
-      return data ?? [];
+      // Phones come from the authorization-checked RPC, never from a joined owners select.
+      const rows = data ?? [];
+      const phones = await fetchOwnerPhones(rows.map((r) => r.owner_id).filter((id): id is string => !!id));
+      return rows.map((r) => ({
+        ...r,
+        owners: r.owners ? { ...r.owners, phone: (r.owner_id && phones.get(r.owner_id)) || null } : r.owners,
+      }));
     },
   });
 }

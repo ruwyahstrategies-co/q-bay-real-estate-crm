@@ -141,19 +141,18 @@ export function useRequestOwnerAvailabilityConfirmation() {
       propertyId,
       propertyTitle,
       recipientName,
-      recipientPhone,
     }: {
       ownerId: string;
       propertyId: string;
       propertyTitle: string;
       recipientName: string | null;
-      recipientPhone: string | null;
     }) => {
+      // The recipient phone is filled in on the server from the owner record, so the
+      // browser never has to hold an owner number it may not be entitled to see.
       const { error } = await sb.from("scheduled_notifications").insert({
         event_type: "availability_confirmation",
         owner_id: ownerId,
         recipient_name: recipientName,
-        recipient_phone: recipientPhone,
         body: `Hi${recipientName ? ` ${recipientName}` : ""}, could you confirm the current status of "${propertyTitle}"? Still available, reserved, sold, rented, or unavailable?`,
         related_table: "properties",
         related_id: propertyId,

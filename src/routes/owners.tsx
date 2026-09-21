@@ -21,8 +21,11 @@ import {
 import { useTeamMembers } from "@/hooks/use-team";
 import { useRowSelection } from "@/hooks/use-row-selection";
 import { SearchableSelectField } from "@/components/select-field";
-import type { Owner } from "@/lib/db";
+import { OWNER_PHONE_HIDDEN_LABEL, type SafeOwner } from "@/lib/owner-privacy";
+import { normalizePhone, phoneError } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+
+type Owner = SafeOwner;
 
 export const Route = createFileRoute("/owners")({
   head: () => ({ meta: [{ title: "Owners" }] }),
@@ -211,7 +214,18 @@ function OwnerRow({
       </td>
       <td className="px-4 py-3 text-xs">{owner.is_developer ? "Developer" : "Individual"}</td>
       <td className="px-4 py-3 text-xs">{owner.company ?? "-"}</td>
-      <td className="px-4 py-3 text-xs">{owner.phone ?? "-"}</td>
+      <td className="px-4 py-3 text-xs">
+        {owner.phone_hidden ? (
+          <span
+            className="text-muted-foreground"
+            title="Only the owner's agent and administrators can see this number"
+          >
+            {OWNER_PHONE_HIDDEN_LABEL}
+          </span>
+        ) : (
+          (owner.phone ?? "-")
+        )}
+      </td>
       <td className="px-4 py-3 text-xs">{owner.email ?? "-"}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
@@ -272,10 +286,18 @@ function OwnerDrawer({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return toast.error("Name is required");
+    const phoneHidden = isEdit && !!owner?.phone_hidden;
+    // A hidden phone is never sent back: leaving the field untouched must not wipe it.
+    // Legacy owners saved without a phone can still be edited; a phone is required for new
+    // owners, and for any owner that has one or where the user types one.
+    if (!phoneHidden && (!isEdit || normalizePhone(phone) || normalizePhone(owner?.phone))) {
+      const err = phoneError(phone);
+      if (err) return toast.error(err);
+    }
     const payload = {
       name: name.trim(),
       company: company || null,
-      phone: phone || null,
+      ...(phoneHidden ? {} : { phone: normalizePhone(phone) || null }),
       email: email || null,
       address: address || null,
       id_number: idNumber || null,
@@ -337,13 +359,25 @@ function OwnerDrawer({
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Phone
+            Phone *
           </span>
-          <input
-            className={inputCls}
-            value={phone ?? ""}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          {isEdit && owner?.phone_hidden ? (
+            <input
+              className={cn(inputCls, "text-muted-foreground")}
+              value={OWNER_PHONE_HIDDEN_LABEL}
+              disabled
+              readOnly
+              aria-label="Phone number hidden"
+            />
+          ) : (
+            <input
+              className={inputCls}
+              type="tel"
+              value={phone ?? ""}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
+          )}
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

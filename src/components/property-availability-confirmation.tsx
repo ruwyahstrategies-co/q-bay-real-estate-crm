@@ -57,7 +57,6 @@ export function PropertyAvailabilityConfirmation({ property }: { property: Prope
         propertyId: property.id,
         propertyTitle: property.title,
         recipientName: owner?.name ?? null,
-        recipientPhone: owner?.phone ?? null,
       });
       toast.success("Owner confirmation request queued");
     } catch (e) {

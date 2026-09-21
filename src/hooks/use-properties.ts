@@ -13,14 +13,21 @@ export function useProperties(opts?: {
   search?: string;
   type?: string | null;
   status?: "active" | "archived" | "all";
+  /** Availability filter: a stored availability value, or "needs_confirmation" for overdue check-ins. */
+  availability?: string | null;
 }) {
-  const { search = "", type = null, status = "active" } = opts ?? {};
+  const { search = "", type = null, status = "active", availability = null } = opts ?? {};
   return useQuery({
-    queryKey: propertyKeys.list({ search, type, status }),
+    queryKey: propertyKeys.list({ search, type, status, availability }),
     queryFn: async (): Promise<Property[]> => {
       let q = sb.from("properties").select("*").order("created_at", { ascending: false });
       if (status !== "all") q = q.eq("status", status);
       if (type) q = q.eq("property_type", type);
+      if (availability === "needs_confirmation") {
+        q = q.lt("availability_next_due_at", new Date().toISOString());
+      } else if (availability) {
+        q = q.eq("availability", availability);
+      }
       if (search.trim()) {
         const term = `%${search.trim()}%`;
         q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);

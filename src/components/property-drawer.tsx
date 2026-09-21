@@ -116,6 +116,7 @@ function initialForm(property: Property | null | undefined): FormState {
     furnishing_status: property?.furnishing_status ?? null,
     available_from: property?.available_from ?? "",
     maids_room: property?.maids_room ?? null,
+    balcony: property?.balcony ?? null,
     majlis: property?.majlis ?? null,
     indoor_majlis: property?.indoor_majlis ?? null,
     outdoor_majlis: property?.outdoor_majlis ?? null,
@@ -227,6 +228,7 @@ export function PropertyDrawer({
       furnishing_status: form.furnishing_status || null,
       available_from: form.available_from || null,
       maids_room: form.property_type === "Apartment" ? !!form.maids_room : null,
+      balcony: form.balcony == null ? null : !!form.balcony,
       majlis: form.property_type === "Villa" ? !!form.majlis : null,
       indoor_majlis: form.property_type === "Villa" ? !!form.indoor_majlis : null,
       outdoor_majlis: form.property_type === "Villa" ? !!form.outdoor_majlis : null,
@@ -468,6 +470,17 @@ export function PropertyDrawer({
             type="date"
             value={form.available_from ?? ""}
             onChange={(e) => set("available_from", e.target.value)}
+          />
+        </Field>
+        <Field label="Balcony">
+          <SelectField
+            value={form.balcony == null ? null : form.balcony ? "yes" : "no"}
+            onChange={(v) => set("balcony", v == null ? null : v === "yes")}
+            options={[
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" },
+            ]}
+            placeholder="Not specified"
           />
         </Field>
 

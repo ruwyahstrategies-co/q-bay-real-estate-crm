@@ -15,6 +15,7 @@ import { AvailabilityRing } from "@/components/status-badge";
 import { PropertyPublicationDestinations } from "@/components/property-publication-destinations";
 import { PropertyAvailabilityConfirmation } from "@/components/property-availability-confirmation";
 import { PropertyLeadsSection } from "@/components/property-leads-section";
+import { PropertySalesSection } from "@/components/property-sales-section";
 import { SharePropertyDrawer } from "@/components/share-property-drawer";
 import { PropertySharesSection } from "@/components/share-history";
 import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
@@ -180,6 +181,8 @@ function PropertyDetailPage() {
               <dd>{property.completion_status ?? "-"}</dd>
               <dt className="text-muted-foreground">Available from</dt>
               <dd>{property.available_from ? fmtDate(property.available_from) : "-"}</dd>
+              <dt className="text-muted-foreground">Balcony</dt>
+              <dd>{property.balcony == null ? "-" : property.balcony ? "Yes" : "No"}</dd>
               {property.property_type === "Apartment" && (
                 <>
                   <dt className="text-muted-foreground">Maid's room</dt>
@@ -330,6 +333,10 @@ function PropertyDetailPage() {
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           <PropertyPublicationDestinations property={property} />
           <PropertyAvailabilityConfirmation property={property} />
+        </div>
+
+        <div className="mt-3">
+          <PropertySalesSection property={property} />
         </div>
 
         <PropertyLeadsSection propertyId={propertyId} />

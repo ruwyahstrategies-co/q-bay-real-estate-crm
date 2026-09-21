@@ -16,6 +16,7 @@ export function UploadDropzone({
   tenantId,
   propertyLeaseId,
   offerId,
+  transactionId,
   onUploaded,
 }: {
   title: string;
@@ -27,6 +28,7 @@ export function UploadDropzone({
   tenantId?: string | null;
   propertyLeaseId?: string | null;
   offerId?: string | null;
+  transactionId?: string | null;
   onUploaded?: (uploadId: string) => void;
 }) {
   const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -47,6 +49,7 @@ export function UploadDropzone({
           tenantId,
           propertyLeaseId,
           offerId,
+          transactionId,
         });
         toast.success(
           `Uploaded ${file.name} to ${row.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}`,

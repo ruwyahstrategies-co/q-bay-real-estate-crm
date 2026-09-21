@@ -19,9 +19,10 @@ export function useUploads(opts?: {
   tenantId?: string;
   propertyLeaseId?: string;
   offerId?: string;
+  transactionId?: string;
   category?: string | null;
 }) {
-  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, category } = opts ?? {};
+  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, transactionId, category } = opts ?? {};
   return useQuery({
     queryKey: uploadKeys.list({
       leadId,
@@ -30,6 +31,7 @@ export function useUploads(opts?: {
       tenantId,
       propertyLeaseId,
       offerId,
+      transactionId,
       category,
     }),
     queryFn: async (): Promise<Upload[]> => {
@@ -40,6 +42,7 @@ export function useUploads(opts?: {
       if (tenantId) q = q.eq("tenant_id", tenantId);
       if (propertyLeaseId) q = q.eq("property_lease_id", propertyLeaseId);
       if (offerId) q = q.eq("offer_id", offerId);
+      if (transactionId) q = q.eq("transaction_id", transactionId);
       if (category) q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
@@ -67,6 +70,7 @@ const R2_REQUIRED_CATEGORIES = new Set<UploadCategoryKey>([
   "blog_images",
   "call_recordings",
   "brochures",
+  "staff_avatars",
 ]);
 
 async function readTextSafe(file: File): Promise<string | null> {
@@ -99,6 +103,7 @@ export function useUploadFile() {
       tenantId,
       propertyLeaseId,
       offerId,
+      transactionId,
       uploadedBy,
     }: {
       file: File;
@@ -109,6 +114,7 @@ export function useUploadFile() {
       tenantId?: string | null;
       propertyLeaseId?: string | null;
       offerId?: string | null;
+      transactionId?: string | null;
       uploadedBy?: string | null;
     }): Promise<Upload> => {
       const cat = UPLOAD_CATEGORIES[categoryKey];
@@ -161,6 +167,7 @@ export function useUploadFile() {
           tenant_id: tenantId ?? null,
           property_lease_id: propertyLeaseId ?? null,
           offer_id: offerId ?? null,
+          transaction_id: transactionId ?? null,
           uploaded_by: uploadedBy ?? null,
           processing_status,
           extracted_text,
@@ -206,6 +213,7 @@ export function useUploadFile() {
         tenant_id: tenantId ?? null,
         property_lease_id: propertyLeaseId ?? null,
         offer_id: offerId ?? null,
+        transaction_id: transactionId ?? null,
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,

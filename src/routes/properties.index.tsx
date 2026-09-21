@@ -38,7 +38,13 @@ import {
 } from "@/hooks/use-properties";
 import { downloadCsv } from "@/lib/csv-export";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
-import { fmtMoney, isConfirmationOverdue, type Property } from "@/lib/db";
+import {
+  PROPERTY_AVAILABILITIES,
+  PROPERTY_AVAILABILITY_LABELS,
+  fmtMoney,
+  isConfirmationOverdue,
+  type Property,
+} from "@/lib/db";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties" }] }),
@@ -60,6 +66,7 @@ function PropertiesPage() {
   const [type, setType] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
+  const [availability, setAvailability] = useState<string | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
   const [importerOpen, setImporterOpen] = useState(false);
@@ -67,6 +74,7 @@ function PropertiesPage() {
     search,
     type,
     status: statusFilter,
+    availability,
   });
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
   const { data: team = [] } = useTeamMembers();
@@ -166,7 +174,20 @@ function PropertiesPage() {
             emptyLabel="All types"
             className="w-44"
           />
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+          <SelectField
+            value={availability}
+            onChange={(v) => setAvailability(v)}
+            options={[...PROPERTY_AVAILABILITIES, "needs_confirmation"].map((a) => ({
+              value: a,
+              label: PROPERTY_AVAILABILITY_LABELS[a] ?? a,
+            }))}
+            emptyLabel="All availability"
+            className="w-48"
+          />
+          <div
+            className="flex items-center gap-1 rounded-lg border border-border bg-background p-1"
+            aria-label="Archive state"
+          >
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
@@ -175,7 +196,7 @@ function PropertiesPage() {
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   statusFilter === f.value
-                    ? "bg-canvas text-foreground"
+                    ? "bg-qbay text-white"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -312,7 +333,7 @@ function PropertiesPage() {
                             onClick={async () => {
                               try {
                                 await restore.mutateAsync(p.id);
-                                toast.success("Property restored");
+                                toast.success("Property restored. Confirm its availability before relisting.");
                               } catch (e) {
                                 toast.error((e as Error).message);
                               }
@@ -403,7 +424,7 @@ function PropertiesPage() {
         <ConfirmDialog
           open={!!confirmArchive}
           title="Archive property?"
-          description={`Archive ${confirmArchive?.title}?`}
+          description={`Archive ${confirmArchive?.title}? It will also be marked Unavailable.`}
           confirmLabel="Archive"
           pending={archive.isPending}
           onCancel={() => setConfirmArchive(null)}
@@ -411,7 +432,7 @@ function PropertiesPage() {
             if (!confirmArchive) return;
             try {
               await archive.mutateAsync(confirmArchive.id);
-              toast.success("Property archived");
+              toast.success("Property archived and marked Unavailable");
             } catch (e) {
               toast.error((e as Error).message);
             }

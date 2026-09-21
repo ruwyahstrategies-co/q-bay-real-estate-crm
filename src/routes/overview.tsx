@@ -29,8 +29,8 @@ import { fmtDate, fmtMoney, stageLabel, type Task } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
 import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
-import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
-import { useCurrentUser } from "@/hooks/use-auth";
+import { useOpenTasks, useUpdateTask } from "@/hooks/use-tasks";
+import { isQatarToday } from "@/lib/qatar-time";
 import { toast } from "sonner";
 
 type TaskWithRelations = Task & {
@@ -56,7 +56,6 @@ const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
 
 function OverviewPage() {
   const navigate = useNavigate();
-  const { teamMember } = useCurrentUser();
   const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
@@ -65,29 +64,15 @@ function OverviewPage() {
   const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(), []);
   const { data: events = [] } = usePropertyEvents(sinceISO);
   const { data: reports = [] } = useMarketReports();
-  const { data: openTasks = [] } = useTasks({ status: "pending" });
+  const { data: openTasksRaw = [] } = useOpenTasks();
+  const openTasks = openTasksRaw as TaskWithRelations[];
 
-  // Today's Tasks: the authenticated user's own due-today tasks/calendar
-  // items, sourced from the same `tasks` table Calendar and the Owner/Lead
-  // task drawers already write to - no separate/duplicate task store.
-  const todayStart = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-  const todayEnd = useMemo(() => {
-    const d = new Date(todayStart);
-    d.setDate(d.getDate() + 1);
-    return d;
-  }, [todayStart]);
-  const { data: todaysTasksRaw = [] } = useTasks({
-    assignedTo: teamMember?.id ?? undefined,
-    dueFrom: todayStart.toISOString(),
-    dueBefore: todayEnd.toISOString(),
-  });
-  const todaysTasks = (todaysTasksRaw as TaskWithRelations[]).filter(
-    (t) => t.status !== "completed" && t.status !== "cancelled",
-  );
+  // Today's Tasks: every unfinished task whose due date falls on today's calendar day in
+  // Qatar, whether or not it is also listed below as overdue (earlier today) or upcoming
+  // (later today). Same `tasks` table Calendar and the Owner/Lead drawers write to.
+  const todaysTasks = openTasks
+    .filter((t) => t.due_at && isQatarToday(t.due_at))
+    .sort((a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime());
   const updateTodayTask = useUpdateTask();
 
   function taskLinkTarget(

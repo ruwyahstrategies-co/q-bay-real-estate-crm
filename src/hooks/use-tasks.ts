@@ -35,6 +35,25 @@ export function useTasks(opts?: {
   });
 }
 
+/**
+ * Every task that is not finished, for the Overview lists. Today, Overdue and Upcoming are
+ * all derived from this one dataset so a task can never fall between them.
+ */
+export function useOpenTasks() {
+  return useQuery({
+    queryKey: taskKeys.list({ open: true }),
+    queryFn: async (): Promise<Task[]> => {
+      const { data, error } = await sb
+        .from("tasks")
+        .select("*, leads(full_name), team_members(full_name), owners(name), properties(title)")
+        .not("status", "in", "(completed,cancelled)")
+        .order("due_at", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Task[];
+    },
+  });
+}
+
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({

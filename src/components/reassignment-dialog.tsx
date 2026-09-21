@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { X, ArrowRightLeft } from "lucide-react";
+import { X, ArrowRightLeft, FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SearchableSelectField } from "./select-field";
 import { useAssignedRecordCounts, useReassignTeamMemberRecords, type ReassignmentCategory } from "@/hooks/use-reassignment";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { exportTeamMemberData } from "@/lib/staff-export";
 import type { StaffTeamMember } from "@/lib/db-extensions";
 
 const CATEGORY_LABELS: Record<ReassignmentCategory, string> = {
@@ -41,6 +43,23 @@ export function ReassignmentDialog({
   const { data: team = [] } = useTeamMembers();
   const reassign = useReassignTeamMemberRecords();
   const [targets, setTargets] = useState<Partial<Record<ReassignmentCategory, string>>>({});
+  const { teamMember: me, displayName } = useCurrentUser();
+  const [exporting, setExporting] = useState(false);
+  // Mirrors the database rule in export_team_member_data: administrator roles only.
+  const canExport = me?.role === "super_administrator" || me?.role === "administrator";
+
+  async function handleExport() {
+    if (!member) return;
+    setExporting(true);
+    try {
+      const r = await exportTeamMemberData(member.id, member.full_name, displayName);
+      toast.success(`Exported ${r.records} record${r.records === 1 ? "" : "s"} to ${r.filename}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const otherAgents = team.filter((m) => m.id !== member?.id);
   const categories = (Object.keys(CATEGORY_LABELS) as ReassignmentCategory[]).filter((c) => (counts?.[c] ?? 0) > 0);
@@ -73,6 +92,21 @@ export function ReassignmentDialog({
         </button>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-5">
+        {canExport && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-qbay/25 bg-qbay-tint p-3">
+            <div>
+              <p className="text-sm font-medium">Keep a copy of this person's work</p>
+              <p className="text-xs text-muted-foreground">
+                Download their profile, leads, properties, tasks, viewings, offers and activity as an Excel
+                file before you reassign or delete. Optional, but it cannot be recreated afterwards.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
+              {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+              Export data
+            </Button>
+          </div>
+        )}
         {!hasAssigned ? (
           <p className="text-sm text-muted-foreground">No assigned records found. It's safe to proceed directly.</p>
         ) : (

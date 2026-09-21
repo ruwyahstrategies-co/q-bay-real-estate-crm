@@ -18,6 +18,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PropertyManagementRouteImport } from './routes/property-management'
 import { Route as PropertyDemandRouteImport } from './routes/property-demand'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as OwnersRouteImport } from './routes/owners'
 import { Route as OverviewRouteImport } from './routes/overview'
@@ -85,6 +86,11 @@ const PropertyDemandRoute = PropertyDemandRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/profile': typeof ProfileRoute
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
   '/settings': typeof SettingsRoute
@@ -289,6 +297,7 @@ export interface FileRoutesById {
   '/overview': typeof OverviewRoute
   '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/owners'
     | '/pipeline'
+    | '/profile'
     | '/properties'
     | '/property-demand'
     | '/property-management'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/owners'
     | '/pipeline'
+    | '/profile'
     | '/property-demand'
     | '/property-management'
     | '/settings'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/owners'
     | '/pipeline'
+    | '/profile'
     | '/properties'
     | '/property-demand'
     | '/property-management'
@@ -426,6 +438,7 @@ export interface RootRouteChildren {
   OverviewRoute: typeof OverviewRoute
   OwnersRoute: typeof OwnersRouteWithChildren
   PipelineRoute: typeof PipelineRoute
+  ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   PropertyDemandRoute: typeof PropertyDemandRoute
   PropertyManagementRoute: typeof PropertyManagementRoute
@@ -500,6 +513,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -733,6 +753,7 @@ const rootRouteChildren: RootRouteChildren = {
   OverviewRoute: OverviewRoute,
   OwnersRoute: OwnersRouteWithChildren,
   PipelineRoute: PipelineRoute,
+  ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   PropertyDemandRoute: PropertyDemandRoute,
   PropertyManagementRoute: PropertyManagementRoute,

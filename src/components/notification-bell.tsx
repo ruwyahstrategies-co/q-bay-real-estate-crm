@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Bell, BellRing, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -19,6 +20,7 @@ function permissionLabel(permission: NotificationPermission | "unsupported") {
 }
 
 export function NotificationBell() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
@@ -70,7 +72,7 @@ export function NotificationBell() {
       // Navigation is still useful even if marking read fails.
     }
     setOpen(false);
-    if (href) window.location.assign(href);
+    if (href) navigate({ to: href as never });
   }
 
   return (
@@ -154,7 +156,7 @@ export function NotificationBell() {
                 >
                   <div className="flex items-start gap-2">
                     <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? "bg-border" : "bg-foreground"}`}
+                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? "bg-border" : "bg-qbay"}`}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-xs font-medium text-foreground">{n.title}</span>

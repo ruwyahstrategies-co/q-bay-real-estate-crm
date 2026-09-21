@@ -32,6 +32,8 @@ type AuthState = {
   permissions: PermissionSet;
   displayName: string;
   roleLabel: string;
+  /** Re-reads the signed-in user's team_members row, e.g. after they edit their profile. */
+  refreshTeamMember: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -128,6 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const displayName = teamMember?.full_name ?? authUser?.email ?? "Guest";
   const roleLabel = teamMember?.role ?? "-";
 
+  async function refreshTeamMember() {
+    const user = session?.user;
+    if (!user) return;
+    setTeamMember(await resolveTeamMember(user));
+  }
+
   const value: AuthState = {
     status,
     loading: status === "loading" || status === "resolving",
@@ -137,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     permissions,
     displayName,
     roleLabel,
+    refreshTeamMember,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

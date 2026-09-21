@@ -95,12 +95,17 @@ Deno.serve(async (req) => {
   } else {
     const caller = await resolveActiveCaller(req, service);
     if (!caller.ok) return json({ error: caller.error }, caller.status);
-    if (!hasPermission(caller.teamMember, "uploads", "upload")) {
+    const category = body.category;
+    // Profile pictures are self-service: no uploads.upload needed, but strictly the caller's own folder.
+    const isAvatar = category === "staff_avatars";
+    if (!isAvatar && !hasPermission(caller.teamMember, "uploads", "upload")) {
       return json({ error: "Not authorized to upload files" }, 403);
     }
-    const category = body.category;
     if (!category || !R2_CATEGORY_MAP[category]) return json({ error: "Invalid category" }, 400);
     if (!body.entityId || !UUID_RE.test(body.entityId)) return json({ error: "Invalid entityId" }, 400);
+    if (isAvatar && body.entityId.toLowerCase() !== caller.teamMember.id.toLowerCase()) {
+      return json({ error: "You can only upload a profile picture for your own account" }, 403);
+    }
     ({ entityType, scope, subpath, maxMb, mimePrefixes } = R2_CATEGORY_MAP[category]);
     entityId = body.entityId;
   }

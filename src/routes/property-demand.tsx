@@ -8,7 +8,8 @@ import { Card, Button } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { SelectField } from "@/components/select-field";
 import { MarketResearchChat } from "@/components/market-research-chat";
-import { useProperties } from "@/hooks/use-properties";
+import { useProperties, usePropertyThumbnails } from "@/hooks/use-properties";
+import { PropertyThumb } from "@/components/property-thumb";
 import {
   usePropertyEvents,
   useScanMentions,
@@ -120,6 +121,29 @@ function PropertyDemandPage() {
     .sort((a, b) => (b!.strongSignals) - (a!.strongSignals))
     .slice(0, 6) as { row: typeof perProperty[number]; strongSignals: number; supply: number; conf: "low" | "medium" | "high" }[];
 
+  // Demand ranking (server-side weighted score) is computed here so the thumbnails for every
+  // property shown anywhere on the page are fetched in one request.
+  const { data: demandRows = [], isLoading: demandLoading } = usePropertyDemandScores();
+  const [internalOnly, setInternalOnly] = useState(true);
+  const ranked = useMemo(
+    () => rankDemand(demandRows, propertyById, internalOnly),
+    [demandRows, propertyById, internalOnly],
+  );
+  const thumbIds = useMemo(() => {
+    const ids = new Set<string>();
+    ranked.forEach((r) => ids.add(r.row.property_id));
+    [topViewed, topMentioned, topEnquired, topViewings, highDemandLimited, viewsNoEnquiries, enquiriesNoOffers].forEach(
+      (list) => list.forEach((r) => ids.add(r.property.id)),
+    );
+    pricingOpps.forEach((o) => ids.add(o.row.property.id));
+    // The hero image on the property itself needs no lookup; only the others do.
+    return Array.from(ids).filter((id) => !propertyById.get(id)?.hero_image_url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ranked, filteredEvents, propertyById]);
+  const { data: thumbnails = {} } = usePropertyThumbnails(thumbIds);
+  const thumbUrl = (p: { id: string; hero_image_url?: string | null }): string | null =>
+    p.hero_image_url || thumbnails[p.id] || null;
+
   // Unique location/type for filters
   const allLocations = Array.from(new Set(properties.map((p) => p.location).filter(Boolean))) as string[];
   const allTypes = Array.from(new Set(properties.map((p) => p.property_type).filter(Boolean))) as string[];
@@ -182,13 +206,19 @@ function PropertyDemandPage() {
         />
       ) : (
         <>
-          <DemandRankingSection propertyById={propertyById} />
+          <DemandRankingSection
+            ranked={ranked}
+            isLoading={demandLoading}
+            internalOnly={internalOnly}
+            onInternalOnlyChange={setInternalOnly}
+            thumbUrl={thumbUrl}
+          />
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <PropertyListCard title="Most viewed" rows={topViewed} eventKey="view" />
-            <PropertyListCard title="Most mentioned" rows={topMentioned} eventKey="mention" />
-            <PropertyListCard title="Most enquired" rows={topEnquired} eventKey="enquiry" />
-            <PropertyListCard title="Most viewing requests" rows={topViewings} eventKey="viewing_request" />
+            <PropertyListCard title="Most viewed" rows={topViewed} eventKey="view" thumbUrl={thumbUrl} />
+            <PropertyListCard title="Most mentioned" rows={topMentioned} eventKey="mention" thumbUrl={thumbUrl} />
+            <PropertyListCard title="Most enquired" rows={topEnquired} eventKey="enquiry" thumbUrl={thumbUrl} />
+            <PropertyListCard title="Most viewing requests" rows={topViewings} eventKey="viewing_request" thumbUrl={thumbUrl} />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -202,6 +232,7 @@ function PropertyDemandPage() {
               title="High demand, limited availability"
               empty="None detected"
               rows={highDemandLimited}
+              thumbUrl={thumbUrl}
               renderRight={(r) => (
                 <span className="text-[10px] text-muted-foreground capitalize">{r.property.availability}</span>
               )}
@@ -210,12 +241,14 @@ function PropertyDemandPage() {
               title="Views but no enquiries"
               empty="None detected"
               rows={viewsNoEnquiries}
+              thumbUrl={thumbUrl}
               renderRight={(r) => <span className="text-[10px] text-muted-foreground">{r.counts.view ?? 0} views</span>}
             />
             <GapCard
               title="Enquiries but no offers"
               empty="None detected"
               rows={enquiriesNoOffers}
+              thumbUrl={thumbUrl}
               renderRight={(r) => <span className="text-[10px] text-muted-foreground">{r.counts.enquiry ?? 0} enquiries</span>}
             />
           </div>
@@ -228,7 +261,7 @@ function PropertyDemandPage() {
             ) : (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {pricingOpps.map(({ row, conf }) => (
-                  <PricingOpportunityCard key={row.property.id} row={row} confidence={conf} rangeDays={Number(rangeDays)} />
+                  <PricingOpportunityCard key={row.property.id} row={row} confidence={conf} rangeDays={Number(rangeDays)} thumbUrl={thumbUrl} />
                 ))}
               </div>
             )}
@@ -247,6 +280,29 @@ function PropertyDemandPage() {
     </AppShell>
   );
 }
+
+/** Transparent weighted demand score per property, highest first (top 10). */
+function rankDemand(rows: DemandRow[], propertyById: Map<string, any>, internalOnly: boolean) {
+  return rows
+    .map((r) => {
+      const internal =
+        r.interested_leads * 4 +
+        r.shortlists * 3 +
+        r.viewing_requests * 5 +
+        r.enquiries * 3 +
+        r.offers * 8 +
+        r.brochure_downloads * 2 +
+        r.views * 1 -
+        r.rejections * 2;
+      const score = internalOnly ? internal : internal + r.mentions * 1;
+      return { row: r, internal, score, property: propertyById.get(r.property_id) };
+    })
+    .filter((x) => x.score > 0 && x.property)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+}
+
+type ThumbUrl = (p: { id: string; hero_image_url?: string | null }) => string | null;
 
 /* - subcomponents - */
 
@@ -315,10 +371,12 @@ function PropertyListCard({
   title,
   rows,
   eventKey,
+  thumbUrl,
 }: {
   title: string;
   rows: { property: any; counts: Record<string, number>; score: number }[];
   eventKey: PropertyEvent["event_type"];
+  thumbUrl: ThumbUrl;
 }) {
   return (
     <Card>
@@ -329,8 +387,9 @@ function PropertyListCard({
         <ul className="space-y-1.5 text-xs">
           {rows.filter((r) => (r.counts[eventKey] ?? 0) > 0).map((r) => (
             <li key={r.property.id} className="flex items-center justify-between gap-2">
-              <Link to="/properties/$propertyId" params={{ propertyId: r.property.id }} className="truncate hover:underline">
-                {r.property.title}
+              <Link to="/properties/$propertyId" params={{ propertyId: r.property.id }} className="flex min-w-0 items-center gap-2 hover:underline">
+                <PropertyThumb url={thumbUrl(r.property)} />
+                <span className="truncate">{r.property.title}</span>
               </Link>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{r.counts[eventKey] ?? 0}</span>
             </li>
@@ -366,11 +425,13 @@ function GapCard({
   rows,
   empty,
   renderRight,
+  thumbUrl,
 }: {
   title: string;
   rows: { property: any; counts: Record<string, number>; score: number }[];
   empty: string;
   renderRight: (r: any) => React.ReactNode;
+  thumbUrl: ThumbUrl;
 }) {
   return (
     <Card>
@@ -381,8 +442,9 @@ function GapCard({
         <ul className="space-y-1.5 text-xs">
           {rows.map((r) => (
             <li key={r.property.id} className="flex items-center justify-between gap-2">
-              <Link to="/properties/$propertyId" params={{ propertyId: r.property.id }} className="truncate hover:underline">
-                {r.property.title}
+              <Link to="/properties/$propertyId" params={{ propertyId: r.property.id }} className="flex min-w-0 items-center gap-2 hover:underline">
+                <PropertyThumb url={thumbUrl(r.property)} />
+                <span className="truncate">{r.property.title}</span>
               </Link>
               {renderRight(r)}
             </li>
@@ -397,22 +459,27 @@ function PricingOpportunityCard({
   row,
   confidence,
   rangeDays,
+  thumbUrl,
 }: {
   row: { property: any; counts: Record<string, number>; score: number };
   confidence: "low" | "medium" | "high";
   rangeDays: number;
+  thumbUrl: ThumbUrl;
 }) {
   const p = row.property;
   const c = row.counts;
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-3">
+        <PropertyThumb size="md" url={thumbUrl(p)} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{p.title}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {p.reference_code ? `${p.reference_code} · ` : ""}{p.property_type ?? ""} · {p.location ?? "-"}
           </p>
           <p className="mt-2 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
+        </div>
         </div>
         <span className={cn(
           "rounded-full px-2 py-0.5 text-[10px] font-medium",
@@ -443,26 +510,20 @@ function PricingOpportunityCard({
 
 /* - Demand ranking: server-side weighted score (internal behaviour prioritised) - */
 
-function DemandRankingSection({ propertyById }: { propertyById: Map<string, any> }) {
-  const { data: rows = [], isLoading } = usePropertyDemandScores();
-  const [internalOnly, setInternalOnly] = useState(true);
+function DemandRankingSection({
+  ranked,
+  isLoading,
+  internalOnly,
+  onInternalOnlyChange,
+  thumbUrl,
+}: {
+  ranked: ReturnType<typeof rankDemand>;
+  isLoading: boolean;
+  internalOnly: boolean;
+  onInternalOnlyChange: (v: boolean) => void;
+  thumbUrl: ThumbUrl;
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
-
-  const ranked = useMemo(() => {
-    const scored = rows.map((r) => {
-      const internal = r.interested_leads * 4
-        + r.shortlists * 3
-        + r.viewing_requests * 5
-        + r.enquiries * 3
-        + r.offers * 8
-        + r.brochure_downloads * 2
-        + r.views * 1
-        - r.rejections * 2;
-      const score = internalOnly ? internal : internal + r.mentions * 1;
-      return { row: r, internal, score };
-    }).filter((x) => x.score > 0 && propertyById.get(x.row.property_id));
-    return scored.sort((a, b) => b.score - a.score).slice(0, 10);
-  }, [rows, internalOnly, propertyById]);
 
   if (isLoading) return null;
   if (ranked.length === 0) return null;
@@ -477,7 +538,7 @@ function DemandRankingSection({ propertyById }: { propertyById: Map<string, any>
           <input
             type="checkbox"
             checked={internalOnly}
-            onChange={(e) => setInternalOnly(e.target.checked)}
+            onChange={(e) => onInternalOnlyChange(e.target.checked)}
             className="h-3 w-3"
           />
           Internal buyer signals only (ignore online mentions)
@@ -488,8 +549,7 @@ function DemandRankingSection({ propertyById }: { propertyById: Map<string, any>
         offers ×8, brochures ×2, views ×1, rejections -2{internalOnly ? "" : ", online mentions ×1"}.
       </p>
       <ul className="mt-3 space-y-1.5">
-        {ranked.map(({ row, score, internal }) => {
-          const p = propertyById.get(row.property_id);
+        {ranked.map(({ row, score, internal, property: p }) => {
           const open = expanded === row.property_id;
           return (
             <li key={row.property_id} className="rounded-md border border-border p-2 text-xs">
@@ -497,25 +557,28 @@ function DemandRankingSection({ propertyById }: { propertyById: Map<string, any>
                 onClick={() => setExpanded(open ? null : row.property_id)}
                 className="flex w-full items-start justify-between gap-3 text-left"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    <Link to="/properties/$propertyId" params={{ propertyId: row.property_id }} className="hover:underline">
-                      {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
-                    </Link>
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {p.location ?? "-"} · {fmtMoney(p.price, p.currency)} · {p.availability ?? "-"}
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                    <Chip label="leads" v={row.interested_leads} />
-                    <Chip label="enquiries" v={row.enquiries} />
-                    <Chip label="shortlists" v={row.shortlists} />
-                    <Chip label="viewings" v={row.viewing_requests} />
-                    <Chip label="offers" v={row.offers} />
-                    <Chip label="views" v={row.views} />
-                    <Chip label="brochures" v={row.brochure_downloads} />
-                    <Chip label="mentions" v={row.mentions} />
-                    <Chip label="rejections" v={row.rejections} />
+                <div className="flex min-w-0 items-start gap-3">
+                  <PropertyThumb size="md" url={thumbUrl(p)} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      <Link to="/properties/$propertyId" params={{ propertyId: row.property_id }} className="hover:underline">
+                        {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
+                      </Link>
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {p.location ?? "-"} · {fmtMoney(p.price, p.currency)} · {p.availability ?? "-"}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                      <Chip label="leads" v={row.interested_leads} />
+                      <Chip label="enquiries" v={row.enquiries} />
+                      <Chip label="shortlists" v={row.shortlists} />
+                      <Chip label="viewings" v={row.viewing_requests} />
+                      <Chip label="offers" v={row.offers} />
+                      <Chip label="views" v={row.views} />
+                      <Chip label="brochures" v={row.brochure_downloads} />
+                      <Chip label="mentions" v={row.mentions} />
+                      <Chip label="rejections" v={row.rejections} />
+                    </div>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">

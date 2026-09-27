@@ -17,6 +17,7 @@ import { PropertyAvailabilityConfirmation } from "@/components/property-availabi
 import { PropertyLeadsSection } from "@/components/property-leads-section";
 import { PropertySalesSection } from "@/components/property-sales-section";
 import { SharePropertyDrawer } from "@/components/share-property-drawer";
+import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
 import { PropertySharesSection } from "@/components/share-history";
 import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
 import { sb, fmtMoney, isConfirmationOverdue } from "@/lib/db";
@@ -138,6 +139,7 @@ function PropertyDetailPage() {
               <p className="mt-3 text-2xl font-semibold">
                 {fmtMoney(property.price, property.currency)}
               </p>
+              <PropertyWebsiteLinkButtons property={property} showHint className="mt-3" />
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => openPropertyPdf(property)}>
@@ -175,6 +177,12 @@ function PropertyDetailPage() {
               <dd>{property.bathrooms ?? "-"}</dd>
               <dt className="text-muted-foreground">Size</dt>
               <dd>{property.size ? `${property.size} ${property.size_unit ?? ""}` : "-"}</dd>
+              <dt className="text-muted-foreground">Built-up area</dt>
+              <dd>
+                {property.built_up_area
+                  ? `${property.built_up_area} ${property.built_up_area_unit ?? ""}`
+                  : "-"}
+              </dd>
               <dt className="text-muted-foreground">Developer</dt>
               <dd>{property.developer ?? "-"}</dd>
               <dt className="text-muted-foreground">Status</dt>

@@ -90,6 +90,8 @@ function initialForm(property: Property | null | undefined): FormState {
     bathrooms: property?.bathrooms ?? null,
     size: property?.size ?? null,
     size_unit: property?.size_unit ?? "sqm",
+    built_up_area: property?.built_up_area ?? null,
+    built_up_area_unit: property?.built_up_area_unit ?? property?.size_unit ?? "sqm",
     completion_status: property?.completion_status ?? "",
     availability: property?.availability ?? "available",
     description: property?.description ?? "",
@@ -193,6 +195,8 @@ export function PropertyDrawer({
       bathrooms: form.bathrooms ? Number(form.bathrooms) : null,
       size: form.size ? Number(form.size) : null,
       size_unit: form.size_unit || null,
+      built_up_area: form.built_up_area ? Number(form.built_up_area) : null,
+      built_up_area_unit: form.built_up_area_unit || "sqm",
       completion_status: form.completion_status || null,
       availability: form.availability || "available",
       description: form.description || null,
@@ -650,6 +654,23 @@ export function PropertyDrawer({
           <SelectField
             value={form.size_unit ?? "sqm"}
             onChange={(v) => set("size_unit", v ?? "sqm")}
+            options={SIZE_UNIT_OPTIONS}
+            allowClear={false}
+          />
+        </Field>
+        <Field label="Built-up area">
+          <input
+            className={inputCls}
+            type="number"
+            min={0}
+            value={form.built_up_area ?? ""}
+            onChange={(e) => set("built_up_area", e.target.value ? Number(e.target.value) : null)}
+          />
+        </Field>
+        <Field label="Built-up area unit">
+          <SelectField
+            value={form.built_up_area_unit ?? "sqm"}
+            onChange={(v) => set("built_up_area_unit", v ?? "sqm")}
             options={SIZE_UNIT_OPTIONS}
             allowClear={false}
           />

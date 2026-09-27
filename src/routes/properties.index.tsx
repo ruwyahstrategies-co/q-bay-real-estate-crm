@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { SelectField } from "@/components/select-field";
 import { AvailabilityRing } from "@/components/status-badge";
+import { PropertyWebsiteLinkIcon } from "@/components/property-website-link";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers } from "@/hooks/use-team";
 import { cn } from "@/lib/utils";
@@ -128,6 +129,8 @@ function PropertiesPage() {
                       { key: "bedrooms", label: "Bedrooms" },
                       { key: "bathrooms", label: "Bathrooms" },
                       { key: "size", label: "Size" },
+                      { key: "built_up_area", label: "Built-up area" },
+                      { key: "built_up_area_unit", label: "Built-up area unit" },
                       { key: "availability", label: "Availability" },
                       { key: "status", label: "Status" },
                       { key: "is_published", label: "Published" },
@@ -299,6 +302,7 @@ function PropertiesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <PropertyWebsiteLinkIcon property={p} />
                         <button
                           className="rounded-md p-1.5 hover:bg-muted"
                           title="Download PDF"

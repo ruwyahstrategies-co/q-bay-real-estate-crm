@@ -46,6 +46,7 @@ export function openPropertyPdf(property: Property, heroImageUrl?: string | null
     <div class="stat"><div class="label">Bedrooms</div><div class="value">${property.bedrooms ?? "-"}</div></div>
     <div class="stat"><div class="label">Bathrooms</div><div class="value">${property.bathrooms ?? "-"}</div></div>
     <div class="stat"><div class="label">Size</div><div class="value">${property.size ? `${property.size} ${property.size_unit ?? ""}` : "-"}</div></div>
+    <div class="stat"><div class="label">Built-up area</div><div class="value">${property.built_up_area ? `${property.built_up_area} ${property.built_up_area_unit ?? ""}` : "-"}</div></div>
     <div class="stat"><div class="label">Availability</div><div class="value">${escapeHtml(property.availability ?? "-")}</div></div>
     <div class="stat"><div class="label">Developer</div><div class="value">${escapeHtml(property.developer ?? "-")}</div></div>
   </div>
@@ -146,6 +147,7 @@ export async function generatePropertyPdfBlob(
     ["Bedrooms", property.bedrooms != null ? String(property.bedrooms) : "-"],
     ["Bathrooms", property.bathrooms != null ? String(property.bathrooms) : "-"],
     ["Size", property.size ? `${property.size} ${property.size_unit ?? ""}` : "-"],
+    ["Built-up area", property.built_up_area ? `${property.built_up_area} ${property.built_up_area_unit ?? ""}` : "-"],
     ["Availability", property.availability ?? "-"],
     ["Developer", property.developer ?? "-"],
   ];

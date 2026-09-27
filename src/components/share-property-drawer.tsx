@@ -11,6 +11,8 @@ import { useAreas, usePlaces } from "@/hooks/use-locations";
 import { useMyWhatsappConnection } from "@/hooks/use-whatsapp";
 import { usePropertyShares, useSharePropertyWithLeads } from "@/hooks/use-property-shares";
 import { buildPropertyShareMessage } from "@/lib/property-share";
+import { usePublicWebsiteUrl } from "@/hooks/use-public-website";
+import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
 import { LEAD_CLASSIFICATION_LABELS, fmtDate, fmtMoney, type Property } from "@/lib/db";
 
 const MAX_ROWS = 100;
@@ -60,9 +62,10 @@ export function SharePropertyDrawer({
     return [placeName, areaName].filter(Boolean).join(", ") || null;
   }, [areas, places, property.area_id, property.place_id]);
 
+  const { url: siteUrl } = usePublicWebsiteUrl();
   const defaultMessage = useMemo(
-    () => buildPropertyShareMessage(property, locationLabel),
-    [property, locationLabel],
+    () => buildPropertyShareMessage(property, locationLabel, siteUrl),
+    [property, locationLabel, siteUrl],
   );
 
   // Fresh state (and a fresh de-duplication id) each time the drawer opens.
@@ -327,11 +330,7 @@ export function SharePropertyDrawer({
               setMessageEdited(true);
             }}
           />
-          {!property.is_published && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              This property is not published, so the message has no public link.
-            </p>
-          )}
+          <PropertyWebsiteLinkButtons property={property} showHint className="mt-2" />
         </div>
 
         <div className="rounded-lg border border-border bg-background p-3 text-xs">

@@ -28,6 +28,7 @@ const PROPERTY_FIELDS = [
   { key: "bedrooms", label: "Bedrooms" },
   { key: "bathrooms", label: "Bathrooms" },
   { key: "size", label: "Size" },
+  { key: "built_up_area", label: "Built-up area" },
   { key: "availability", label: "Availability" },
   { key: "description", label: "Description" },
 ] as const;
@@ -133,6 +134,8 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
         bedrooms: mapping.bedrooms ? num(String(row[mapping.bedrooms] ?? "")) : null,
         bathrooms: mapping.bathrooms ? num(String(row[mapping.bathrooms] ?? "")) : null,
         size: mapping.size ? num(String(row[mapping.size] ?? "")) : null,
+        // Only written when the file has this column, so re-importing never blanks it.
+        ...(mapping.built_up_area ? { built_up_area: num(String(row[mapping.built_up_area] ?? "")) } : {}),
         availability: mapping.availability ? String(row[mapping.availability] ?? "") || "available" : "available",
         description: mapping.description ? String(row[mapping.description] ?? "") || null : null,
       };

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ShieldCheck, Users, Clock, MessageCircle, MapPinned, Plus, Trash2 } from "lucide-react";
+import { ShieldCheck, Users, Clock, MessageCircle, MapPinned, Globe, Plus, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
@@ -40,6 +40,11 @@ import {
   useSaveAvailabilityConfirmationCadence,
 } from "@/hooks/use-availability-confirmations";
 import { useMapboxConfig, useSaveMapboxConfig } from "@/hooks/use-mapbox-config";
+import {
+  usePublicWebsiteConfig,
+  usePublicWebsiteUrl,
+  useSavePublicWebsiteUrl,
+} from "@/hooks/use-public-website";
 import { fmtDateTime } from "@/lib/db";
 
 export const Route = createFileRoute("/settings")({
@@ -52,6 +57,7 @@ const sections = [
   "Pipeline stages",
   "Locations",
   "Map / Mapbox",
+  "Public website",
   "Permissions",
   "My WhatsApp Connection",
   "Security",
@@ -196,6 +202,8 @@ function SettingsPage() {
             {active === "Locations" && <LocationsSection canManage={canManage} />}
 
             {active === "Map / Mapbox" && <MapboxSection canManage={canManage} />}
+
+            {active === "Public website" && <PublicWebsiteSection canManage={canManage} />}
 
             {active === "My WhatsApp Connection" && <WhatsappSection />}
 
@@ -512,6 +520,74 @@ function MapboxSection({ canManage }: { canManage: boolean }) {
         <p className="text-xs text-muted-foreground">
           No Mapbox token configured yet. Ask an administrator to add one here.
         </p>
+      )}
+    </div>
+  );
+}
+
+function PublicWebsiteSection({ canManage }: { canManage: boolean }) {
+  const { data, isLoading } = usePublicWebsiteConfig();
+  const effective = usePublicWebsiteUrl();
+  const save = useSavePublicWebsiteUrl();
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    setValue(data?.url ?? "");
+  }, [data?.url]);
+
+  return (
+    <div className="mt-4 max-w-lg space-y-4 text-sm">
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
+        <Globe className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        <div>
+          <p className="font-medium">The address of the public Q-Bay website</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Enter it once here. Every Copy Website Link, Open Website Listing and property share
+            message uses it, and only for properties that are published. Nothing is guessed: until it is
+            set, no website links are created.
+          </p>
+        </div>
+      </div>
+
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground">
+          {effective.url
+            ? `Links currently use ${effective.url}${effective.source === "env" ? " (from the deployment environment)" : ""}.`
+            : "No website address is set yet."}
+        </p>
+      )}
+
+      {canManage ? (
+        <div className="space-y-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Website address
+            </span>
+            <input
+              className={inputCls}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="https://your-domain.com"
+            />
+          </label>
+          <Button
+            size="sm"
+            disabled={save.isPending || !value.trim()}
+            onClick={async () => {
+              try {
+                const saved = await save.mutateAsync(value);
+                setValue(saved);
+                toast.success("Website address saved");
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+          >
+            {save.isPending ? "Saving..." : "Save address"}
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Only an administrator can change this address.</p>
       )}
     </div>
   );

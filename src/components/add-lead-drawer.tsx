@@ -7,6 +7,7 @@ import { SelectField, SearchableSelectField } from "./select-field";
 import { cn, titleCase } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { useProperties } from "@/hooks/use-properties";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
@@ -77,6 +78,7 @@ export function AddLeadDrawer({
   const create = useCreateLead();
   const update = useUpdateLead();
   const { data: team = [] } = useTeamMembers();
+  const { teamMember: me } = useCurrentUser();
   const { data: properties = [] } = useProperties({ status: "active" });
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
@@ -111,7 +113,7 @@ export function AddLeadDrawer({
     financing_status: lead?.financing_status ?? "",
     lead_source: lead?.lead_source ?? "",
     pipeline_stage: lead?.pipeline_stage ?? "new_lead",
-    assigned_agent_id: lead?.assigned_agent_id ?? null,
+    assigned_agent_id: lead ? lead.assigned_agent_id : (me?.id ?? null),
     transaction_intent: lead?.transaction_intent ?? defaultIntent,
     classification: lead?.classification ?? (defaultIntent === "rent" ? "renter" : "buyer"),
     workflow: lead?.workflow ?? "sales",
@@ -147,7 +149,7 @@ export function AddLeadDrawer({
       financing_status: lead?.financing_status ?? "",
       lead_source: lead?.lead_source ?? "",
       pipeline_stage: lead?.pipeline_stage ?? "new_lead",
-      assigned_agent_id: lead?.assigned_agent_id ?? null,
+      assigned_agent_id: lead ? lead.assigned_agent_id : (me?.id ?? null),
       transaction_intent: lead?.transaction_intent ?? defaultIntent,
       classification: lead?.classification ?? (defaultIntent === "rent" ? "renter" : "buyer"),
       workflow: lead?.workflow ?? "sales",
@@ -162,6 +164,10 @@ export function AddLeadDrawer({
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((p) => ({ ...p, [k]: v }));
   }
+
+  const agentOptions = team
+    .filter((m) => m.is_active !== false || m.id === lead?.assigned_agent_id)
+    .map((m) => ({ value: m.id, label: m.full_name }));
 
   const pending = create.isPending || update.isPending;
 
@@ -284,6 +290,15 @@ export function AddLeadDrawer({
             required={!isEdit || !!normalizePhone(lead?.phone)}
           />
         </Field>
+        <Field label="Email">
+          <input
+            className={inputCls}
+            type="email"
+            placeholder="jane@..."
+            value={form.email ?? ""}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </Field>
         <Field label="Sale or Rent">
           <SelectField
             value={form.transaction_intent ?? "sale"}
@@ -315,6 +330,21 @@ export function AddLeadDrawer({
             allowClear={false}
           />
         </Field>
+        <Field label="Assigned agent" full>
+          <SearchableSelectField
+            value={form.assigned_agent_id}
+            onChange={(v) => set("assigned_agent_id", v)}
+            options={agentOptions}
+            placeholder="Search and select an agent"
+            emptyLabel="Unassigned"
+            searchPlaceholder="Search agents..."
+          />
+          {!isEdit && (
+            <span className="text-[11px] text-muted-foreground">
+              Leads you add are assigned to you unless you choose someone else.
+            </span>
+          )}
+        </Field>
         <Field label="Workflow">
           <SelectField
             value={form.workflow ?? "sales"}
@@ -323,13 +353,12 @@ export function AddLeadDrawer({
             allowClear={false}
           />
         </Field>
-        <Field label="Development (optional)">
-          <SearchableSelectField
-            value={form.development_id}
-            onChange={(v) => set("development_id", v)}
-            options={developments.map((d) => ({ value: d.id, label: d.name }))}
-            placeholder="Select development"
-            searchPlaceholder="Search developments..."
+        <Field label="Lead source">
+          <input
+            className={inputCls}
+            placeholder="Website, referral..."
+            value={form.lead_source ?? ""}
+            onChange={(e) => set("lead_source", e.target.value)}
           />
         </Field>
         {form.workflow === "telesales" && (
@@ -354,14 +383,6 @@ export function AddLeadDrawer({
             </Field>
           </>
         )}
-        <Field label="Lead source">
-          <input
-            className={inputCls}
-            placeholder="Website, referral..."
-            value={form.lead_source ?? ""}
-            onChange={(e) => set("lead_source", e.target.value)}
-          />
-        </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:col-span-2">
           <Field label="Budget min">
             <input
@@ -380,7 +401,15 @@ export function AddLeadDrawer({
             />
           </Field>
         </div>
-        <Field label={`Interested properties (${interestedPropertyIds.length} selected)`} full>
+        <Field label="Pipeline stage">
+          <SelectField
+            value={form.pipeline_stage ?? "new_lead"}
+            onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
+            options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
+            allowClear={false}
+          />
+        </Field>
+        <Field label={`Property interests (${interestedPropertyIds.length} selected)`} full>
           <div className="max-h-32 overflow-y-auto rounded-lg border border-border bg-canvas p-2">
             {properties.length === 0 ? (
               <p className="px-1 py-2 text-xs text-muted-foreground">No active properties yet.</p>
@@ -408,24 +437,6 @@ export function AddLeadDrawer({
             )}
           </div>
         </Field>
-        <Field label="Assigned agent">
-          <SearchableSelectField
-            value={form.assigned_agent_id}
-            onChange={(v) => set("assigned_agent_id", v)}
-            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-            placeholder="Select agent"
-            emptyLabel="Unassigned"
-            searchPlaceholder="Search agents..."
-          />
-        </Field>
-        <Field label="Pipeline stage">
-          <SelectField
-            value={form.pipeline_stage ?? "new_lead"}
-            onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
-            options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
-            allowClear={false}
-          />
-        </Field>
         <Field label="Notes / follow-up" full>
           <textarea
             className={cn(inputCls, "h-20 py-2")}
@@ -439,13 +450,13 @@ export function AddLeadDrawer({
             More details
           </p>
         </div>
-        <Field label="Email">
-          <input
-            className={inputCls}
-            type="email"
-            placeholder="jane@..."
-            value={form.email ?? ""}
-            onChange={(e) => set("email", e.target.value)}
+        <Field label="Development (optional)">
+          <SearchableSelectField
+            value={form.development_id}
+            onChange={(v) => set("development_id", v)}
+            options={developments.map((d) => ({ value: d.id, label: d.name }))}
+            placeholder="Select development"
+            searchPlaceholder="Search developments..."
           />
         </Field>
         <Field label="Currency">

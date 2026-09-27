@@ -11,6 +11,10 @@ import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { UploadDropzone } from "@/components/upload-dropzone";
+import { DocumentList } from "@/components/document-list";
+import { RentContractPanel } from "@/components/rent-contract-panel";
+import { TenancyDrawer } from "@/components/tenancy-drawer";
+import { TenantDrawer, TenantDetailDrawer } from "@/components/tenant-drawers";
 import { usePermissions } from "@/hooks/use-auth";
 import { useProperties, useUpdateProperty } from "@/hooks/use-properties";
 import { downloadUpload, useUploads } from "@/hooks/use-uploads";
@@ -33,6 +37,7 @@ import {
   useUpdateMaintenanceIssue,
 } from "@/hooks/use-property-management";
 import {
+  type PropertyLease,
   fmtMoney,
   fmtDate,
   fmtDateTime,
@@ -370,7 +375,12 @@ function TenantsTab() {
                 <button onClick={() => setEditId(t.id)} className="text-left">
                   <p className="text-sm font-medium hover:underline">{t.full_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {t.phone ?? "-"} · {t.email ?? "-"}
+                    {t.phone ? (
+                      <span className="font-medium text-foreground">{t.phone}</span>
+                    ) : (
+                      <span className="text-amber-700">No phone on file</span>
+                    )}{" "}
+                    · {t.email ?? "-"}
                   </p>
                 </button>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -394,285 +404,6 @@ function TenantsTab() {
   );
 }
 
-function TenantDrawer({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const create = useCreateTenant();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [idNumber, setIdNumber] = useState("");
-  const [nationality, setNationality] = useState("");
-  const [notes, setNotes] = useState("");
-
-  return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Add tenant">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h3 className="text-base font-semibold">Add Tenant</h3>
-        <button
-          onClick={() => onOpenChange(false)}
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <form
-        className="flex-1 space-y-3 overflow-y-auto p-5"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!name.trim()) return toast.error("Name is required");
-          try {
-            await create.mutateAsync({
-              full_name: name.trim(),
-              phone: phone || null,
-              email: email || null,
-              id_number: idNumber || null,
-              nationality: nationality || null,
-              notes: notes || null,
-            });
-            toast.success("Tenant added");
-            setName("");
-            setPhone("");
-            setEmail("");
-            setIdNumber("");
-            setNationality("");
-            setNotes("");
-            onOpenChange(false);
-          } catch (err) {
-            toast.error((err as Error).message);
-          }
-        }}
-      >
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Full name *
-          </span>
-          <input
-            className={inputCls}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Phone
-          </span>
-          <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Email
-          </span>
-          <input
-            className={inputCls}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            ID / passport number
-          </span>
-          <input
-            className={inputCls}
-            value={idNumber}
-            onChange={(e) => setIdNumber(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Nationality
-          </span>
-          <input
-            className={inputCls}
-            value={nationality}
-            onChange={(e) => setNationality(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Notes
-          </span>
-          <textarea
-            className={cn(inputCls, "h-20 py-2")}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </label>
-        <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" size="sm" disabled={create.isPending}>
-            {create.isPending ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </form>
-    </DrawerShell>
-  );
-}
-
-/** Tenant profile: editable identity fields, tenancy history and their documents, opened from the Tenants list. */
-function TenantDetailDrawer({ tenantId, onClose }: { tenantId: string; onClose: () => void }) {
-  const { data: tenant } = useTenant(tenantId);
-  const { data: tenancies = [] } = useTenancies();
-  const { data: documents = [] } = useUploads({ tenantId });
-  const update = useUpdateTenant();
-  const { can } = usePermissions();
-  const canEdit = can("properties", "edit");
-
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (tenant) {
-      setName(tenant.full_name);
-      setPhone(tenant.phone ?? "");
-      setEmail(tenant.email ?? "");
-      setNotes(tenant.notes ?? "");
-    }
-  }, [tenant]);
-
-  const history = tenancies.filter((t) => t.tenant_id === tenantId);
-
-  return (
-    <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Tenant profile">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h3 className="text-base font-semibold">Tenant Profile</h3>
-        <button
-          onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      {!tenant ? (
-        <div className="p-5 text-sm text-muted-foreground">Loading...</div>
-      ) : (
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          <form
-            className="space-y-3"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await update.mutateAsync({
-                  id: tenantId,
-                  patch: {
-                    full_name: name.trim(),
-                    phone: phone || null,
-                    email: email || null,
-                    notes: notes || null,
-                  },
-                });
-                toast.success("Tenant updated");
-              } catch (err) {
-                toast.error((err as Error).message);
-              }
-            }}
-          >
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Full name
-              </span>
-              <input
-                className={inputCls}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={!canEdit}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Phone
-              </span>
-              <input
-                className={inputCls}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={!canEdit}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Email
-              </span>
-              <input
-                className={inputCls}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={!canEdit}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Notes
-              </span>
-              <textarea
-                className={cn(inputCls, "h-20 py-2")}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                disabled={!canEdit}
-              />
-            </label>
-            {canEdit && (
-              <div className="flex justify-end">
-                <Button type="submit" size="sm" disabled={update.isPending}>
-                  {update.isPending ? "Saving..." : "Save changes"}
-                </Button>
-              </div>
-            )}
-          </form>
-
-          <div className="border-t border-border pt-4">
-            <h4 className="text-sm font-semibold">Tenancy history</h4>
-            {history.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">No tenancies yet.</p>
-            ) : (
-              <div className="mt-2 space-y-2">
-                {history.map((h) => (
-                  <div key={h.id} className="rounded-lg border border-border p-2.5 text-xs">
-                    <p className="font-medium">{h.properties?.title ?? "Property"}</p>
-                    <p className="mt-0.5 text-muted-foreground">
-                      {fmtDate(h.lease_start)} - {fmtDate(h.lease_end)} ·{" "}
-                      {fmtMoney(h.rent_amount, h.currency)} · {titleCase(h.status)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-border pt-4">
-            <h4 className="text-sm font-semibold">Documents</h4>
-            <DocumentList documents={documents} />
-            {canEdit && (
-              <div className="mt-3">
-                <UploadDropzone
-                  title="Upload a tenant document"
-                  description="ID, passport, employment letter"
-                  categoryKey="tenant_documents"
-                  tenantId={tenantId}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </DrawerShell>
-  );
-}
-
 /* ------------------------------------------------------------------------ */
 /* Tenancies                                                                 */
 /* ------------------------------------------------------------------------ */
@@ -682,6 +413,7 @@ function TenanciesTab() {
   const [open, setOpen] = useState(false);
   const [genFor, setGenFor] = useState<string | null>(null);
   const [docsFor, setDocsFor] = useState<string | null>(null);
+  const [editLease, setEditLease] = useState<PropertyLease | null>(null);
   const update = useUpdateTenancy();
   const { can } = usePermissions();
   const canEdit = can("properties", "edit");
@@ -702,15 +434,40 @@ function TenanciesTab() {
           {tenancies.map((t) => (
             <Card key={t.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium">
-                    {t.tenants?.full_name ?? t.tenant_name ?? "Tenant"} ·{" "}
-                    {t.properties?.title ?? "-"}
+                    {t.contract_number && (
+                      <span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal">
+                        {t.contract_number}
+                      </span>
+                    )}
+                    {t.tenants?.full_name ?? t.tenant_name ?? "Tenant"} · {t.properties?.title ?? "-"}
                   </p>
+                  {(t.tenants?.phone ?? t.tenant_phone) && (
+                    <p className="mt-0.5 text-xs">
+                      <a
+                        href={`tel:${t.tenants?.phone ?? t.tenant_phone}`}
+                        className="font-medium hover:underline"
+                      >
+                        {t.tenants?.phone ?? t.tenant_phone}
+                      </a>
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {fmtDate(t.lease_start)} - {fmtDate(t.lease_end)} ·{" "}
                     {fmtMoney(t.rent_amount, t.currency)} / {t.payment_frequency ?? "monthly"}
                     {t.deposit_amount ? ` · Deposit ${fmtMoney(t.deposit_amount, t.currency)}` : ""}
+                  </p>
+                  <p className="mt-1">
+                    <span
+                      className={
+                        t.contract_upload_id
+                          ? "rounded-full bg-pastel-green px-2 py-0.5 text-[11px] text-foreground"
+                          : "rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                      }
+                    >
+                      {t.contract_upload_id ? "Signed Rent Contract on file" : "No signed Rent Contract yet"}
+                    </span>
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -737,8 +494,13 @@ function TenanciesTab() {
                     />
                   )}
                   <Button size="sm" variant="outline" onClick={() => setDocsFor(t.id)}>
-                    <FileText className="h-3.5 w-3.5" /> Documents
+                    <FileText className="h-3.5 w-3.5" /> Rent Contract
                   </Button>
+                  {canEdit && (
+                    <Button size="sm" variant="outline" onClick={() => setEditLease(t)}>
+                      Edit
+                    </Button>
+                  )}
                   {canEdit && (
                     <Button size="sm" variant="outline" onClick={() => setGenFor(t.id)}>
                       Generate rent schedule
@@ -751,6 +513,7 @@ function TenanciesTab() {
         </div>
       )}
       <TenancyDrawer open={open} onOpenChange={setOpen} />
+      <TenancyDrawer open={!!editLease} onOpenChange={(v) => !v && setEditLease(null)} lease={editLease} />
       {genFor && (
         <GenerateScheduleDialog
           leaseId={genFor}
@@ -758,19 +521,23 @@ function TenanciesTab() {
           onClose={() => setGenFor(null)}
         />
       )}
-      {docsFor && <TenancyDocumentsDrawer leaseId={docsFor} onClose={() => setDocsFor(null)} />}
+      {docsFor && tenancies.find((t) => t.id === docsFor) && (
+        <RentContractDrawer lease={tenancies.find((t) => t.id === docsFor)!} onClose={() => setDocsFor(null)} />
+      )}
     </div>
   );
 }
 
-function TenancyDocumentsDrawer({ leaseId, onClose }: { leaseId: string; onClose: () => void }) {
-  const { data: documents = [] } = useUploads({ propertyLeaseId: leaseId });
-  const { can } = usePermissions();
-
+function RentContractDrawer({ lease, onClose }: { lease: PropertyLease; onClose: () => void }) {
   return (
-    <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Tenancy documents">
+    <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Rent Contract" widthClassName="max-w-lg">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h3 className="text-base font-semibold">Tenancy Documents</h3>
+        <div>
+          <h3 className="text-base font-semibold">Rent Contract</h3>
+          {lease.contract_number && (
+            <p className="mt-0.5 text-xs text-muted-foreground">{lease.contract_number}</p>
+          )}
+        </div>
         <button
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
@@ -779,15 +546,8 @@ function TenancyDocumentsDrawer({ leaseId, onClose }: { leaseId: string; onClose
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        <DocumentList documents={documents} />
-        {can("properties", "edit") && (
-          <UploadDropzone
-            title="Upload the signed contract or an addendum"
-            categoryKey="tenant_documents"
-            propertyLeaseId={leaseId}
-          />
-        )}
+      <div className="flex-1 overflow-y-auto p-5">
+        <RentContractPanel lease={lease} />
       </div>
     </DrawerShell>
   );
@@ -854,151 +614,6 @@ function GenerateScheduleDialog({
           </Button>
         </div>
       </div>
-    </DrawerShell>
-  );
-}
-
-function TenancyDrawer({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const create = useCreateTenancy();
-  const { data: managed = [] } = useManagedProperties();
-  const { data: tenants = [] } = useTenants();
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [rent, setRent] = useState("");
-  const [deposit, setDeposit] = useState("");
-  const [frequency, setFrequency] = useState("monthly");
-
-  return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Add tenancy">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h3 className="text-base font-semibold">Add Tenancy</h3>
-        <button
-          onClick={() => onOpenChange(false)}
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <form
-        className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!propertyId) return toast.error("Select a managed property");
-          try {
-            await create.mutateAsync({
-              property_id: propertyId,
-              tenant_id: tenantId,
-              lease_start: start || null,
-              lease_end: end || null,
-              rent_amount: rent ? Number(rent) : null,
-              deposit_amount: deposit ? Number(deposit) : null,
-              payment_frequency: frequency,
-              status: "active",
-            });
-            toast.success("Tenancy created");
-            onOpenChange(false);
-          } catch (err) {
-            toast.error((err as Error).message);
-          }
-        }}
-      >
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Managed property *
-          </span>
-          <SearchableSelectField
-            value={propertyId}
-            onChange={setPropertyId}
-            options={managed.map((p: any) => ({ value: p.id, label: p.title }))}
-            placeholder="Select property"
-            searchPlaceholder="Search..."
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Tenant
-          </span>
-          <SearchableSelectField
-            value={tenantId}
-            onChange={setTenantId}
-            options={tenants.map((t) => ({ value: t.id, label: t.full_name }))}
-            placeholder="Select tenant"
-            searchPlaceholder="Search..."
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Start date
-          </span>
-          <input
-            className={inputCls}
-            type="date"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            End date
-          </span>
-          <input
-            className={inputCls}
-            type="date"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Rent amount
-          </span>
-          <input
-            className={inputCls}
-            type="number"
-            value={rent}
-            onChange={(e) => setRent(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Deposit
-          </span>
-          <input
-            className={inputCls}
-            type="number"
-            value={deposit}
-            onChange={(e) => setDeposit(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Payment frequency
-          </span>
-          <SelectField
-            value={frequency}
-            onChange={(v) => setFrequency(v ?? "monthly")}
-            options={PAYMENT_FREQUENCIES.map((f) => ({ value: f, label: titleCase(f) }))}
-            allowClear={false}
-          />
-        </label>
-        <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" size="sm" disabled={create.isPending}>
-            {create.isPending ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </form>
     </DrawerShell>
   );
 }
@@ -1442,46 +1057,3 @@ function DocumentsTab() {
   );
 }
 
-function DocumentList({
-  documents,
-}: {
-  documents: {
-    id: string;
-    filename: string;
-    file_size: number | null;
-    created_at: string;
-    storage_bucket: string;
-    storage_path: string;
-    mime_type: string | null;
-  }[];
-}) {
-  if (documents.length === 0)
-    return <p className="text-xs text-muted-foreground">No documents yet.</p>;
-  return (
-    <div className="space-y-1.5">
-      {documents.map((d) => (
-        <div
-          key={d.id}
-          className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-xs"
-        >
-          <div className="flex items-center gap-2 truncate">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{d.filename}</span>
-            <span className="shrink-0 text-muted-foreground">{fmtSize(d.file_size)}</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-            <span>{fmtDateTime(d.created_at)}</span>
-            <button
-              className="font-medium text-foreground hover:underline"
-              onClick={() =>
-                downloadUpload(d as any).catch((e) => toast.error((e as Error).message))
-              }
-            >
-              Download
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}

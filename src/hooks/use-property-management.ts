@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchOwnerPhones } from "@/lib/owner-privacy";
+import { TENANT_COLUMNS, fetchTenantIdNumber, type TenantRecord } from "@/lib/tenant-privacy";
 import {
   sb,
   type PropertyLease,
@@ -51,17 +52,17 @@ export function useTenancies() {
     queryFn: async (): Promise<
       (PropertyLease & {
         properties: { title: string; reference_code: string | null } | null;
-        tenants: Tenant | null;
+        tenants: TenantRecord | null;
       })[]
     > => {
       const { data, error } = await sb
         .from("property_leases")
-        .select("*, properties(title, reference_code), tenants(*)")
+        .select(`*, properties(title, reference_code), tenants(${TENANT_COLUMNS})`)
         .order("lease_end", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as unknown as (PropertyLease & {
         properties: { title: string; reference_code: string | null } | null;
-        tenants: Tenant | null;
+        tenants: TenantRecord | null;
       })[];
     },
   });
@@ -70,8 +71,8 @@ export function useTenancies() {
 export function useTenants(search = "") {
   return useQuery({
     queryKey: [...pmKeys.tenants, search],
-    queryFn: async (): Promise<Tenant[]> => {
-      let q = sb.from("tenants").select("*").order("full_name");
+    queryFn: async (): Promise<TenantRecord[]> => {
+      let q = sb.from("tenants").select(TENANT_COLUMNS).order("full_name");
       if (search.trim()) q = q.ilike("full_name", `%${search.trim()}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -84,11 +85,20 @@ export function useTenant(id: string | null) {
   return useQuery({
     queryKey: [...pmKeys.tenants, "detail", id],
     enabled: !!id,
-    queryFn: async (): Promise<Tenant | null> => {
-      const { data, error } = await sb.from("tenants").select("*").eq("id", id!).maybeSingle();
+    queryFn: async (): Promise<TenantRecord | null> => {
+      const { data, error } = await sb.from("tenants").select(TENANT_COLUMNS).eq("id", id!).maybeSingle();
       if (error) throw error;
       return data;
     },
+  });
+}
+
+/** The tenant's ID / passport number, only when the database says this user may see it. */
+export function useTenantIdNumber(id: string | null) {
+  return useQuery({
+    queryKey: [...pmKeys.tenants, "id-number", id],
+    enabled: !!id,
+    queryFn: () => fetchTenantIdNumber(id!),
   });
 }
 
@@ -96,9 +106,9 @@ export function useCreateTenant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: TenantInsert) => {
-      const { data, error } = await sb.from("tenants").insert(input).select().single();
+      const { data, error } = await sb.from("tenants").insert(input).select(TENANT_COLUMNS).single();
       if (error) throw error;
-      return data;
+      return data as TenantRecord;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: pmKeys.tenants }),
   });
@@ -108,9 +118,9 @@ export function useUpdateTenant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Tenant> }) => {
-      const { data, error } = await sb.from("tenants").update(patch).eq("id", id).select().single();
+      const { data, error } = await sb.from("tenants").update(patch).eq("id", id).select(TENANT_COLUMNS).single();
       if (error) throw error;
-      return data;
+      return data as TenantRecord;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: pmKeys.tenants });

@@ -70,6 +70,9 @@ export type OwnerContractUpdate = Tables["owner_contracts"]["Update"];
 export type LeadNote = Tables["lead_notes"]["Row"];
 export type LeadNoteInsert = Tables["lead_notes"]["Insert"];
 export type LeadNoteVersion = Tables["lead_note_versions"]["Row"];
+export type StaffRequest = Tables["staff_requests"]["Row"];
+export type StaffRequestInsert = Tables["staff_requests"]["Insert"];
+export type StaffRequestUpdate = Tables["staff_requests"]["Update"];
 export type MarketingRequest = Tables["marketing_requests"]["Row"];
 export type MarketingRequestUpdate = Tables["marketing_requests"]["Update"];
 export type Tenant = Tables["tenants"]["Row"];
@@ -95,6 +98,34 @@ export const MAINTENANCE_CATEGORIES = [
 export const MAINTENANCE_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 export const MAINTENANCE_STATUSES = ["open", "in_progress", "resolved", "cancelled"] as const;
 export const MAINTENANCE_REPORTED_BY = ["tenant", "owner", "staff", "inspection"] as const;
+
+export const REQUEST_CATEGORIES = [
+  "general",
+  "property",
+  "lead",
+  "marketing",
+  "documents",
+  "technical",
+  "administration",
+] as const;
+export const REQUEST_CATEGORY_LABELS: Record<string, string> = {
+  general: "General / Other Request",
+  property: "Property",
+  lead: "Lead",
+  marketing: "Marketing",
+  documents: "Documents",
+  technical: "Technical / CRM",
+  administration: "Administration",
+};
+export const REQUEST_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+export const REQUEST_STATUSES = ["submitted", "in_review", "in_progress", "completed", "closed"] as const;
+export const REQUEST_STATUS_LABELS: Record<string, string> = {
+  submitted: "Submitted",
+  in_review: "In Review",
+  in_progress: "In Progress",
+  completed: "Completed",
+  closed: "Rejected / Closed",
+};
 
 export const LEASE_STATUSES = ["pending", "active", "expired", "terminated"] as const;
 export const RENEWAL_STATES = ["not_due", "pending_renewal", "renewed", "not_renewing"] as const;
@@ -122,30 +153,19 @@ export const INVOICE_STATUSES = [
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;
 
-export const LEAD_CLASSIFICATIONS = ["buyer", "renter", "owner", "investor", "commercial"] as const;
-export const LEAD_CLASSIFICATION_LABELS: Record<string, string> = {
-  buyer: "Buyer",
-  renter: "Renter",
-  owner: "Property Owner",
-  investor: "Investor",
-  commercial: "Commercial",
-  tenant: "Renter", // legacy value from earlier demo data, treated as an alias of "renter"
-};
-export const LEAD_WORKFLOWS = ["sales", "telesales"] as const;
-
-/** Top-level lead split: what the lead wants to do. Stored in leads.transaction_intent. */
-export const LEAD_INTENTS = ["sale", "rent"] as const;
-export type LeadIntent = (typeof LEAD_INTENTS)[number];
-export const LEAD_INTENT_LABELS: Record<LeadIntent, string> = { sale: "Sale", rent: "Rent" };
-/**
- * Classifications offered under each intent. Investor, Commercial and Property Owner are
- * available under both; Buyer only makes sense for Sale and Renter only for Rent.
- */
-export function classificationsForIntent(intent: LeadIntent): readonly string[] {
-  return intent === "rent"
-    ? ["renter", "investor", "commercial", "owner"]
-    : ["buyer", "investor", "commercial", "owner"];
-}
+export {
+  LEAD_CLASSIFICATIONS,
+  LEAD_CLASSIFICATION_LABELS,
+  LEAD_WORKFLOWS,
+  LEAD_INTENTS,
+  LEAD_INTENT_LABELS,
+  LEAD_OUTCOMES,
+  LEAD_OUTCOME_LABELS,
+  classificationsForIntent,
+  defaultClassificationForIntent,
+  type LeadIntent,
+  type LeadOutcome,
+} from "./lead-model";
 export const PROPERTY_PURPOSES = [
   "sale",
   "rent",

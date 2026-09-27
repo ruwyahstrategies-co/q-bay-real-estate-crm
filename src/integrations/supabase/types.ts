@@ -1074,6 +1074,10 @@ export type Database = {
           nationality: string | null
           notes: string | null
           organisation_id: string | null
+          outcome: string | null
+          outcome_at: string | null
+          outcome_by: string | null
+          outcome_note: string | null
           phone: string | null
           pipeline_stage: string
           preferred_area_id: string | null
@@ -1116,6 +1120,10 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           organisation_id?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_note?: string | null
           phone?: string | null
           pipeline_stage?: string
           preferred_area_id?: string | null
@@ -1158,6 +1166,10 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           organisation_id?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_note?: string | null
           phone?: string | null
           pipeline_stage?: string
           preferred_area_id?: string | null
@@ -1233,6 +1245,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_outcome_by_fkey"
+            columns: ["outcome_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2017,6 +2036,8 @@ export type Database = {
           balcony: boolean | null
           bathrooms: number | null
           bedrooms: number | null
+          built_up_area: number | null
+          built_up_area_unit: string | null
           cloudflare_video_error: string | null
           cloudflare_video_status: string
           cloudflare_video_uid: string | null
@@ -2090,6 +2111,8 @@ export type Database = {
           balcony?: boolean | null
           bathrooms?: number | null
           bedrooms?: number | null
+          built_up_area?: number | null
+          built_up_area_unit?: string | null
           cloudflare_video_error?: string | null
           cloudflare_video_status?: string
           cloudflare_video_uid?: string | null
@@ -2163,6 +2186,8 @@ export type Database = {
           balcony?: boolean | null
           bathrooms?: number | null
           bedrooms?: number | null
+          built_up_area?: number | null
+          built_up_area_unit?: string | null
           cloudflare_video_error?: string | null
           cloudflare_video_status?: string
           cloudflare_video_uid?: string | null
@@ -2415,6 +2440,7 @@ export type Database = {
       }
       property_leases: {
         Row: {
+          contract_number: string | null
           contract_upload_id: string | null
           created_at: string
           currency: string | null
@@ -2423,6 +2449,7 @@ export type Database = {
           lease_end: string | null
           lease_start: string | null
           maintenance_notes: string | null
+          notes: string | null
           payment_frequency: string | null
           payment_status: string | null
           property_id: string
@@ -2436,6 +2463,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contract_number?: string | null
           contract_upload_id?: string | null
           created_at?: string
           currency?: string | null
@@ -2444,6 +2472,7 @@ export type Database = {
           lease_end?: string | null
           lease_start?: string | null
           maintenance_notes?: string | null
+          notes?: string | null
           payment_frequency?: string | null
           payment_status?: string | null
           property_id: string
@@ -2457,6 +2486,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contract_number?: string | null
           contract_upload_id?: string | null
           created_at?: string
           currency?: string | null
@@ -2465,6 +2495,7 @@ export type Database = {
           lease_end?: string | null
           lease_start?: string | null
           maintenance_notes?: string | null
+          notes?: string | null
           payment_frequency?: string | null
           payment_status?: string | null
           property_id?: string
@@ -3246,6 +3277,86 @@ export type Database = {
           },
         ]
       }
+      staff_requests: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          priority: string
+          requested_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          response_notes: string | null
+          status: string
+          team_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          requested_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_notes?: string | null
+          status?: string
+          team_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          requested_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_notes?: string | null
+          status?: string
+          team_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_requests_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_sessions: {
         Row: {
           check_in_latitude: number | null
@@ -3532,6 +3643,7 @@ export type Database = {
       tenants: {
         Row: {
           created_at: string
+          created_by: string | null
           email: string | null
           full_name: string
           id: string
@@ -3544,6 +3656,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name: string
           id?: string
@@ -3556,6 +3669,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name?: string
           id?: string
@@ -3695,6 +3809,13 @@ export type Database = {
             columns: ["seller_owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -4103,6 +4224,7 @@ export type Database = {
         Args: { _submission_id: string }
         Returns: boolean
       }
+      can_view_tenant_id: { Args: { _tenant_id: string }; Returns: boolean }
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
@@ -4173,6 +4295,13 @@ export type Database = {
           submission_id: string
         }[]
       }
+      get_tenant_private_fields: {
+        Args: { _tenant_ids: string[] }
+        Returns: {
+          id_number: string
+          tenant_id: string
+        }[]
+      }
       has_permission: {
         Args: { _action: string; _module: string }
         Returns: boolean
@@ -4185,6 +4314,10 @@ export type Database = {
       lead_time_proximity_factor: {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: number
+      }
+      mark_lead_rented_from_outside: {
+        Args: { _lead_id: string; _note?: string }
+        Returns: undefined
       }
       mark_overdue_rent_items: { Args: never; Returns: number }
       match_properties_for_lead: {
@@ -4294,6 +4427,8 @@ export type Database = {
           balcony: boolean
           bathrooms: number
           bedrooms: number
+          built_up_area: number
+          built_up_area_unit: string
           cloudflare_video_status: string
           cloudflare_video_uid: string
           completion_status: string
@@ -4374,6 +4509,12 @@ export type Database = {
         }
         Returns: string
       }
+      search_owner_ids: {
+        Args: { _limit?: number; _query: string }
+        Returns: {
+          owner_id: string
+        }[]
+      }
       search_owners: {
         Args: { _limit?: number; _query: string }
         Returns: {
@@ -4394,6 +4535,10 @@ export type Database = {
         }[]
       }
       slugify: { Args: { _input: string }; Returns: string }
+      staff_requests_can_manage: {
+        Args: { _assigned_to: string; _team_id: string }
+        Returns: boolean
+      }
       update_my_profile: {
         Args: {
           _avatar_url?: string

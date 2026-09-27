@@ -17,6 +17,7 @@ import { Button, Card } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { PipelineStageBadge, IntentScore } from "@/components/status-badge";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
+import { LeadOutcomeBadge, LeadOutcomeCard, LeadOutcomeMenu } from "@/components/lead-outcome";
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
 import { UploadDropzone } from "@/components/upload-dropzone";
@@ -186,6 +187,7 @@ function LeadProfilePage() {
                 <h2 className="text-xl font-semibold tracking-tight">{lead.full_name}</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <PipelineStageBadge stage={stageLabelFrom(stages, lead.pipeline_stage)} />
+                  <LeadOutcomeBadge lead={lead} />
                   <IntentScore score={intentScore} />
                   <span className="text-xs text-muted-foreground">
                     {agent?.full_name ?? "Unassigned agent"}
@@ -224,6 +226,7 @@ function LeadProfilePage() {
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
               )}
+              <LeadOutcomeMenu lead={lead} />
               {canRunAi && (
                 <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
                   <Sparkles className="h-3.5 w-3.5" />{" "}
@@ -271,6 +274,7 @@ function LeadProfilePage() {
 
         {tab === "Overview" && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <LeadOutcomeCard lead={lead} />
             <Card>
               <h4 className="text-sm font-semibold">Contact</h4>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">

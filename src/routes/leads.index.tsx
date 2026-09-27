@@ -26,6 +26,7 @@ import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { LeadImporter } from "@/components/lead-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PipelineStageBadge, IntentScore } from "@/components/status-badge";
+import { LeadOutcomeBadge } from "@/components/lead-outcome";
 import { PermissionGate } from "@/components/permission-gate";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
@@ -397,7 +398,10 @@ function LeadsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
+                      <div className="flex flex-wrap items-center gap-1">
+                        <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
+                        <LeadOutcomeBadge lead={l} />
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {canAssign ? (

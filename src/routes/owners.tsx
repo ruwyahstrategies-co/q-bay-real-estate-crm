@@ -19,6 +19,7 @@ import {
   useOwnerProperties,
 } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useDebounced } from "@/hooks/use-debounced";
 import { useRowSelection } from "@/hooks/use-row-selection";
 import { SearchableSelectField } from "@/components/select-field";
 import { OWNER_PHONE_HIDDEN_LABEL, type SafeOwner } from "@/lib/owner-privacy";
@@ -41,7 +42,8 @@ function OwnersPage() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Owner | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Owner | null>(null);
-  const { data: owners = [] } = useOwners(search);
+  const debouncedSearch = useDebounced(search, 250);
+  const { data: owners = [] } = useOwners(debouncedSearch);
   const selection = useRowSelection(owners.map((o) => o.id));
   const selectAllRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -78,9 +80,12 @@ function OwnersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search owners..."
-            className={cn(inputCls, "w-full max-w-xs")}
+            placeholder="Search by name, company, email or phone number..."
+            className={cn(inputCls, "w-full max-w-md")}
           />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Phone numbers are searchable only for owners whose phone you are allowed to see.
+          </p>
         </div>
         {selection.count > 0 && (
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">

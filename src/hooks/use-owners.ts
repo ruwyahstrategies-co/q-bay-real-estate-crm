@@ -8,12 +8,31 @@ export const ownerKeys = {
   detail: (id: string) => ["owners", "detail", id] as const,
 };
 
+/** How many owners a search returns at most (the rest are found by typing more). */
+const OWNER_SEARCH_LIMIT = 100;
+
+/**
+ * Owners list. With a search term the matching happens in the database (search_owner_ids): it
+ * covers name, company, code, email and phone number, but a phone number only counts for owners
+ * whose phone the signed-in user is allowed to see. The browser never receives phones to filter
+ * on, and typing a hidden owner's number finds nothing.
+ */
 export function useOwners(search = "") {
+  const term = search.trim();
   return useQuery({
-    queryKey: ownerKeys.list(search),
+    queryKey: ownerKeys.list(term),
     queryFn: async (): Promise<SafeOwner[]> => {
       let q = sb.from("owners").select(OWNER_COLUMNS).order("name", { ascending: true });
-      if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
+      if (term) {
+        const { data: matches, error: searchError } = await sb.rpc("search_owner_ids", {
+          _query: term,
+          _limit: OWNER_SEARCH_LIMIT,
+        });
+        if (searchError) throw searchError;
+        const ids = (matches ?? []).map((m) => m.owner_id);
+        if (ids.length === 0) return [];
+        q = q.in("id", ids);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return attachOwnerPrivateFields((data ?? []) as never);

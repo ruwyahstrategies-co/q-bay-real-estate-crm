@@ -56,16 +56,21 @@ export function useLead(id: string | undefined) {
 export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: LeadInsert) => {
-      const { data, error } = await sb.from("leads").insert(input).select().single();
+    mutationFn: async (input: LeadInsert): Promise<Lead> => {
+      // The id is chosen here and the insert does not ask for the row back. PostgREST returns
+      // inserted rows under the SELECT policy, so an agent who assigns a lead to a colleague
+      // would otherwise have the whole insert refused for a row they are not allowed to read.
+      const id = input.id ?? crypto.randomUUID();
+      const { error } = await sb.from("leads").insert({ ...input, id });
       if (error) throw error;
       // Pipeline history entry
       await sb.from("pipeline_history").insert({
-        lead_id: data.id,
+        lead_id: id,
         previous_stage: null,
-        new_stage: data.pipeline_stage,
+        new_stage: input.pipeline_stage ?? "new_lead",
       });
-      return data;
+      const { data } = await sb.from("leads").select("*").eq("id", id).maybeSingle();
+      return data ?? ({ ...input, id } as Lead);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: leadsKeys.all }),
   });
@@ -115,6 +120,30 @@ export function useArchiveLead() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: leadsKeys.all }),
+  });
+}
+
+/**
+ * Marks a Rent lead as rented from outside Q-Bay: a closed outcome (the lead leaves the working
+ * pipeline as Lost), with the date, who and a short note kept on the lead. It creates no Q-Bay
+ * transaction. Runs as one database action under the caller's own permissions.
+ */
+export function useMarkLeadRentedFromOutside() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
+      const { error } = await sb.rpc("mark_lead_rented_from_outside", {
+        _lead_id: id,
+        _note: note?.trim() ? note.trim() : undefined,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: leadsKeys.all });
+      qc.invalidateQueries({ queryKey: leadsKeys.detail(vars.id) });
+      qc.invalidateQueries({ queryKey: ["lead_notes"] });
+      qc.invalidateQueries({ queryKey: ["pipeline_history"] });
+    },
   });
 }
 

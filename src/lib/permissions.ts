@@ -42,6 +42,9 @@ export const MODULES = {
   staff_activity: ["view", "view_team", "view_all"],
   team: ["view", "manage"],
   settings: ["view", "manage"],
+  // Internal requests from staff to management: view = own, view_team / view_all widen the
+  // scope, manage = assign, change status and respond. Enforced by RLS on staff_requests.
+  requests: ["view", "view_team", "view_all", "create", "manage"],
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -76,6 +79,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   staff_activity: "Staff Activity",
   team: "Team",
   settings: "Settings",
+  requests: "Requests",
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -163,6 +167,7 @@ export const ROLE_PRESETS = {
       contracts: ["view", "create"],
       team: ["view"],
       staff_activity: ["view_team"],
+      requests: ["view", "view_team", "create", "manage"],
     }),
   },
   sales_manager: {
@@ -194,6 +199,7 @@ export const ROLE_PRESETS = {
       team: ["view"],
       staff_activity: ["view_all"],
       settings: ["view"],
+      requests: ["view", "view_all", "create", "manage"],
     }),
   },
   sales_agent: {
@@ -215,6 +221,7 @@ export const ROLE_PRESETS = {
       ai_insights: ["view", "run"],
       property_demand: ["view"],
       analytics: ["view"],
+      requests: ["view", "create"],
     }),
   },
   telesales: {
@@ -230,6 +237,7 @@ export const ROLE_PRESETS = {
       conversations: ["view", "create", "edit"],
       tasks: ["view", "create", "edit", "complete"],
       property_demand: ["view"],
+      requests: ["view", "create"],
     }),
   },
   marketing: {
@@ -249,6 +257,7 @@ export const ROLE_PRESETS = {
       analytics: ["view"],
       journal: ["view", "create", "edit", "publish"],
       website_enquiries: ["view"],
+      requests: ["view", "create"],
     }),
   },
   accounting: {
@@ -262,6 +271,7 @@ export const ROLE_PRESETS = {
       offers: ["view_all"],
       analytics: ["view"],
       accounting: ["view", "manage"],
+      requests: ["view", "create"],
     }),
   },
   coordinator: {
@@ -277,6 +287,7 @@ export const ROLE_PRESETS = {
       uploads: ["view", "upload", "delete"],
       tasks: ["view", "create", "edit", "complete"],
       property_demand: ["view"],
+      requests: ["view", "create"],
     }),
   },
   viewer: {
@@ -287,7 +298,7 @@ export const ROLE_PRESETS = {
   custom: {
     label: "Custom",
     description: "Start from a blank slate and grant only what's needed.",
-    permissions: (): PermissionSet => ({ overview: ["view"] }),
+    permissions: (): PermissionSet => ({ overview: ["view"], requests: ["view", "create"] }),
   },
 } as const;
 

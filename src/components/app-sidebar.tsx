@@ -25,6 +25,7 @@ import {
   Trophy,
   Megaphone,
   Camera,
+  ClipboardList,
   KeyRound,
   Globe,
   ChevronRight,
@@ -81,6 +82,7 @@ const navGroups: NavGroup[] = [
       { to: "/marketing-intelligence", label: "Marketing Intelligence", icon: Megaphone, module: "marketing_intelligence" },
     ],
   },
+  { key: "requests", to: "/requests", label: "Requests", icon: ClipboardList, module: "requests" },
   { key: "ai-insights", to: "/ai-insights", label: "AI Insights", icon: Sparkles, module: "ai_insights" },
   {
     key: "website",
@@ -382,7 +384,7 @@ export function MobileBottomNav() {
       return first ? { to: first.to, label: group.label, icon: group.icon } : null;
     })
     .filter((x): x is { to: string; label: string; icon: typeof LayoutGrid } => !!x)
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border bg-sidebar px-2 py-2 md:hidden">

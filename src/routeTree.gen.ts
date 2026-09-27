@@ -15,6 +15,7 @@ import { Route as UploadsRouteImport } from './routes/uploads'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as StaffActivityRouteImport } from './routes/staff-activity'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RequestsRouteImport } from './routes/requests'
 import { Route as PropertyManagementRouteImport } from './routes/property-management'
 import { Route as PropertyDemandRouteImport } from './routes/property-demand'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -71,6 +72,11 @@ const StaffActivityRoute = StaffActivityRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestsRoute = RequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PropertyManagementRoute = PropertyManagementRouteImport.update({
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
+  '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
+  '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/property-demand': typeof PropertyDemandRoute
   '/property-management': typeof PropertyManagementRoute
+  '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
   '/staff-activity': typeof StaffActivityRoute
   '/team': typeof TeamRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/property-demand'
     | '/property-management'
+    | '/requests'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/property-demand'
     | '/property-management'
+    | '/requests'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/property-demand'
     | '/property-management'
+    | '/requests'
     | '/settings'
     | '/staff-activity'
     | '/team'
@@ -442,6 +454,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   PropertyDemandRoute: typeof PropertyDemandRoute
   PropertyManagementRoute: typeof PropertyManagementRoute
+  RequestsRoute: typeof RequestsRoute
   SettingsRoute: typeof SettingsRoute
   StaffActivityRoute: typeof StaffActivityRoute
   TeamRoute: typeof TeamRoute
@@ -492,6 +505,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/requests': {
+      id: '/requests'
+      path: '/requests'
+      fullPath: '/requests'
+      preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/property-management': {
@@ -757,6 +777,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   PropertyDemandRoute: PropertyDemandRoute,
   PropertyManagementRoute: PropertyManagementRoute,
+  RequestsRoute: RequestsRoute,
   SettingsRoute: SettingsRoute,
   StaffActivityRoute: StaffActivityRoute,
   TeamRoute: TeamRoute,

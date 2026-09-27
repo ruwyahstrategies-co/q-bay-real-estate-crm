@@ -76,3 +76,12 @@ npx vercel deploy --prebuilt   # optional, uploads .vercel/output as-is
 - Webhook/public endpoints stay at `/api/public/*` on the deployed domain.
   Update external services (ElevenLabs, Twilio) to the Vercel URL if you switch
   the primary host.
+- **Public website address.** Copy Website Link and property share messages build links from
+  the website address an administrator enters in Settings, Public website. If nothing is set
+  there, `VITE_PUBLIC_WEBSITE_URL` is used as a fallback. No domain is ever guessed: until one of
+  the two is set, no website links are created.
+- **Migration order for tenants.** `20260922000400_tenant_phone_and_private_fields.sql` is safe
+  to apply at any time. `20260922000500_tenant_id_number_lockdown.sql` removes direct reads of
+  `tenants.id_number` and must be applied only after this CRM build is deployed, because the
+  previous build reads tenants with `select("*")`, which the lockdown rejects.
+- **Tests.** `npm run typecheck` and `npm test` (uses Bun's test runner, no extra packages).

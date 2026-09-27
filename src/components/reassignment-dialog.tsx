@@ -45,8 +45,9 @@ export function ReassignmentDialog({
   const [targets, setTargets] = useState<Partial<Record<ReassignmentCategory, string>>>({});
   const { teamMember: me, displayName } = useCurrentUser();
   const [exporting, setExporting] = useState(false);
-  // Mirrors the database rule in export_team_member_data: administrator roles only.
-  const canExport = me?.role === "super_administrator" || me?.role === "administrator";
+  // Mirrors the database rule in export_team_member_data: Super Administrator only. The button
+  // is only a convenience, the database refuses the call for anyone else.
+  const canExport = me?.role === "super_administrator";
 
   async function handleExport() {
     if (!member) return;

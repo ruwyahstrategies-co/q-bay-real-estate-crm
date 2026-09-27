@@ -3,10 +3,10 @@ import { sb } from "@/lib/db";
 import { buildStaffWorkbook, staffExportFilename } from "@/lib/staff-export-workbook";
 
 /**
- * Fetches a team member's operational data through export_team_member_data (administrators
- * only, enforced in the database) and downloads it as a multi-sheet .xlsx. Owner phone and
- * id number follow the same access rule as the rest of the CRM, so they are blank for any
- * owner the exporting administrator is not entitled to see.
+ * Fetches a team member's operational data through export_team_member_data (Super
+ * Administrator only, enforced in the database) and downloads it as a multi-sheet .xlsx. Owner
+ * phone and id number follow the same access rule as the rest of the CRM, so they are blank for
+ * any owner the exporting user is not entitled to see.
  */
 export async function exportTeamMemberData(
   memberId: string,

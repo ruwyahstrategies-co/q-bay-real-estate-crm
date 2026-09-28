@@ -53,6 +53,7 @@ import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/u
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
+import { DynamicFieldsView, type CustomFieldValues } from "@/components/dynamic-fields";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),
@@ -333,6 +334,10 @@ function LeadProfilePage() {
                 </p>
               </Card>
             )}
+            <DynamicFieldsView
+              entityType="lead"
+              values={lead.custom_fields as CustomFieldValues | null}
+            />
             <div className="md:col-span-2">
               <LeadSharedPropertiesSection leadId={lead.id} />
             </div>

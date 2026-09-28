@@ -13,6 +13,8 @@ import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import { useDevelopments } from "@/hooks/use-developments";
 import { CountryAreaPlaceFields } from "./location-fields";
+import { DynamicFieldsSection, useRequiredCustomFieldError, type CustomFieldValues } from "./dynamic-fields";
+import { useLeadChannels } from "@/hooks/use-channels";
 import { normalizePhone, phoneError } from "@/lib/phone";
 import {
   LEAD_CLASSIFICATION_LABELS,
@@ -49,7 +51,10 @@ function Field({
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
-type FormState = Partial<Lead> & { preferred_locations_str?: string };
+type FormState = Omit<Partial<Lead>, "custom_fields"> & {
+  preferred_locations_str?: string;
+  custom_fields?: CustomFieldValues;
+};
 
 function toCsv(arr: string[] | null | undefined): string {
   return (arr ?? []).join(", ");
@@ -82,6 +87,7 @@ export function AddLeadDrawer({
   const { data: properties = [] } = useProperties({ status: "active" });
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
+  const { data: channels = [] } = useLeadChannels({ activeOnly: true });
   const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
@@ -121,6 +127,7 @@ export function AddLeadDrawer({
     telesales_outcome: lead?.telesales_outcome ?? "",
     telesales_qualified: lead?.telesales_qualified ?? false,
     notes: lead?.notes ?? "",
+    custom_fields: (lead?.custom_fields as CustomFieldValues) ?? {},
   }));
 
   // Reset the form whenever a different record (or a fresh "add") is opened -
@@ -157,6 +164,7 @@ export function AddLeadDrawer({
       telesales_outcome: lead?.telesales_outcome ?? "",
       telesales_qualified: lead?.telesales_qualified ?? false,
       notes: lead?.notes ?? "",
+      custom_fields: (lead?.custom_fields as CustomFieldValues) ?? {},
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, lead?.id]);
@@ -169,6 +177,24 @@ export function AddLeadDrawer({
     .filter((m) => m.is_active !== false || m.id === lead?.assigned_agent_id)
     .map((m) => ({ value: m.id, label: m.full_name }));
 
+  // Every active channel, plus the lead's current value even if it's an old
+  // free-text entry (typed by hand, or an inactive/renamed channel) so
+  // editing a lead never silently blanks or drops its recorded source.
+  const channelOptions = (() => {
+    const opts = channels.map((c) => ({ value: c.name, label: c.name }));
+    const current = form.lead_source?.trim();
+    if (current && !channels.some((c) => c.name === current)) {
+      opts.unshift({ value: current, label: `${current} (not in list)` });
+    }
+    return opts;
+  })();
+
+  const customFieldsError = useRequiredCustomFieldError(
+    "lead",
+    isEdit ? "edit" : "create",
+    form.custom_fields ?? {},
+  );
+
   const pending = create.isPending || update.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -177,6 +203,10 @@ export function AddLeadDrawer({
     const name = (form.full_name ?? "").trim();
     if (!name) {
       toast.error("Full name is required");
+      return;
+    }
+    if (customFieldsError) {
+      toast.error(`${customFieldsError} is required`);
       return;
     }
     // Phone is mandatory for new leads and whenever an existing phone is edited. A legacy lead
@@ -224,6 +254,7 @@ export function AddLeadDrawer({
       telesales_outcome: form.workflow === "telesales" ? form.telesales_outcome || null : null,
       telesales_qualified: form.workflow === "telesales" ? !!form.telesales_qualified : false,
       notes: form.notes || null,
+      custom_fields: form.custom_fields ?? {},
     };
     try {
       let leadId = lead?.id;
@@ -354,11 +385,12 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Lead source">
-          <input
-            className={inputCls}
-            placeholder="Website, referral..."
-            value={form.lead_source ?? ""}
-            onChange={(e) => set("lead_source", e.target.value)}
+          <SelectField
+            value={form.lead_source || null}
+            onChange={(v) => set("lead_source", v ?? "")}
+            options={channelOptions}
+            placeholder="Select channel"
+            emptyLabel="Not set"
           />
         </Field>
         {form.workflow === "telesales" && (
@@ -559,6 +591,13 @@ export function AddLeadDrawer({
             placeholder="Select status"
           />
         </Field>
+
+        <DynamicFieldsSection
+          entityType="lead"
+          mode={isEdit ? "edit" : "create"}
+          values={form.custom_fields ?? {}}
+          onChange={(v) => set("custom_fields", v)}
+        />
 
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>

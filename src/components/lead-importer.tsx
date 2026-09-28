@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useTeamMembers } from "@/hooks/use-team";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { useLeadChannels } from "@/hooks/use-channels";
 import { leadsKeys } from "@/hooks/use-leads";
 import {
   countVisibleLeads,
@@ -73,9 +74,6 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
-
 export function LeadImporter({
   open,
   onOpenChange,
@@ -88,6 +86,7 @@ export function LeadImporter({
   const { teamMember } = useCurrentUser();
   const { data: team = [] } = useTeamMembers();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
+  const { data: channels = [] } = useLeadChannels({ activeOnly: true });
   const canAssignOthers = can("leads", "assign");
   const me = teamMember?.id ?? null;
   const fileInput = useRef<HTMLInputElement>(null);
@@ -512,11 +511,16 @@ export function LeadImporter({
                     <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       Lead source when blank
                     </span>
-                    <input
-                      className={inputCls}
-                      value={leadSource}
-                      onChange={(e) => setLeadSource(e.target.value)}
-                      placeholder="Import"
+                    <SelectField
+                      value={leadSource || null}
+                      onChange={(v) => setLeadSource(v ?? "")}
+                      options={[
+                        ...(channels.some((c) => c.name === "Import")
+                          ? []
+                          : [{ value: "Import", label: "Import" }]),
+                        ...channels.map((c) => ({ value: c.name, label: c.name })),
+                      ]}
+                      emptyLabel="None"
                     />
                   </label>
                 </div>

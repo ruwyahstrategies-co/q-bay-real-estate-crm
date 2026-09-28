@@ -31,6 +31,7 @@ import { fmtDate } from "@/lib/db";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { titleCase } from "@/lib/utils";
+import { DynamicFieldsView, type CustomFieldValues } from "@/components/dynamic-fields";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),
@@ -237,6 +238,10 @@ function PropertyDetailPage() {
               </p>
             </Card>
           )}
+          <DynamicFieldsView
+            entityType="property"
+            values={property.custom_fields as CustomFieldValues | null}
+          />
           <Card className="md:col-span-2">
             <h4 className="text-sm font-semibold">Location</h4>
             <MapboxPicker

@@ -38,6 +38,7 @@ import {
   usePropertyThumbnails,
 } from "@/hooks/use-properties";
 import { downloadCsv } from "@/lib/csv-export";
+import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
 import {
   PROPERTY_AVAILABILITIES,
@@ -78,6 +79,8 @@ function PropertiesPage() {
     availability,
   });
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
+  const { data: propertyFieldDefs = [] } = useFieldDefinitions("property", { activeOnly: true });
+  const exportablePropertyFieldDefs = propertyFieldDefs.filter((d) => d.is_exportable);
   const { data: team = [] } = useTeamMembers();
   const archive = useArchiveProperty();
   const restore = useRestoreProperty();
@@ -134,6 +137,12 @@ function PropertiesPage() {
                       { key: "availability", label: "Availability" },
                       { key: "status", label: "Status" },
                       { key: "is_published", label: "Published" },
+                      ...exportablePropertyFieldDefs.map((d) => ({
+                        key: d.key,
+                        label: d.label,
+                        get: (row: Property) =>
+                          (row.custom_fields as Record<string, unknown> | null)?.[d.key],
+                      })),
                     ],
                   )
                 }

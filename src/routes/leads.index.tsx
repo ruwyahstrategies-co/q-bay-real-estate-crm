@@ -31,6 +31,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
+import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { cn, titleCase } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
@@ -92,6 +93,31 @@ function LeadsPage() {
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
   const { data: areas = [] } = useAreas();
   const areaNameById = useMemo(() => new Map(areas.map((a) => [a.id, a.name])), [areas]);
+  const { data: leadFieldDefs = [] } = useFieldDefinitions("lead", { activeOnly: true });
+  const filterableFieldDefs = useMemo(
+    () => leadFieldDefs.filter((d) => d.is_filterable),
+    [leadFieldDefs],
+  );
+  const exportableFieldDefs = useMemo(
+    () => leadFieldDefs.filter((d) => d.is_exportable),
+    [leadFieldDefs],
+  );
+  const [customFieldFilterKey, setCustomFieldFilterKey] = useState<string | null>(null);
+  const [customFieldFilterValue, setCustomFieldFilterValue] = useState<string | null>(null);
+  const activeCustomFieldDef = filterableFieldDefs.find((d) => d.key === customFieldFilterKey) ?? null;
+  const visibleLeads = useMemo(() => {
+    if (!activeCustomFieldDef || !customFieldFilterValue) return leads;
+    return leads.filter((l) => {
+      const raw = (l.custom_fields as Record<string, unknown> | null)?.[activeCustomFieldDef.key];
+      if (activeCustomFieldDef.field_type === "multiselect") {
+        return Array.isArray(raw) && (raw as string[]).includes(customFieldFilterValue);
+      }
+      if (activeCustomFieldDef.field_type === "boolean" || activeCustomFieldDef.field_type === "checkbox") {
+        return String(!!raw) === customFieldFilterValue;
+      }
+      return raw != null && String(raw).toLowerCase().includes(customFieldFilterValue.toLowerCase());
+    });
+  }, [leads, activeCustomFieldDef, customFieldFilterValue]);
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
@@ -136,7 +162,7 @@ function LeadsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  downloadCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, leads, [
+                  downloadCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, visibleLeads, [
                     { key: "full_name", label: "Full name" },
                     { key: "phone", label: "Phone" },
                     { key: "email", label: "Email" },
@@ -152,6 +178,11 @@ function LeadsPage() {
                     { key: "lead_source", label: "Source" },
                     { key: "assigned_agent_id", label: "Assigned agent id" },
                     { key: "created_at", label: "Created" },
+                    ...exportableFieldDefs.map((d) => ({
+                      key: d.key,
+                      label: d.label,
+                      get: (row: Lead) => (row.custom_fields as Record<string, unknown> | null)?.[d.key],
+                    })),
                   ])
                 }
               >
@@ -257,6 +288,51 @@ function LeadsPage() {
             searchPlaceholder="Search developments..."
             className="w-auto min-w-[150px] text-xs"
           />
+          {filterableFieldDefs.length > 0 && (
+            <>
+              <SelectField
+                value={customFieldFilterKey}
+                onChange={(v) => {
+                  setCustomFieldFilterKey(v);
+                  setCustomFieldFilterValue(null);
+                }}
+                options={filterableFieldDefs.map((d) => ({ value: d.key, label: d.label }))}
+                emptyLabel="Custom field"
+                className="w-auto min-w-[130px] text-xs"
+              />
+              {activeCustomFieldDef &&
+                (activeCustomFieldDef.field_type === "select" ||
+                activeCustomFieldDef.field_type === "multiselect" ||
+                activeCustomFieldDef.field_type === "boolean" ||
+                activeCustomFieldDef.field_type === "checkbox" ? (
+                  <SelectField
+                    value={customFieldFilterValue}
+                    onChange={setCustomFieldFilterValue}
+                    options={
+                      activeCustomFieldDef.field_type === "boolean" ||
+                      activeCustomFieldDef.field_type === "checkbox"
+                        ? [
+                            { value: "true", label: "Yes" },
+                            { value: "false", label: "No" },
+                          ]
+                        : (
+                            (activeCustomFieldDef.options as string[] | null) ?? []
+                          ).map((o) => ({ value: o, label: o }))
+                    }
+                    emptyLabel="Any value"
+                    className="w-auto min-w-[120px] text-xs"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Contains..."
+                    value={customFieldFilterValue ?? ""}
+                    onChange={(e) => setCustomFieldFilterValue(e.target.value || null)}
+                    className="h-9 w-[130px] rounded-lg border border-border bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                ))}
+            </>
+          )}
           <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
             <button
               className={cn(
@@ -341,8 +417,8 @@ function LeadsPage() {
               )
             }
           >
-            {leads.length > 0
-              ? leads.map((l) => (
+            {visibleLeads.length > 0
+              ? visibleLeads.map((l) => (
                   <tr
                     key={l.id}
                     className="border-b border-border last:border-0 hover:bg-background/60"
@@ -462,7 +538,7 @@ function LeadsPage() {
           </DataTable>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {leads.length === 0 ? (
+            {visibleLeads.length === 0 ? (
               <div className="col-span-full">
                 <EmptyState
                   icon={<Users className="h-4 w-4" />}
@@ -471,7 +547,7 @@ function LeadsPage() {
                 />
               </div>
             ) : (
-              leads.map((l) => (
+              visibleLeads.map((l) => (
                 <Link
                   key={l.id}
                   to="/leads/$leadId"
@@ -500,7 +576,7 @@ function LeadsPage() {
         <BroadcastDialog
           open={broadcastOpen}
           onOpenChange={setBroadcastOpen}
-          leads={leads.filter((l) => selected.has(l.id))}
+          leads={visibleLeads.filter((l) => selected.has(l.id))}
           onDone={() => setSelected(new Set())}
         />
         <ConfirmDialog

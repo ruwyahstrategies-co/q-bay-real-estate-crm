@@ -14,6 +14,7 @@ import {
   usePropertyReferencePreview,
 } from "@/hooks/use-properties";
 import { CountryAreaPlaceFields } from "./location-fields";
+import { DynamicFieldsSection, useRequiredCustomFieldError, type CustomFieldValues } from "./dynamic-fields";
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -75,7 +76,10 @@ function Field({
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
-type FormState = Partial<Property> & { amenities_str?: string };
+type FormState = Omit<Partial<Property>, "custom_fields"> & {
+  amenities_str?: string;
+  custom_fields?: CustomFieldValues;
+};
 
 function initialForm(property: Property | null | undefined): FormState {
   return {
@@ -124,6 +128,7 @@ function initialForm(property: Property | null | undefined): FormState {
     outdoor_majlis: property?.outdoor_majlis ?? null,
     cloudflare_video_uid: property?.cloudflare_video_uid ?? null,
     cloudflare_video_status: property?.cloudflare_video_status ?? "none",
+    custom_fields: (property?.custom_fields as CustomFieldValues) ?? {},
   };
 }
 
@@ -169,6 +174,12 @@ export function PropertyDrawer({
     setForm((p) => ({ ...p, [k]: v }));
   }
 
+  const customFieldsError = useRequiredCustomFieldError(
+    "property",
+    isEdit ? "edit" : "create",
+    form.custom_fields ?? {},
+  );
+
   const pending = create.isPending || update.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -177,6 +188,10 @@ export function PropertyDrawer({
     const title = (form.title ?? "").trim();
     if (!title) {
       toast.error("Title is required");
+      return;
+    }
+    if (customFieldsError) {
+      toast.error(`${customFieldsError} is required`);
       return;
     }
     const amenities = (form.amenities_str ?? "")
@@ -236,6 +251,7 @@ export function PropertyDrawer({
       majlis: form.property_type === "Villa" ? !!form.majlis : null,
       indoor_majlis: form.property_type === "Villa" ? !!form.indoor_majlis : null,
       outdoor_majlis: form.property_type === "Villa" ? !!form.outdoor_majlis : null,
+      custom_fields: form.custom_fields ?? {},
     };
     try {
       if (isEdit && property) {
@@ -704,6 +720,13 @@ export function PropertyDrawer({
             onChange={(e) => set("description", e.target.value)}
           />
         </Field>
+
+        <DynamicFieldsSection
+          entityType="property"
+          mode={isEdit ? "edit" : "create"}
+          values={form.custom_fields ?? {}}
+          onChange={(v) => set("custom_fields", v)}
+        />
 
         <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>

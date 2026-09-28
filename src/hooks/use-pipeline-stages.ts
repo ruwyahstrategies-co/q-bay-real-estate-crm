@@ -18,6 +18,7 @@ export const DEFAULT_PIPELINE_STAGES: PipelineStageRow[] = PIPELINE_STAGES.map((
   is_active: true,
   is_won: s.key === "won",
   is_lost: s.key === "lost",
+  color: null,
   created_at: "",
   updated_at: "",
 }));

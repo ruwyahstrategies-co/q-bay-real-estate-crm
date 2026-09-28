@@ -10,10 +10,16 @@ function escapeCsvCell(value: unknown): string {
 export function downloadCsv<T extends Record<string, unknown>>(
   filename: string,
   rows: T[],
-  columns: { key: keyof T; label: string }[],
+  // `get` lets a column pull its value from somewhere other than a direct
+  // row property - e.g. a key inside a jsonb custom_fields blob.
+  columns: { key: string; label: string; get?: (row: T) => unknown }[],
 ): void {
   const header = columns.map((c) => escapeCsvCell(c.label)).join(",");
-  const body = rows.map((row) => columns.map((c) => escapeCsvCell(row[c.key])).join(",")).join("\n");
+  const body = rows
+    .map((row) =>
+      columns.map((c) => escapeCsvCell(c.get ? c.get(row) : row[c.key as keyof T])).join(","),
+    )
+    .join("\n");
   const csv = `${header}\n${body}`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

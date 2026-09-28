@@ -30,12 +30,19 @@ export type TeamInsert = Tables["teams"]["Insert"];
 export type TeamUpdate = Tables["teams"]["Update"];
 export type Country = Tables["countries"]["Row"];
 export type CountryInsert = Tables["countries"]["Insert"];
+export type CountryUpdate = Tables["countries"]["Update"];
 export type Area = Tables["areas"]["Row"];
 export type AreaInsert = Tables["areas"]["Insert"];
 export type AreaUpdate = Tables["areas"]["Update"];
 export type Place = Tables["places"]["Row"];
 export type PlaceInsert = Tables["places"]["Insert"];
 export type PlaceUpdate = Tables["places"]["Update"];
+export type LeadChannel = Tables["lead_channels"]["Row"];
+export type LeadChannelInsert = Tables["lead_channels"]["Insert"];
+export type LeadChannelUpdate = Tables["lead_channels"]["Update"];
+export type FormFieldDefinition = Tables["form_field_definitions"]["Row"];
+export type FormFieldDefinitionInsert = Tables["form_field_definitions"]["Insert"];
+export type FormFieldDefinitionUpdate = Tables["form_field_definitions"]["Update"];
 export type PermissionPreset = Tables["permission_presets"]["Row"];
 export type PropertyShare = Tables["property_shares"]["Row"];
 export type PropertyShareInsert = Tables["property_shares"]["Insert"];
@@ -149,6 +156,34 @@ export const INVOICE_STATUSES = [
   "overdue",
   "cancelled",
 ] as const;
+
+export const CUSTOM_FIELD_TYPES = [
+  "text",
+  "textarea",
+  "number",
+  "phone",
+  "email",
+  "date",
+  "boolean",
+  "checkbox",
+  "select",
+  "multiselect",
+] as const;
+export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number];
+export const CUSTOM_FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
+  text: "Text",
+  textarea: "Text area",
+  number: "Number",
+  phone: "Phone",
+  email: "Email",
+  date: "Date",
+  boolean: "Yes / No",
+  checkbox: "Checkbox",
+  select: "Select",
+  multiselect: "Multi-select",
+};
+/** Field types that need an `options` list (Settings collects choices for these). */
+export const CUSTOM_FIELD_TYPES_WITH_OPTIONS: CustomFieldType[] = ["select", "multiselect"];
 
 export const CONTRACT_PURPOSES = ["rent", "sale", "other"] as const;
 export const CONTRACT_STATUSES = ["draft", "generated", "signed", "expired", "cancelled"] as const;

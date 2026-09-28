@@ -27,6 +27,20 @@ import {
 } from "@/hooks/use-pipeline-stages";
 import type { PipelineStageRow } from "@/lib/db";
 
+/** The app's existing restrained pastel tag palette (src/styles.css) - reused here rather
+ * than introducing new colors, so stage tags stay visually consistent with the rest of the
+ * CRM (property status pills, etc). */
+const STAGE_COLORS = [
+  "pastel-blue",
+  "pastel-purple",
+  "pastel-green",
+  "pastel-cream",
+  "pastel-teal",
+  "pastel-orange",
+  "pastel-slate",
+  "pastel-indigo",
+] as const;
+
 function slugify(name: string): string {
   return (
     name
@@ -98,6 +112,7 @@ export function PipelineStagesManager() {
                 key={stage.id}
                 stage={stage}
                 onRename={(name) => update.mutate({ id: stage.id, patch: { name } })}
+                onColorChange={(color) => update.mutate({ id: stage.id, patch: { color } })}
                 onToggleActive={() =>
                   update.mutate({ id: stage.id, patch: { is_active: !stage.is_active } })
                 }
@@ -154,6 +169,7 @@ export function PipelineStagesManager() {
 function StageRow({
   stage,
   onRename,
+  onColorChange,
   onToggleActive,
   onToggleWon,
   onToggleLost,
@@ -161,6 +177,7 @@ function StageRow({
 }: {
   stage: PipelineStageRow;
   onRename: (name: string) => void;
+  onColorChange: (color: string | null) => void;
   onToggleActive: () => void;
   onToggleWon: () => void;
   onToggleLost: () => void;
@@ -172,6 +189,7 @@ function StageRow({
   const style = { transform: CSS.Transform.toString(transform), transition };
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(stage.name);
+  const [colorOpen, setColorOpen] = useState(false);
 
   return (
     <div
@@ -218,6 +236,48 @@ function StageRow({
           {stage.name} <span className="text-xs text-muted-foreground">({stage.stage_key})</span>
         </button>
       )}
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setColorOpen((v) => !v)}
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-border"
+          style={{ backgroundColor: stage.color ? `var(--color-${stage.color})` : "transparent" }}
+          title="Stage color"
+          aria-label="Choose stage color"
+        />
+        {colorOpen && (
+          <div className="absolute right-0 top-7 z-10 flex flex-wrap gap-1.5 rounded-lg border border-border bg-canvas p-2 shadow-md">
+            <button
+              type="button"
+              onClick={() => {
+                onColorChange(null);
+                setColorOpen(false);
+              }}
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border text-[9px] text-muted-foreground"
+              title="No color"
+            >
+              x
+            </button>
+            {STAGE_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  onColorChange(c);
+                  setColorOpen(false);
+                }}
+                className={cn(
+                  "h-5 w-5 rounded-full border",
+                  stage.color === c ? "border-foreground" : "border-border",
+                )}
+                style={{ backgroundColor: `var(--color-${c})` }}
+                title={c.replace("pastel-", "")}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <button
         onClick={onToggleWon}

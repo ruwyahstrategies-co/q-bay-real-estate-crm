@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
 import { PermissionGate } from "@/components/permission-gate";
 import { PipelineStagesManager } from "@/components/pipeline-stages-manager";
+import { ChannelsManager } from "@/components/channels-manager";
+import { FieldDefinitionsManager } from "@/components/field-definitions-manager";
 import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn, titleCase } from "@/lib/utils";
@@ -56,12 +58,14 @@ const sections = [
   "Organisation",
   "Pipeline stages",
   "Locations",
+  "Channels / Sources",
+  "Lead Inputs",
+  "Unit Inputs",
   "Map / Mapbox",
   "Public website",
   "Permissions",
   "My WhatsApp Connection",
   "Security",
-  "Lead & property fields",
   "Notifications",
   "Data retention",
 ] as const;
@@ -201,6 +205,16 @@ function SettingsPage() {
 
             {active === "Locations" && <LocationsSection canManage={canManage} />}
 
+            {active === "Channels / Sources" && <ChannelsManager canManage={canManage} />}
+
+            {active === "Lead Inputs" && (
+              <FieldDefinitionsManager entityType="lead" canManage={canManage} />
+            )}
+
+            {active === "Unit Inputs" && (
+              <FieldDefinitionsManager entityType="property" canManage={canManage} />
+            )}
+
             {active === "Map / Mapbox" && <MapboxSection canManage={canManage} />}
 
             {active === "Public website" && <PublicWebsiteSection canManage={canManage} />}
@@ -246,16 +260,14 @@ function SettingsPage() {
 
             {active === "Notifications" && <NotificationsSection canManage={canManage} />}
 
-            {(active === "Lead & property fields" || active === "Data retention") && (
+            {active === "Data retention" && (
               <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-border bg-background p-4">
                 <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Planned for a future release</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {active === "Lead & property fields" &&
-                      "Custom field configuration for leads and properties is on the roadmap. Today's fields cover the full buyer and inventory workflow."}
-                    {active === "Data retention" &&
-                      "Automated archival and retention policies are on the roadmap. Leads and properties can be archived manually today."}
+                    Automated archival and retention policies are on the roadmap. Leads and
+                    properties can be archived manually today.
                   </p>
                 </div>
               </div>
@@ -607,7 +619,12 @@ function locationErrorMessage(e: unknown, what: string): string {
   return err?.message ?? "Something went wrong";
 }
 
-/** One row: the label selects it (when selectable), the status pill toggles active. */
+/**
+ * One row: the label selects it (when selectable), the status pill toggles
+ * active. When `onRename` is given, a pencil button swaps the label into an
+ * inline text input - kept separate from selection so editing a row never
+ * accidentally re-selects it.
+ */
 function LocationRow({
   label,
   selected,
@@ -615,6 +632,7 @@ function LocationRow({
   canManage,
   onSelect,
   onToggleActive,
+  onRename,
   extra,
 }: {
   label: string;
@@ -623,8 +641,12 @@ function LocationRow({
   canManage: boolean;
   onSelect?: () => void;
   onToggleActive: () => void;
+  onRename?: (name: string) => void;
   extra?: React.ReactNode;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(label);
+
   return (
     <div
       className={cn(
@@ -633,7 +655,27 @@ function LocationRow({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        {onSelect ? (
+        {editing ? (
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              setEditing(false);
+              const trimmed = name.trim();
+              if (trimmed && trimmed !== label) onRename?.(trimmed);
+              else setName(label);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setName(label);
+                setEditing(false);
+              }
+            }}
+            className="h-7 flex-1 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        ) : onSelect ? (
           <button
             type="button"
             aria-pressed={selected}
@@ -649,6 +691,15 @@ function LocationRow({
           <span className="flex-1 py-0.5 text-xs">{label}</span>
         )}
         <div className="flex items-center gap-2">
+          {onRename && canManage && !editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              Rename
+            </button>
+          )}
           <button
             type="button"
             disabled={!canManage}
@@ -715,6 +766,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
               onToggleActive={() =>
                 updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })
               }
+              onRename={(name) => updateCountry.mutate({ id: c.id, patch: { name } })}
             />
           ))}
         </div>
@@ -767,6 +819,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                   onToggleActive={() =>
                     updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })
                   }
+                  onRename={(name) => updateArea.mutate({ id: a.id, patch: { name } })}
                   extra={
                     canManage ? (
                       <button
@@ -840,6 +893,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                 onToggleActive={() =>
                   updatePlace.mutate({ id: p.id, patch: { is_active: !p.is_active } })
                 }
+                onRename={(name) => updatePlace.mutate({ id: p.id, patch: { name } })}
               />
             ))}
           </div>

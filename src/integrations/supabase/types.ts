@@ -641,6 +641,80 @@ export type Database = {
         }
         Relationships: []
       }
+      form_field_definitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_order: number
+          entity_type: string
+          field_type: string
+          id: string
+          is_active: boolean
+          is_exportable: boolean
+          is_filterable: boolean
+          is_required: boolean
+          is_system: boolean
+          key: string
+          label: string
+          options: Json | null
+          show_on_create: boolean
+          show_on_detail: boolean
+          show_on_edit: boolean
+          updated_at: string
+          validation: Json | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          entity_type: string
+          field_type: string
+          id?: string
+          is_active?: boolean
+          is_exportable?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          is_system?: boolean
+          key: string
+          label: string
+          options?: Json | null
+          show_on_create?: boolean
+          show_on_detail?: boolean
+          show_on_edit?: boolean
+          updated_at?: string
+          validation?: Json | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          entity_type?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_exportable?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          is_system?: boolean
+          key?: string
+          label?: string
+          options?: Json | null
+          show_on_create?: boolean
+          show_on_detail?: boolean
+          show_on_edit?: boolean
+          updated_at?: string
+          validation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_field_definitions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interactions: {
         Row: {
           ai_processed_at: string | null
@@ -905,6 +979,36 @@ export type Database = {
           },
         ]
       }
+      lead_channels: {
+        Row: {
+          code: string | null
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_note_versions: {
         Row: {
           content: string
@@ -1063,6 +1167,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string | null
+          custom_fields: Json
           development_id: string | null
           email: string | null
           financing_status: string | null
@@ -1109,6 +1214,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_fields?: Json
           development_id?: string | null
           email?: string | null
           financing_status?: string | null
@@ -1155,6 +1261,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_fields?: Json
           development_id?: string | null
           email?: string | null
           financing_status?: string | null
@@ -1220,6 +1327,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_outcome_by_fkey"
+            columns: ["outcome_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_preferred_area_id_fkey"
             columns: ["preferred_area_id"]
             isOneToOne: false
@@ -1245,13 +1359,6 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_outcome_by_fkey"
-            columns: ["outcome_by"]
-            isOneToOne: false
-            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -1935,6 +2042,7 @@ export type Database = {
       }
       pipeline_stages: {
         Row: {
+          color: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -1947,6 +2055,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1959,6 +2068,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -2046,6 +2156,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string | null
+          custom_fields: Json
           description: string | null
           developer: string | null
           development_id: string | null
@@ -2121,6 +2232,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_fields?: Json
           description?: string | null
           developer?: string | null
           development_id?: string | null
@@ -2196,6 +2308,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_fields?: Json
           description?: string | null
           developer?: string | null
           development_id?: string | null
@@ -2509,6 +2622,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_leases_contract_upload_id_fkey"
+            columns: ["contract_upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_leases_property_id_fkey"
             columns: ["property_id"]
@@ -3680,7 +3800,15 @@ export type Database = {
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
@@ -3809,13 +3937,6 @@ export type Database = {
             columns: ["seller_owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tenants_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]

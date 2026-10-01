@@ -38,7 +38,9 @@ import { Route as AiInsightsRouteImport } from './routes/ai-insights'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as OwnersIndexRouteImport } from './routes/owners.index'
 import { Route as LeadsIndexRouteImport } from './routes/leads.index'
+import { Route as DevelopmentsIndexRouteImport } from './routes/developments.index'
 import { Route as PropertiesPropertyIdRouteImport } from './routes/properties.$propertyId'
 import { Route as OwnersOwnerIdRouteImport } from './routes/owners.$ownerId'
 import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
@@ -189,10 +191,20 @@ const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PropertiesRoute,
 } as any)
+const OwnersIndexRoute = OwnersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OwnersRoute,
+} as any)
 const LeadsIndexRoute = LeadsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LeadsRoute,
+} as any)
+const DevelopmentsIndexRoute = DevelopmentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DevelopmentsRoute,
 } as any)
 const PropertiesPropertyIdRoute = PropertiesPropertyIdRouteImport.update({
   id: '/$propertyId',
@@ -249,7 +261,9 @@ export interface FileRoutesByFullPath {
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
+  '/developments/': typeof DevelopmentsIndexRoute
   '/leads/': typeof LeadsIndexRoute
+  '/owners/': typeof OwnersIndexRoute
   '/properties/': typeof PropertiesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -259,7 +273,6 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/conversations': typeof ConversationsRoute
-  '/developments': typeof DevelopmentsRouteWithChildren
   '/journal': typeof JournalRoute
   '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
@@ -267,7 +280,6 @@ export interface FileRoutesByTo {
   '/marketing-intelligence': typeof MarketingIntelligenceRoute
   '/offers': typeof OffersRoute
   '/overview': typeof OverviewRoute
-  '/owners': typeof OwnersRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/profile': typeof ProfileRoute
   '/property-demand': typeof PropertyDemandRoute
@@ -283,7 +295,9 @@ export interface FileRoutesByTo {
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
+  '/developments': typeof DevelopmentsIndexRoute
   '/leads': typeof LeadsIndexRoute
+  '/owners': typeof OwnersIndexRoute
   '/properties': typeof PropertiesIndexRoute
 }
 export interface FileRoutesById {
@@ -320,7 +334,9 @@ export interface FileRoutesById {
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/owners/$ownerId': typeof OwnersOwnerIdRoute
   '/properties/$propertyId': typeof PropertiesPropertyIdRoute
+  '/developments/': typeof DevelopmentsIndexRoute
   '/leads/': typeof LeadsIndexRoute
+  '/owners/': typeof OwnersIndexRoute
   '/properties/': typeof PropertiesIndexRoute
 }
 export interface FileRouteTypes {
@@ -358,7 +374,9 @@ export interface FileRouteTypes {
     | '/leads/$leadId'
     | '/owners/$ownerId'
     | '/properties/$propertyId'
+    | '/developments/'
     | '/leads/'
+    | '/owners/'
     | '/properties/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -368,7 +386,6 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/conversations'
-    | '/developments'
     | '/journal'
     | '/leaderboard'
     | '/login'
@@ -376,7 +393,6 @@ export interface FileRouteTypes {
     | '/marketing-intelligence'
     | '/offers'
     | '/overview'
-    | '/owners'
     | '/pipeline'
     | '/profile'
     | '/property-demand'
@@ -392,7 +408,9 @@ export interface FileRouteTypes {
     | '/leads/$leadId'
     | '/owners/$ownerId'
     | '/properties/$propertyId'
+    | '/developments'
     | '/leads'
+    | '/owners'
     | '/properties'
   id:
     | '__root__'
@@ -428,7 +446,9 @@ export interface FileRouteTypes {
     | '/leads/$leadId'
     | '/owners/$ownerId'
     | '/properties/$propertyId'
+    | '/developments/'
     | '/leads/'
+    | '/owners/'
     | '/properties/'
   fileRoutesById: FileRoutesById
 }
@@ -668,12 +688,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropertiesIndexRouteImport
       parentRoute: typeof PropertiesRoute
     }
+    '/owners/': {
+      id: '/owners/'
+      path: '/'
+      fullPath: '/owners/'
+      preLoaderRoute: typeof OwnersIndexRouteImport
+      parentRoute: typeof OwnersRoute
+    }
     '/leads/': {
       id: '/leads/'
       path: '/'
       fullPath: '/leads/'
       preLoaderRoute: typeof LeadsIndexRouteImport
       parentRoute: typeof LeadsRoute
+    }
+    '/developments/': {
+      id: '/developments/'
+      path: '/'
+      fullPath: '/developments/'
+      preLoaderRoute: typeof DevelopmentsIndexRouteImport
+      parentRoute: typeof DevelopmentsRoute
     }
     '/properties/$propertyId': {
       id: '/properties/$propertyId'
@@ -708,10 +742,12 @@ declare module '@tanstack/react-router' {
 
 interface DevelopmentsRouteChildren {
   DevelopmentsDevelopmentIdRoute: typeof DevelopmentsDevelopmentIdRoute
+  DevelopmentsIndexRoute: typeof DevelopmentsIndexRoute
 }
 
 const DevelopmentsRouteChildren: DevelopmentsRouteChildren = {
   DevelopmentsDevelopmentIdRoute: DevelopmentsDevelopmentIdRoute,
+  DevelopmentsIndexRoute: DevelopmentsIndexRoute,
 }
 
 const DevelopmentsRouteWithChildren = DevelopmentsRoute._addFileChildren(
@@ -732,10 +768,12 @@ const LeadsRouteWithChildren = LeadsRoute._addFileChildren(LeadsRouteChildren)
 
 interface OwnersRouteChildren {
   OwnersOwnerIdRoute: typeof OwnersOwnerIdRoute
+  OwnersIndexRoute: typeof OwnersIndexRoute
 }
 
 const OwnersRouteChildren: OwnersRouteChildren = {
   OwnersOwnerIdRoute: OwnersOwnerIdRoute,
+  OwnersIndexRoute: OwnersIndexRoute,
 }
 
 const OwnersRouteWithChildren =

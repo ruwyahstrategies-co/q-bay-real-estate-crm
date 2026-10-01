@@ -58,3 +58,33 @@ export function propertyWebsiteLink(
     url: `${base}/properties/${encodeURIComponent(property.slug || property.id)}`,
   };
 }
+
+export const DEVELOPMENT_UNPUBLISHED_MESSAGE = "Publish this development to the Q-Bay website first.";
+
+export type DevelopmentWebsiteLink =
+  | { state: "ready"; url: string }
+  | { state: "unpublished"; message: string }
+  | { state: "no_site"; message: string };
+
+type LinkableDevelopment = {
+  id: string;
+  slug: string | null;
+  is_published: boolean;
+};
+
+/** The website is where public_developments() shows a development: published only. */
+export function developmentWebsiteLink(
+  development: LinkableDevelopment,
+  siteUrl: string | null | undefined,
+): DevelopmentWebsiteLink {
+  if (!development.is_published) {
+    return { state: "unpublished", message: DEVELOPMENT_UNPUBLISHED_MESSAGE };
+  }
+  const base = normalizeWebsiteUrl(siteUrl);
+  if (!base) return { state: "no_site", message: NO_SITE_MESSAGE };
+  // The website resolves a development by its slug or id, same as /developments/$id there.
+  return {
+    state: "ready",
+    url: `${base}/developments/${encodeURIComponent(development.slug || development.id)}`,
+  };
+}

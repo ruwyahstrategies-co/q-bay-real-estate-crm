@@ -14,6 +14,7 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { cleanSpreadsheetPhone, normalizePhone, phoneError, phoneMatchKey } from "./phone";
+import { normalizePreferredLanguage } from "./preferred-language";
 import {
   LEAD_CLASSIFICATION_LABELS,
   classificationsForIntent,
@@ -878,7 +879,8 @@ export function planLeadImport(
       if (cur.value) patch.currency = cur.value;
       const text = (k: LeadImportFieldKey) => cellOf(values, k);
       if (text("nationality")) patch.nationality = text("nationality");
-      if (text("preferred_language")) patch.preferred_language = text("preferred_language");
+      if (text("preferred_language"))
+        patch.preferred_language = normalizePreferredLanguage(text("preferred_language"));
       if (locations.length) patch.preferred_locations = locations;
       if (types.length) patch.preferred_property_types = types;
       if (beds.value.length) patch.preferred_bedrooms = beds.value;
@@ -904,7 +906,7 @@ export function planLeadImport(
       budget_max: bMax.value,
       currency: cur.value ?? "QAR",
       nationality: cellOf(values, "nationality") || null,
-      preferred_language: cellOf(values, "preferred_language") || null,
+      preferred_language: normalizePreferredLanguage(cellOf(values, "preferred_language")) || null,
       preferred_locations: locations.length ? locations : null,
       preferred_property_types: types.length ? types : null,
       preferred_bedrooms: beds.value.length ? beds.value : null,

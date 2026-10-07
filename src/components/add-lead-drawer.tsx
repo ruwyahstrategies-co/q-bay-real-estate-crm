@@ -28,6 +28,7 @@ import {
   type Lead,
 } from "@/lib/db";
 import { NATIONALITIES } from "@/lib/nationalities";
+import { preferredLanguageOptions } from "@/lib/preferred-language";
 
 function Field({
   label,
@@ -509,11 +510,11 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Preferred language">
-          <input
-            className={inputCls}
-            placeholder="English"
-            value={form.preferred_language ?? ""}
-            onChange={(e) => set("preferred_language", e.target.value)}
+          <SelectField
+            value={form.preferred_language || null}
+            onChange={(v) => set("preferred_language", v ?? "")}
+            options={preferredLanguageOptions(form.preferred_language)}
+            placeholder="Select language"
           />
         </Field>
         <CountryAreaPlaceFields

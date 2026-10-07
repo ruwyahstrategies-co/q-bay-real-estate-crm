@@ -10,6 +10,8 @@ import {
   Plus,
   Trash2,
   UserPlus,
+  SpellCheck,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -48,6 +50,7 @@ import {
   useUpdateLeadNote,
   useDeleteLeadNote,
 } from "@/hooks/use-lead-notes";
+import { useCorrectNoteSpelling } from "@/hooks/use-note-spelling";
 import { usePropertyMatchesForLead } from "@/hooks/use-matching";
 import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
@@ -708,9 +711,29 @@ function NotesTab({ leadId }: { leadId: string }) {
   const create = useCreateLeadNote();
   const del = useDeleteLeadNote();
   const { can } = usePermissions();
+  const correctSpelling = useCorrectNoteSpelling();
   const [draft, setDraft] = useState("");
+  // The note exactly as typed, kept only after a correction so it can be restored.
+  const [beforeCorrection, setBeforeCorrection] = useState<string | null>(null);
   const canEdit = can("leads", "edit");
   const canDelete = can("leads", "delete");
+
+  async function handleCorrectSpelling() {
+    const original = draft;
+    if (!original.trim() || correctSpelling.isPending) return;
+    try {
+      const corrected = await correctSpelling.mutateAsync(original);
+      if (corrected.trim() === original.trim()) {
+        toast.success("No spelling changes needed");
+        return;
+      }
+      setBeforeCorrection(original);
+      setDraft(corrected);
+      toast.success("Spelling corrected. Review the note, then add it.");
+    } catch (e) {
+      toast.error(`${(e as Error).message}. Your note is unchanged and can still be added.`);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -722,12 +745,35 @@ function NotesTab({ leadId }: { leadId: string }) {
               className="min-h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              readOnly={correctSpelling.isPending}
               placeholder="Write a note about this lead..."
             />
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              {beforeCorrection !== null && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={correctSpelling.isPending || create.isPending}
+                  onClick={() => {
+                    setDraft(beforeCorrection);
+                    setBeforeCorrection(null);
+                  }}
+                >
+                  <Undo2 className="h-3.5 w-3.5" /> Undo correction
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!draft.trim() || correctSpelling.isPending || create.isPending}
+                onClick={handleCorrectSpelling}
+              >
+                <SpellCheck className="h-3.5 w-3.5" />
+                {correctSpelling.isPending ? "Correcting..." : "Correct spelling"}
+              </Button>
               <Button
                 size="sm"
-                disabled={!draft.trim() || create.isPending}
+                disabled={!draft.trim() || create.isPending || correctSpelling.isPending}
                 onClick={async () => {
                   try {
                     await create.mutateAsync({
@@ -736,6 +782,7 @@ function NotesTab({ leadId }: { leadId: string }) {
                       authorId: teamMember?.id ?? null,
                     });
                     setDraft("");
+                    setBeforeCorrection(null);
                     toast.success("Note added");
                   } catch (e) {
                     toast.error((e as Error).message);

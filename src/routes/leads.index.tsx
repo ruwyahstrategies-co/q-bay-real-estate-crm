@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Upload,
@@ -32,6 +32,7 @@ import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
+import { useRowSelection } from "@/hooks/use-row-selection";
 import { cn, titleCase } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
@@ -75,7 +76,6 @@ function LeadsPage() {
   const [developmentId, setDevelopmentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Lead | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   const { data: leads = [], isLoading } = useLeads({
@@ -118,6 +118,11 @@ function LeadsPage() {
       return raw != null && String(raw).toLowerCase().includes(customFieldFilterValue.toLowerCase());
     });
   }, [leads, activeCustomFieldDef, customFieldFilterValue]);
+  const selection = useRowSelection(visibleLeads.map((l) => l.id));
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = selection.someSelected;
+  }, [selection.someSelected]);
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
@@ -224,7 +229,7 @@ function LeadsPage() {
                 if (classification && !classificationsForIntent(i).includes(classification)) {
                   setClassification(null);
                 }
-                setSelected(new Set());
+                selection.clear();
               }}
               className={cn(
                 "h-8 min-w-[88px] rounded-lg px-4 text-xs font-semibold uppercase tracking-wide transition-colors",
@@ -357,15 +362,15 @@ function LeadsPage() {
           </div>
         </div>
 
-        {selected.size > 0 && (
+        {selection.count > 0 && (
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
-            <span>{selected.size} selected</span>
+            <span>{selection.count} selected</span>
             <Button size="sm" variant="outline" onClick={() => setBroadcastOpen(true)}>
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Broadcast
             </Button>
             <button
               className="ml-auto text-muted-foreground hover:underline"
-              onClick={() => setSelected(new Set())}
+              onClick={selection.clear}
             >
               Clear
             </button>
@@ -374,8 +379,17 @@ function LeadsPage() {
 
         {view === "table" ? (
           <DataTable
+            leadingHeader={
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                aria-label="Select all visible leads"
+                checked={selection.allSelected}
+                disabled={visibleLeads.length === 0}
+                onChange={(e) => selection.toggleAll(e.target.checked)}
+              />
+            }
             columns={[
-              "",
               "Buyer",
               "Contact",
               "Budget",
@@ -426,15 +440,9 @@ function LeadsPage() {
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selected.has(l.id)}
-                        onChange={(e) =>
-                          setSelected((prev) => {
-                            const next = new Set(prev);
-                            if (e.target.checked) next.add(l.id);
-                            else next.delete(l.id);
-                            return next;
-                          })
-                        }
+                        aria-label={`Select ${l.full_name}`}
+                        checked={selection.selected.has(l.id)}
+                        onChange={(e) => selection.toggle(l.id, e.target.checked)}
                       />
                     </td>
                     <td className="px-4 py-3 text-sm font-medium">
@@ -576,8 +584,8 @@ function LeadsPage() {
         <BroadcastDialog
           open={broadcastOpen}
           onOpenChange={setBroadcastOpen}
-          leads={visibleLeads.filter((l) => selected.has(l.id))}
-          onDone={() => setSelected(new Set())}
+          leads={visibleLeads.filter((l) => selection.selected.has(l.id))}
+          onDone={selection.clear}
         />
         <ConfirmDialog
           open={!!confirmArchive}

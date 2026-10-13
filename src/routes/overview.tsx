@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Flame,
   Target,
@@ -7,7 +7,6 @@ import {
   UserPlus,
   Inbox,
   ArrowRight,
-  Activity,
   BarChart3,
   Megaphone,
   CheckCircle2,
@@ -15,7 +14,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
-import { DataTable } from "@/components/data-table";
+import { DataTable, dataRowCls } from "@/components/data-table";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button, Card } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
@@ -52,11 +52,11 @@ export const Route = createFileRoute("/overview")({
   component: OverviewPage,
 });
 
-const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
+/** Restrained tonal greens for the stage breakdown; the last tones stay neutral so many stages remain readable. */
+const STAGE_TONES = ["#0A4623", "#1E6B3D", "#3F8F5F", "#7BB592", "#B3D4BF", "#D7E7DC", "#9CA8A0", "#C9D0CB"];
 
 function OverviewPage() {
   const navigate = useNavigate();
-  const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const { data: leads = [] } = useLeads({ status: "all" });
   const { data: interactions = [] } = useInteractions();
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
@@ -100,6 +100,19 @@ function OverviewPage() {
     .reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
 
   const newLeadsCount = activeLeads.filter((l) => l.pipeline_stage === "new_lead").length;
+
+  // Open leads per pipeline stage (won and lost are outcomes, not open pipeline), in first-seen order.
+  const stageBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of activeLeads) {
+      if (["won", "lost"].includes(l.pipeline_stage)) continue;
+      counts.set(l.pipeline_stage, (counts.get(l.pipeline_stage) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([stage, count]) => ({ stage, label: stageLabel(stage), count }))
+      .sort((a, b) => b.count - a.count);
+  }, [activeLeads]);
+  const openLeadCount = stageBreakdown.reduce((n, s) => n + s.count, 0);
   const recentLeads = activeLeads.slice(0, 7);
   const recentInteractions = interactions.slice(0, 5);
   const currency = activeLeads[0]?.currency ?? "QAR";
@@ -179,99 +192,99 @@ function OverviewPage() {
   return (
     <AppShell>
       <PermissionGate module="overview" action="view" page>
-        <p className="mb-3 text-[13px] font-medium text-muted-foreground">Buyer Intelligence</p>
+        <PageHeader
+          eyebrow="Buyer Intelligence"
+          title="Overview"
+          description="Pipeline value, buyer intent and today's follow-ups in one view."
+          actions={
+            <>
+              <Link to="/pipeline">
+                <Button variant="outline" size="sm">
+                  Open pipeline
+                </Button>
+              </Link>
+              <Link to="/leads">
+                <Button size="sm">
+                  All leads
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </>
+          }
+        />
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="relative overflow-hidden rounded-2xl bg-pastel-blue p-6 lg:col-span-2">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[13px] font-medium text-foreground/70">Active Pipeline</p>
-                <h3 className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-foreground">
-                  {pipelineValue > 0 ? fmtMoney(pipelineValue, currency) : "0"}
-                </h3>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Qualified Buyer Value ({activeLeads.length} active leads)
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex h-44 items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/40 text-center">
-              <div>
-                <Activity className="mx-auto h-5 w-5 text-foreground/60" />
-                <p className="mt-2 text-xs font-medium text-foreground">
-                  {activeLeads.length === 0
-                    ? "No pipeline activity yet"
-                    : `${activeLeads.length} leads in pipeline`}
-                </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Detailed charts will appear once enough activity has been recorded.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center gap-1">
-              {ranges.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRange(r)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
-                    r === range
-                      ? "bg-foreground text-primary-foreground"
-                      : "text-foreground/70 hover:bg-white/50",
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <MetricCard
-              label="Hot Leads"
-              value={String(hotCount)}
-              tone="purple"
-              icon={<Flame className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="High Intent"
-              value={String(highIntentCount)}
-              tone="green"
-              icon={<Target className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="At Risk"
-              value={String(atRiskCount)}
-              tone="cream"
-              icon={<AlertTriangle className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="New Leads"
-              value={String(newLeadsCount)}
-              tone="blue"
-              icon={<UserPlus className="h-4 w-4" />}
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MetricCard label="Hot Leads" value={String(hotCount)} tone="purple" icon={<Flame />} />
+          <MetricCard label="High Intent" value={String(highIntentCount)} tone="green" icon={<Target />} />
+          <MetricCard label="At Risk" value={String(atRiskCount)} tone="cream" icon={<AlertTriangle />} />
+          <MetricCard label="New Leads" value={String(newLeadsCount)} tone="blue" icon={<UserPlus />} />
         </div>
 
-        <Card className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ListChecks className="h-4 w-4" />
-              <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
-                {todaysTasks.length}
-              </span>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <Card className="lg:col-span-3">
+            <p className="text-[13px] font-medium text-muted-foreground">Active Pipeline</p>
+            <h3 className="mt-2 text-[34px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
+              {pipelineValue > 0 ? fmtMoney(pipelineValue, currency) : "0"}
+            </h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Qualified Buyer Value ({activeLeads.length} active leads)
+            </p>
+
+            {openLeadCount === 0 ? (
+              <div className="mt-6 rounded-xl border border-dashed border-border bg-background px-4 py-8 text-center">
+                <p className="text-xs font-medium text-foreground">No open leads in the pipeline yet</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Stages will appear here as leads are added and moved.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <div
+                  className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
+                  role="img"
+                  aria-label={`Open leads by stage: ${stageBreakdown.map((x) => `${x.label} ${x.count}`).join(", ")}`}
+                >
+                  {stageBreakdown.map((x, i) => (
+                    <span
+                      key={x.stage}
+                      style={{ width: `${(x.count / openLeadCount) * 100}%`, background: STAGE_TONES[i % STAGE_TONES.length] }}
+                      className="h-full border-r border-canvas last:border-0"
+                    />
+                  ))}
+                </div>
+                <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+                  {stageBreakdown.map((x, i) => (
+                    <li key={x.stage} className="flex items-center gap-2 text-xs">
+                      <span
+                        className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                        style={{ background: STAGE_TONES[i % STAGE_TONES.length] }}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate text-muted-foreground">{x.label}</span>
+                      <span className="ml-auto font-medium tabular-nums">{x.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-qbay" />
+                <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums">
+                  {todaysTasks.length}
+                </span>
+              </div>
               <Link to="/calendar">
                 <Button variant="outline" size="sm">
                   Open calendar
                 </Button>
               </Link>
             </div>
-          </div>
+            <div className="max-h-[320px] overflow-y-auto">
           {todaysTasks.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
           ) : (
@@ -323,7 +336,7 @@ function OverviewPage() {
                 return target ? (
                   <li
                     key={t.id}
-                    className="cursor-pointer px-1 hover:bg-background/60"
+                    className="cursor-pointer rounded-lg px-1 transition-colors hover:bg-qbay-tint/60"
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
                     onClick={() => navigate(target as any)}
                   >
@@ -337,7 +350,9 @@ function OverviewPage() {
               })}
             </ul>
           )}
-        </Card>
+            </div>
+          </Card>
+        </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -363,7 +378,7 @@ function OverviewPage() {
             >
               {recentLeads.length > 0
                 ? recentLeads.map((l) => (
-                    <tr key={l.id} className="border-b border-border last:border-0">
+                    <tr key={l.id} className={dataRowCls}>
                       <td className="px-4 py-3 text-sm font-medium">
                         <Link
                           to="/leads/$leadId"
@@ -399,7 +414,7 @@ function OverviewPage() {
                   {recentInteractions.map((i) => (
                     <div
                       key={i.id}
-                      className="rounded-lg border border-border bg-canvas px-4 py-3 text-sm"
+                      className="rounded-xl border border-border bg-canvas px-4 py-3 text-sm shadow-card"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium capitalize">
@@ -419,7 +434,7 @@ function OverviewPage() {
             )}
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl bg-sidebar p-6 text-white">
+          <div className="relative overflow-hidden rounded-xl bg-sidebar p-6 text-white shadow-raised lg:self-start">
             <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border border-white/10" />
             <div className="absolute -bottom-16 -right-16 h-56 w-56 rounded-full border border-white/10" />
             <h3 className="relative text-[20px] font-semibold leading-snug">

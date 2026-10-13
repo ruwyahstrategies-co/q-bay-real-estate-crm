@@ -3,6 +3,9 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui-primitives";
 import { DrawerShell } from "@/components/overlay";
+import { MasterSelectField } from "@/components/master-select-field";
+import { useMasterData } from "@/hooks/use-master-data";
+import { initialMasterSelection, resolveMasterSelection } from "@/lib/master-data";
 import { MapboxPicker } from "@/components/mapbox-picker";
 import { GoogleMapsLinkField } from "@/components/google-maps-link-field";
 import { HeroImageField } from "@/components/hero-image-field";
@@ -46,7 +49,10 @@ export function DevelopmentDrawer({
   const { data: team = [] } = useTeamMembers();
 
   const [name, setName] = useState(development?.name ?? "");
-  const [developer, setDeveloper] = useState(development?.developer ?? "");
+  const { data: developerValues = [] } = useMasterData("developer");
+  const [developer, setDeveloper] = useState(
+    initialMasterSelection({ id: development?.developer_id, text: development?.developer }),
+  );
   const [countryId, setCountryId] = useState(development?.country_id ?? "");
   const [areaId, setAreaId] = useState(development?.area_id ?? "");
   const [placeId, setPlaceId] = useState(development?.place_id ?? "");
@@ -66,7 +72,7 @@ export function DevelopmentDrawer({
   useEffect(() => {
     if (!open) return;
     setName(development?.name ?? "");
-    setDeveloper(development?.developer ?? "");
+    setDeveloper(initialMasterSelection({ id: development?.developer_id, text: development?.developer }));
     setCountryId(development?.country_id ?? "");
     setAreaId(development?.area_id ?? "");
     setPlaceId(development?.place_id ?? "");
@@ -92,7 +98,10 @@ export function DevelopmentDrawer({
     const payload = {
       name: name.trim(),
       slug: development?.slug || slugify(name),
-      developer: developer || null,
+      ...(() => {
+        const sel = resolveMasterSelection(developer, developerValues, development?.developer);
+        return { developer_id: sel.id, developer: sel.text };
+      })(),
       country_id: countryId || null,
       area_id: areaId || null,
       place_id: placeId || null,
@@ -138,7 +147,12 @@ export function DevelopmentDrawer({
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Developer</span>
-          <input className={inputCls} value={developer ?? ""} onChange={(e) => setDeveloper(e.target.value)} />
+          <MasterSelectField
+            kind="developer"
+            value={developer}
+            onChange={setDeveloper}
+            current={{ id: development?.developer_id, text: development?.developer }}
+          />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Owner</span>

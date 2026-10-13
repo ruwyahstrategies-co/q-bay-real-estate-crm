@@ -18,6 +18,9 @@ import { DynamicFieldsSection, useRequiredCustomFieldError, type CustomFieldValu
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
+import { MasterSelectField } from "./master-select-field";
+import { useMasterData } from "@/hooks/use-master-data";
+import { initialMasterSelection, resolveMasterSelection } from "@/lib/master-data";
 import {
   PROPERTY_PURPOSES,
   PROPERTY_PURPOSE_LABELS,
@@ -87,7 +90,7 @@ function initialForm(property: Property | null | undefined): FormState {
     reference_code: property?.reference_code ?? "",
     property_type: property?.property_type ?? "Apartment",
     location: property?.location ?? "",
-    developer: property?.developer ?? "",
+    developer: initialMasterSelection({ id: property?.developer_id, text: property?.developer }),
     price: property?.price ?? null,
     currency: property?.currency ?? "QAR",
     bedrooms: property?.bedrooms ?? null,
@@ -149,6 +152,7 @@ export function PropertyDrawer({
   const { data: developments = [] } = useDevelopments();
   const { data: owners = [] } = useOwners();
   const { data: team = [] } = useTeamMembers();
+  const { data: developerValues = [] } = useMasterData("developer");
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
   const { data: referencePreview } = usePropertyReferencePreview(
@@ -203,7 +207,10 @@ export function PropertyDrawer({
       reference_code: form.reference_code || null,
       property_type: form.property_type || null,
       location: form.location || null,
-      developer: form.developer || null,
+      ...(() => {
+        const sel = resolveMasterSelection(form.developer, developerValues, property?.developer);
+        return { developer_id: sel.id, developer: sel.text };
+      })(),
       price: form.price ? Number(form.price) : null,
       currency: form.currency || "QAR",
       bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
@@ -700,10 +707,11 @@ export function PropertyDrawer({
           />
         </Field>
         <Field label="Developer" full>
-          <input
-            className={inputCls}
+          <MasterSelectField
+            kind="developer"
             value={form.developer ?? ""}
-            onChange={(e) => set("developer", e.target.value)}
+            onChange={(v) => set("developer", v)}
+            current={{ id: property?.developer_id, text: property?.developer }}
           />
         </Field>
         <Field label="Amenities (comma separated)" full>

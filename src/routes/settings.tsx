@@ -8,6 +8,7 @@ import { Button, Card } from "@/components/ui-primitives";
 import { PermissionGate } from "@/components/permission-gate";
 import { PipelineStagesManager } from "@/components/pipeline-stages-manager";
 import { ChannelsManager } from "@/components/channels-manager";
+import { MasterDataManager } from "@/components/master-data-manager";
 import { FieldDefinitionsManager } from "@/components/field-definitions-manager";
 import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
@@ -61,6 +62,7 @@ const sections = [
   "Channels / Sources",
   "Lead Inputs",
   "Unit Inputs",
+  "Developers & Companies",
   "Map / Mapbox",
   "Public website",
   "Permissions",
@@ -214,6 +216,8 @@ function SettingsPage() {
             {active === "Unit Inputs" && (
               <FieldDefinitionsManager entityType="property" canManage={canManage} />
             )}
+
+            {active === "Developers & Companies" && <MasterDataManager canManage={canManage} />}
 
             {active === "Map / Mapbox" && <MapboxSection canManage={canManage} />}
 

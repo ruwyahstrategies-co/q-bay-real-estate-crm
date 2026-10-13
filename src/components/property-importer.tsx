@@ -7,6 +7,7 @@ import { DialogShell } from "./overlay";
 import { SelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import { sb } from "@/lib/db";
+import { masterDataNorm } from "@/lib/master-data";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
 
@@ -113,6 +114,13 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
 
     const num = (s: string) => { const n = parseFloat(s); return isNaN(n) ? null : n; };
 
+    // Developers must be approved values (Settings > Developers & Companies). A file value is
+    // matched to an approved developer ignoring case and extra spaces; anything else is
+    // rejected for that row alone, with the reason, rather than failing a whole batch.
+    const { data: approved } = await sb.from("master_data_values").select("id, name, is_active").eq("kind", "developer");
+    const approvedByName = new Map<string, { id: string; name: string; is_active: boolean }>();
+    for (const a of approved ?? []) approvedByName.set(masterDataNorm(a.name), a);
+
     let imported = 0, updated = 0, skipped = 0, failed = 0;
     const errors: string[] = [];
     const toInsert: Record<string, unknown>[] = [];
@@ -128,7 +136,6 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
         property_type: mapping.property_type ? String(row[mapping.property_type] ?? "") || null : null,
         purpose: mapping.purpose ? String(row[mapping.purpose] ?? "").toLowerCase() || "sale" : "sale",
         location: mapping.location ? String(row[mapping.location] ?? "") || null : null,
-        developer: mapping.developer ? String(row[mapping.developer] ?? "") || null : null,
         price: mapping.price ? num(String(row[mapping.price] ?? "")) : null,
         currency: mapping.currency ? String(row[mapping.currency] ?? "") || "QAR" : "QAR",
         bedrooms: mapping.bedrooms ? num(String(row[mapping.bedrooms] ?? "")) : null,
@@ -139,6 +146,22 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
         availability: mapping.availability ? String(row[mapping.availability] ?? "") || "available" : "available",
         description: mapping.description ? String(row[mapping.description] ?? "") || null : null,
       };
+
+      const developerText = mapping.developer ? String(row[mapping.developer] ?? "").trim() : "";
+      if (developerText) {
+        const match = approvedByName.get(masterDataNorm(developerText));
+        if (!match || !match.is_active) {
+          failed++;
+          errors.push(
+            match
+              ? `"${title}": developer "${match.name}" is inactive. Ask an administrator to reactivate it.`
+              : `"${title}": developer "${developerText}" is not an approved developer. An administrator can add it in Settings.`,
+          );
+          continue;
+        }
+        payload.developer = match.name;
+        payload.developer_id = match.id;
+      }
 
       const dupId = refCode ? byRef.get(refCode.toLowerCase()) : undefined;
       if (dupId) {

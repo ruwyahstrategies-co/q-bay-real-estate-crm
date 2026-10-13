@@ -18,8 +18,10 @@ import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
-import { FilterBar, FilterPill } from "@/components/filter-bar";
-import { DataTable } from "@/components/data-table";
+import { SegmentedControl } from "@/components/segmented-control";
+import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
+import { StaffAvatar } from "@/components/staff-avatar";
+import { DataTable, dataRowCls } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui-primitives";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
@@ -28,7 +30,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PipelineStageBadge, IntentScore } from "@/components/status-badge";
 import { LeadOutcomeBadge } from "@/components/lead-outcome";
 import { PermissionGate } from "@/components/permission-gate";
-import { SelectField, SearchableSelectField } from "@/components/select-field";
+import { SelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
@@ -123,6 +125,24 @@ function LeadsPage() {
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = selection.someSelected;
   }, [selection.someSelected]);
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) +
+    (stage ? 1 : 0) +
+    (agent ? 1 : 0) +
+    (classification ? 1 : 0) +
+    (workflow ? 1 : 0) +
+    (developmentId ? 1 : 0) +
+    (customFieldFilterKey && customFieldFilterValue ? 1 : 0);
+  function clearFilters() {
+    setSearch("");
+    setStage(null);
+    setAgent(null);
+    setClassification(null);
+    setWorkflow(null);
+    setDevelopmentId(null);
+    setCustomFieldFilterKey(null);
+    setCustomFieldFilterValue(null);
+  }
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
@@ -213,104 +233,92 @@ function LeadsPage() {
           }
         />
 
-        <div
-          role="tablist"
-          aria-label="Lead intent"
-          className="mb-3 inline-flex items-center gap-1 rounded-xl border border-border bg-canvas p-1"
-        >
-          {LEAD_INTENTS.map((i) => (
-            <button
-              key={i}
-              role="tab"
-              type="button"
-              aria-selected={intent === i}
-              onClick={() => {
-                setIntent(i);
-                if (classification && !classificationsForIntent(i).includes(classification)) {
-                  setClassification(null);
-                }
-                selection.clear();
-              }}
-              className={cn(
-                "h-8 min-w-[88px] rounded-lg px-4 text-xs font-semibold uppercase tracking-wide transition-colors",
-                intent === i
-                  ? "bg-qbay text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {LEAD_INTENT_LABELS[i]}
-            </button>
-          ))}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <SegmentedControl<LeadIntent>
+            ariaLabel="Lead intent"
+            tone="green"
+            size="lg"
+            value={intent}
+            onChange={(i) => {
+              setIntent(i);
+              if (classification && !classificationsForIntent(i).includes(classification)) {
+                setClassification(null);
+              }
+              selection.clear();
+            }}
+            options={LEAD_INTENTS.map((i) => ({ value: i, label: LEAD_INTENT_LABELS[i] }))}
+          />
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {isLoading ? "Loading..." : `${visibleLeads.length} ${visibleLeads.length === 1 ? "lead" : "leads"} shown`}
+          </p>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <input
-              type="text"
-              placeholder="Search by name, phone, email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
-          <SelectField
+        <FilterToolbar ariaLabel="Lead filters" activeCount={activeFilterCount}>
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by name, phone, email..."
+            className="basis-full xl:basis-auto"
+          />
+          <FilterSelect
+            label="Stage"
             value={stage}
-            onChange={(v) => setStage(v)}
+            onChange={setStage}
             options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
-            emptyLabel="All stages"
-            className="w-auto min-w-[130px] text-xs"
+            allLabel="All stages"
           />
-          <SearchableSelectField
+          <FilterSelect
+            label="Agent"
             value={agent}
-            onChange={(v) => setAgent(v)}
+            onChange={setAgent}
             options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-            emptyLabel="All agents"
-            searchPlaceholder="Search agents..."
-            className="w-auto min-w-[130px] text-xs"
+            allLabel="All agents"
+            searchable
           />
-          <SelectField
+          <FilterSelect
+            label="Classification"
             value={classification}
-            onChange={(v) => setClassification(v)}
+            onChange={setClassification}
             options={classificationsForIntent(intent).map((c) => ({
               value: c,
               label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
             }))}
-            emptyLabel="All types"
-            className="w-auto min-w-[110px] text-xs"
+            allLabel="All types"
           />
-          <SelectField
+          <FilterSelect
+            label="Workflow"
             value={workflow}
-            onChange={(v) => setWorkflow(v)}
+            onChange={setWorkflow}
             options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: titleCase(w) }))}
-            emptyLabel="Sales + Telesales"
-            className="w-auto min-w-[140px] text-xs"
+            allLabel="Sales + Telesales"
           />
-          <SearchableSelectField
+          <FilterSelect
+            label="Development"
             value={developmentId}
-            onChange={(v) => setDevelopmentId(v)}
+            onChange={setDevelopmentId}
             options={developments.map((d) => ({ value: d.id, label: d.name }))}
-            emptyLabel="All developments"
-            searchPlaceholder="Search developments..."
-            className="w-auto min-w-[150px] text-xs"
+            allLabel="All developments"
+            searchable
           />
           {filterableFieldDefs.length > 0 && (
             <>
-              <SelectField
+              <FilterSelect
+                label="Custom field"
                 value={customFieldFilterKey}
                 onChange={(v) => {
                   setCustomFieldFilterKey(v);
                   setCustomFieldFilterValue(null);
                 }}
                 options={filterableFieldDefs.map((d) => ({ value: d.key, label: d.label }))}
-                emptyLabel="Custom field"
-                className="w-auto min-w-[130px] text-xs"
+                allLabel="Custom field"
               />
               {activeCustomFieldDef &&
                 (activeCustomFieldDef.field_type === "select" ||
                 activeCustomFieldDef.field_type === "multiselect" ||
                 activeCustomFieldDef.field_type === "boolean" ||
                 activeCustomFieldDef.field_type === "checkbox" ? (
-                  <SelectField
+                  <FilterSelect
+                    label={activeCustomFieldDef.label}
                     value={customFieldFilterValue}
                     onChange={setCustomFieldFilterValue}
                     options={
@@ -324,47 +332,39 @@ function LeadsPage() {
                             (activeCustomFieldDef.options as string[] | null) ?? []
                           ).map((o) => ({ value: o, label: o }))
                     }
-                    emptyLabel="Any value"
-                    className="w-auto min-w-[120px] text-xs"
+                    allLabel="Any value"
                   />
                 ) : (
                   <input
                     type="text"
                     placeholder="Contains..."
+                    aria-label={`${activeCustomFieldDef.label} contains`}
                     value={customFieldFilterValue ?? ""}
                     onChange={(e) => setCustomFieldFilterValue(e.target.value || null)}
-                    className="h-9 w-[130px] rounded-lg border border-border bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-9 w-[150px] rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25"
                   />
                 ))}
             </>
           )}
-          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-            <button
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md",
-                view === "table" && "bg-canvas",
-              )}
-              onClick={() => setView("table")}
-              aria-label="Table view"
-            >
-              <Rows3 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md",
-                view === "cards" && "bg-canvas",
-              )}
-              onClick={() => setView("cards")}
-              aria-label="Card view"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+          <ClearFiltersButton count={activeFilterCount} onClick={clearFilters} />
+          <ToolbarAlways>
+            <SegmentedControl
+              ariaLabel="View"
+              size="md"
+              className="ml-auto"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "table", ariaLabel: "Table view", icon: <Rows3 className="h-3.5 w-3.5" /> },
+                { value: "cards", ariaLabel: "Card view", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+              ]}
+            />
+          </ToolbarAlways>
+        </FilterToolbar>
 
         {selection.count > 0 && (
-          <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
-            <span>{selection.count} selected</span>
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-qbay/20 bg-qbay-tint px-4 py-2.5 text-xs shadow-card">
+            <span className="font-medium text-qbay">{selection.count} selected</span>
             <Button size="sm" variant="outline" onClick={() => setBroadcastOpen(true)}>
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Broadcast
             </Button>
@@ -407,10 +407,18 @@ function LeadsPage() {
               ) : (
                 <EmptyState
                   icon={<Users className="h-4 w-4" />}
-                  title="No leads yet"
-                  description="Add a lead manually or import a CSV/XLSX file to get started."
+                  title={activeFilterCount ? "No leads match these filters" : "No leads yet"}
+                  description={
+                    activeFilterCount
+                      ? "Try removing a filter."
+                      : "Add a lead manually or import a CSV/XLSX file to get started."
+                  }
                   action={
-                    canCreate ? (
+                    activeFilterCount ? (
+                      <Button size="sm" variant="outline" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    ) : canCreate ? (
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
                           <Upload className="h-3.5 w-3.5" /> Import Leads
@@ -435,7 +443,8 @@ function LeadsPage() {
               ? visibleLeads.map((l) => (
                   <tr
                     key={l.id}
-                    className="border-b border-border last:border-0 hover:bg-background/60"
+                    data-selected={selection.selected.has(l.id) || undefined}
+                    className={cn(dataRowCls, selection.selected.has(l.id) && "bg-qbay-soft/40")}
                   >
                     <td className="px-4 py-3">
                       <input
@@ -499,8 +508,17 @@ function LeadsPage() {
                           className="h-8 max-w-[150px] text-xs"
                           aria-label={`Assign agent for ${l.full_name}`}
                         />
+                      ) : l.assigned_agent_id ? (
+                        <span className="inline-flex items-center gap-2">
+                          <StaffAvatar
+                            name={agentName(l.assigned_agent_id)}
+                            url={team.find((t) => t.id === l.assigned_agent_id)?.avatar_url}
+                            size="xs"
+                          />
+                          {agentName(l.assigned_agent_id)}
+                        </span>
                       ) : (
-                        agentName(l.assigned_agent_id)
+                        <span className="text-muted-foreground">Unassigned</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -512,6 +530,7 @@ function LeadsPage() {
                           <button
                             className="rounded-md p-1.5 hover:bg-muted"
                             title="Edit"
+                            aria-label={`Edit ${l.full_name}`}
                             onClick={() => {
                               setEditLead(l);
                               setOpen(true);
@@ -524,6 +543,7 @@ function LeadsPage() {
                           <button
                             className="rounded-md p-1.5 hover:bg-muted"
                             title="Archive"
+                            aria-label={`Archive ${l.full_name}`}
                             onClick={() => setConfirmArchive(l)}
                           >
                             <Archive className="h-3.5 w-3.5" />
@@ -533,6 +553,7 @@ function LeadsPage() {
                           <button
                             className="rounded-md p-1.5 hover:bg-muted text-destructive"
                             title="Delete"
+                            aria-label={`Delete ${l.full_name}`}
                             onClick={() => setConfirmDelete(l)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -545,36 +566,62 @@ function LeadsPage() {
               : null}
           </DataTable>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleLeads.length === 0 ? (
               <div className="col-span-full">
                 <EmptyState
                   icon={<Users className="h-4 w-4" />}
-                  title="No leads yet"
-                  description="Add a lead to see cards here."
+                  title={activeFilterCount ? "No leads match these filters" : "No leads yet"}
+                  description={activeFilterCount ? "Try removing a filter." : "Add a lead to see cards here."}
                 />
               </div>
             ) : (
-              visibleLeads.map((l) => (
-                <Link
-                  key={l.id}
-                  to="/leads/$leadId"
-                  params={{ leadId: l.id }}
-                  className="rounded-2xl border border-border bg-canvas p-5 hover:shadow-md transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">{l.full_name}</h4>
-                    <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{l.phone ?? l.email ?? "-"}</p>
-                  <p className="mt-3 text-xs">
-                    <strong>Budget:</strong> {fmtMoney(l.budget_max, l.currency)}
-                  </p>
-                  <p className="text-xs">
-                    <strong>Area:</strong> {l.preferred_locations?.join(", ") ?? "-"}
-                  </p>
-                </Link>
-              ))
+              visibleLeads.map((l) => {
+                const member = team.find((t) => t.id === l.assigned_agent_id);
+                return (
+                  <Link
+                    key={l.id}
+                    to="/leads/$leadId"
+                    params={{ leadId: l.id }}
+                    className="group flex flex-col rounded-xl border border-border bg-canvas p-4 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-semibold">{l.full_name}</h4>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{l.phone ?? l.email ?? "-"}</p>
+                      </div>
+                      <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
+                    </div>
+                    <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <dt className="text-muted-foreground">Budget</dt>
+                        <dd className="mt-0.5 font-medium tabular-nums">{l.budget_max ? fmtMoney(l.budget_max, l.currency) : "-"}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-muted-foreground">Area</dt>
+                        <dd className="mt-0.5 truncate font-medium">
+                          {(l.preferred_area_id && areaNameById.get(l.preferred_area_id)) ||
+                            l.preferred_locations?.join(", ") ||
+                            "-"}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-2">
+                        {member ? (
+                          <>
+                            <StaffAvatar name={member.full_name} url={member.avatar_url} size="xs" />
+                            {member.full_name}
+                          </>
+                        ) : (
+                          "Unassigned"
+                        )}
+                      </span>
+                      <span>{fmtDate(l.updated_at)}</span>
+                    </div>
+                  </Link>
+                );
+              })
             )}
           </div>
         )}
@@ -628,10 +675,6 @@ function LeadsPage() {
     </AppShell>
   );
 }
-// Silence unused import lint:
-void FilterBar;
-void FilterPill;
-
 // Broadcasts through EACH lead's assigned agent's OWN WhatsApp connection -
 // the caller can only successfully send for leads assigned to themselves
 // (whatsapp-send resolves the connection from the signed-in caller), so this

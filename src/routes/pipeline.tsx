@@ -9,16 +9,18 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
-import { Plus, LayoutGrid, Rows3, ArrowUpRight } from "lucide-react";
+import { Plus, LayoutGrid, Rows3, ArrowUpRight, Users } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui-primitives";
-import { DataTable } from "@/components/data-table";
+import { DataTable, dataRowCls } from "@/components/data-table";
+import { SegmentedControl } from "@/components/segmented-control";
+import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
+import { StaffAvatar } from "@/components/staff-avatar";
 import { EmptyState } from "@/components/empty-state";
 import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { PermissionGate } from "@/components/permission-gate";
-import { SelectField } from "@/components/select-field";
 import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
@@ -88,38 +90,56 @@ function PipelinePage() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas p-2">
-        <input
-          type="text"
-          placeholder="Search leads in pipeline..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-        <SelectField
+      <FilterToolbar ariaLabel="Pipeline filters" activeCount={(search.trim() ? 1 : 0) + (agent ? 1 : 0)}>
+        <FilterSearch value={search} onChange={setSearch} placeholder="Search leads in pipeline..." />
+        <FilterSelect
+          label="Agent"
           value={agent}
-          onChange={(v) => setAgent(v)}
+          onChange={setAgent}
           options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-          emptyLabel="All agents"
-          className="w-44"
+          allLabel="All agents"
+          searchable
         />
-        <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-          <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "board" && "bg-canvas")} onClick={() => setView("board")} aria-label="Board view">
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </button>
-          <button className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "list" && "bg-canvas")} onClick={() => setView("list")} aria-label="List view">
-            <Rows3 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
+        <ClearFiltersButton
+          count={(search.trim() ? 1 : 0) + (agent ? 1 : 0)}
+          onClick={() => {
+            setSearch("");
+            setAgent(null);
+          }}
+        />
+        <ToolbarAlways>
+          <SegmentedControl
+            ariaLabel="View"
+            size="md"
+            className="ml-auto"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "board", ariaLabel: "Board view", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+              { value: "list", ariaLabel: "List view", icon: <Rows3 className="h-3.5 w-3.5" /> },
+            ]}
+          />
+        </ToolbarAlways>
+      </FilterToolbar>
 
       {view === "board" ? (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-          <div className="-mx-2 flex gap-3 overflow-x-auto px-2 pb-3">
+          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3">
             {pipelineStages.map((stage) => {
               const items = merged.filter((l) => l.pipeline_stage === stage.stage_key);
               const total = items.reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
-              return <StageColumn key={stage.id} stageKey={stage.stage_key} label={stage.name} items={items} total={total} droppable={canMove} />;
+              return (
+                <StageColumn
+                  key={stage.id}
+                  stageKey={stage.stage_key}
+                  label={stage.name}
+                  color={stage.color}
+                  items={items}
+                  total={total}
+                  droppable={canMove}
+                  team={team}
+                />
+              );
             })}
           </div>
         </DndContext>
@@ -130,7 +150,7 @@ function PipelinePage() {
         >
           {merged.length > 0
             ? merged.map((l) => (
-                <tr key={l.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                <tr key={l.id} className={dataRowCls}>
                   <td className="px-4 py-3 text-sm font-medium">
                     <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">{l.full_name}</Link>
                   </td>
@@ -150,38 +170,80 @@ function PipelinePage() {
   );
 }
 
-function StageColumn({ stageKey, label, items, total, droppable }: { stageKey: string; label: string; items: Lead[]; total: number; droppable: boolean }) {
+type StaffLite = { id: string; full_name: string; avatar_url: string | null };
+
+function StageColumn({
+  stageKey,
+  label,
+  color,
+  items,
+  total,
+  droppable,
+  team,
+}: {
+  stageKey: string;
+  label: string;
+  /** Optional color tag configured on the stage in Settings; Q-Bay green when not set. */
+  color: string | null;
+  items: Lead[];
+  total: number;
+  droppable: boolean;
+  team: StaffLite[];
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey, disabled: !droppable });
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-[260px] flex-shrink-0 flex-col rounded-xl border bg-background p-3 transition-colors duration-150",
-        isOver ? "border-foreground bg-muted ring-2 ring-foreground/15" : "border-border",
+        "flex w-[280px] flex-shrink-0 flex-col rounded-xl border p-3 transition-colors duration-150",
+        isOver ? "border-qbay bg-qbay-tint ring-2 ring-qbay/15" : "border-border bg-muted/50",
       )}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-semibold">{label}</span>
-        <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-muted-foreground">{items.length}</span>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+          <span
+            aria-hidden="true"
+            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+            style={{ background: color || "var(--qbay-green)" }}
+          />
+          <span className="truncate">{label}</span>
+        </span>
+        <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground shadow-card">
+          {items.length}
+        </span>
       </div>
       <div className="flex-1 space-y-2">
         {items.length === 0 ? (
           <div
             className={cn(
               "flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed px-3 py-6 text-center text-[11px] transition-colors duration-150",
-              isOver ? "border-foreground/40 bg-canvas text-foreground" : "border-border bg-canvas text-muted-foreground",
+              isOver ? "border-qbay/50 bg-canvas text-qbay" : "border-border bg-canvas/60 text-muted-foreground",
             )}
           >
             {isOver ? "Drop here" : "No leads in this stage"}
           </div>
-        ) : items.map((l) => <DraggableCard key={l.id} lead={l} draggable={droppable} />)}
+        ) : (
+          items.map((l) => (
+            <DraggableCard
+              key={l.id}
+              lead={l}
+              draggable={droppable}
+              agent={team.find((t) => t.id === l.assigned_agent_id) ?? null}
+            />
+          ))
+        )}
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">Total value: {total > 0 ? fmtMoney(total, items[0]?.currency) : "-"}</p>
+      <p className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>Total value</span>
+        <span className="font-medium tabular-nums text-foreground">
+          {total > 0 ? fmtMoney(total, items[0]?.currency) : "-"}
+        </span>
+      </p>
     </div>
   );
 }
 
-function DraggableCard({ lead, draggable }: { lead: Lead; draggable: boolean }) {
+function DraggableCard({ lead, draggable, agent }: { lead: Lead; draggable: boolean; agent: StaffLite | null }) {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
@@ -202,15 +264,24 @@ function DraggableCard({ lead, draggable }: { lead: Lead; draggable: boolean }) 
       tabIndex={0}
       aria-label={`Open ${lead.full_name}`}
       className={cn(
-        "group relative rounded-lg border border-border bg-canvas p-3 shadow-sm transition-shadow duration-150 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
+        "group relative rounded-xl border border-border bg-canvas p-3 shadow-card transition duration-150 hover:shadow-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
         draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
-        isDragging && "opacity-50 shadow-lg",
+        isDragging && "z-10 opacity-90 shadow-pop",
       )}
     >
-      <ArrowUpRight className="absolute right-2 top-2 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-      <p className="pr-4 text-sm font-medium">{lead.full_name}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{lead.phone ?? lead.email ?? ""}</p>
-      <p className="mt-2 text-xs">{fmtMoney(lead.budget_max, lead.currency)}</p>
+      <ArrowUpRight className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      <p className="truncate pr-5 text-sm font-medium">{lead.full_name}</p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.phone ?? lead.email ?? ""}</p>
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <span className="text-xs font-medium tabular-nums">{fmtMoney(lead.budget_max, lead.currency)}</span>
+        {agent ? (
+          <StaffAvatar name={agent.full_name} url={agent.avatar_url} size="xs" />
+        ) : (
+          <span title="Unassigned" className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Users className="h-3 w-3" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }

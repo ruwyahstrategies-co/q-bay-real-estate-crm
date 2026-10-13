@@ -52,7 +52,7 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-xl p-1",
+        "inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl p-1",
         tone === "green" ? "border border-qbay/15 bg-qbay-tint" : "bg-muted/80",
         className,
       )}

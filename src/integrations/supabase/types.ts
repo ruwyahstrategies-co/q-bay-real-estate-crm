@@ -434,6 +434,7 @@ export type Database = {
           delivery_timeline: string | null
           description: string | null
           developer: string | null
+          developer_id: string | null
           hero_image_url: string | null
           hero_video_url: string | null
           id: string
@@ -469,6 +470,7 @@ export type Database = {
           delivery_timeline?: string | null
           description?: string | null
           developer?: string | null
+          developer_id?: string | null
           hero_image_url?: string | null
           hero_video_url?: string | null
           id?: string
@@ -504,6 +506,7 @@ export type Database = {
           delivery_timeline?: string | null
           description?: string | null
           developer?: string | null
+          developer_id?: string | null
           hero_image_url?: string | null
           hero_video_url?: string | null
           id?: string
@@ -1533,6 +1536,36 @@ export type Database = {
           },
         ]
       }
+      master_data_values: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           body_template: string
@@ -1827,6 +1860,7 @@ export type Database = {
           assigned_agent_id: string | null
           code: string | null
           company: string | null
+          company_id: string | null
           created_at: string
           email: string | null
           id: string
@@ -1844,6 +1878,7 @@ export type Database = {
           assigned_agent_id?: string | null
           code?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -1861,6 +1896,7 @@ export type Database = {
           assigned_agent_id?: string | null
           code?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -2159,6 +2195,7 @@ export type Database = {
           custom_fields: Json
           description: string | null
           developer: string | null
+          developer_id: string | null
           development_id: string | null
           expires_at: string | null
           floor_number: string | null
@@ -2235,6 +2272,7 @@ export type Database = {
           custom_fields?: Json
           description?: string | null
           developer?: string | null
+          developer_id?: string | null
           development_id?: string | null
           expires_at?: string | null
           floor_number?: string | null
@@ -2311,6 +2349,7 @@ export type Database = {
           custom_fields?: Json
           description?: string | null
           developer?: string | null
+          developer_id?: string | null
           development_id?: string | null
           expires_at?: string | null
           floor_number?: string | null

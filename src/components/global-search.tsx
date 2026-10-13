@@ -93,13 +93,17 @@ export function GlobalSearch() {
     <>
       <button
         type="button"
-        aria-label="Search"
+        aria-label="Search the CRM"
         aria-haspopup="dialog"
         title="Search (Ctrl+K)"
         onClick={() => setOpen(true)}
-        className="glass flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-white/80"
+        className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-border bg-background px-3 text-left text-sm text-muted-foreground transition-colors hover:border-qbay/30 hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 md:max-w-xl"
       >
-        <Search className="h-[16px] w-[16px]" strokeWidth={2} />
+        <Search className="h-4 w-4 flex-shrink-0" strokeWidth={2} />
+        <span className="min-w-0 flex-1 truncate">Search leads, properties, owners...</span>
+        <kbd className="hidden flex-shrink-0 rounded-md border border-border bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground md:block">
+          Ctrl K
+        </kbd>
       </button>
 
       <DialogShell open={open} onOpenChange={setOpen} widthClassName="max-w-xl" ariaLabel="Search the CRM">

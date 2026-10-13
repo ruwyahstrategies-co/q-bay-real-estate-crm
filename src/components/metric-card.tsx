@@ -1,22 +1,26 @@
 import type { ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tone = "blue" | "purple" | "green" | "cream";
 
-const toneClass: Record<Tone, string> = {
+const chipClass: Record<Tone, string> = {
   blue: "bg-pastel-blue",
   purple: "bg-pastel-purple",
   green: "bg-pastel-green",
   cream: "bg-pastel-cream",
 };
 
+/**
+ * Compact KPI tile: icon chip + label, big number, optional comparison line. White card on the
+ * tinted workspace; the tone only colours the small icon chip so a row of tiles stays calm.
+ */
 export function MetricCard({
   label,
   value,
   icon,
-  tone = "blue",
+  tone = "green",
   delta,
+  className,
 }: {
   label: string;
   value: ReactNode;
@@ -24,38 +28,27 @@ export function MetricCard({
   tone?: Tone;
   /** Optional period-comparison line rendered under the value, e.g. "+12% vs previous period". */
   delta?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "glass-tint relative overflow-hidden rounded-2xl p-5",
-        toneClass[tone],
-      )}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/55 to-transparent"
-      />
-      <div className="relative flex items-start justify-between">
-        <span className="text-[13px] font-medium text-foreground/80">
-          {label}
-        </span>
-        <button
-          aria-label="More"
-          className="text-foreground/50 hover:text-foreground"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
+    <div className={cn("rounded-xl border border-border bg-canvas p-4 shadow-card", className)}>
+      <div className="flex items-center gap-2.5">
+        {icon ? (
+          <span
+            className={cn(
+              "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-foreground [&>svg]:h-4 [&>svg]:w-4",
+              chipClass[tone],
+            )}
+          >
+            {icon}
+          </span>
+        ) : null}
+        <span className="truncate text-[13px] font-medium text-muted-foreground">{label}</span>
       </div>
-      <div className="relative mt-6 text-[26px] font-semibold tracking-tight text-foreground">
+      <div className="mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
         {value}
       </div>
-      {delta ? <p className="relative mt-1 text-[11px] text-foreground/60">{delta}</p> : null}
-      {icon ? (
-        <div className="relative mt-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-foreground shadow-sm ring-1 ring-white/60 backdrop-blur">
-          {icon}
-        </div>
-      ) : null}
+      {delta ? <p className="mt-1.5 text-xs text-muted-foreground">{delta}</p> : null}
     </div>
   );
 }

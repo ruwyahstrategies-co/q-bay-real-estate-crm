@@ -38,13 +38,38 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium",
+        "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium",
         variants[variant],
         className,
       )}
     >
       {children}
     </span>
+  );
+}
+
+const PURPOSE_VARIANT: Record<string, Variant> = {
+  sale: "green",
+  rent: "blue",
+  commercial: "slate",
+  off_plan: "orange",
+  off_plan_resale: "purple",
+};
+const PURPOSE_LABEL: Record<string, string> = {
+  sale: "Sale",
+  rent: "Rent",
+  commercial: "Commercial",
+  off_plan: "Off-Plan",
+  off_plan_resale: "Off-Plan Resale",
+};
+
+/** Stored properties.purpose shown as a chip, using the same labels as the Add Property form. */
+export function PurposeBadge({ purpose, className }: { purpose: string | null | undefined; className?: string }) {
+  if (!purpose) return null;
+  return (
+    <StatusBadge variant={PURPOSE_VARIANT[purpose] ?? "neutral"} className={className}>
+      {PURPOSE_LABEL[purpose] ?? purpose}
+    </StatusBadge>
   );
 }
 

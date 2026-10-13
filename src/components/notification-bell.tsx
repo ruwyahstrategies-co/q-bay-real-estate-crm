@@ -82,7 +82,7 @@ export function NotificationBell() {
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="glass relative flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-white/80"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-canvas text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
         {unread > 0 ? (
           <BellRing className="h-[16px] w-[16px]" strokeWidth={2} />
@@ -97,7 +97,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-border bg-canvas shadow-2xl">
+        <div className="absolute right-0 z-50 mt-2 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-border bg-canvas shadow-pop">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <p className="text-sm font-semibold">Notifications</p>

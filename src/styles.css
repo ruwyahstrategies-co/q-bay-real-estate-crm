@@ -4,11 +4,18 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
+  /* Radius language: small controls 6-10, inputs/buttons 12, cards 16, large containers 20.
+     rounded-sm/md = small controls, rounded-lg = buttons + inputs, rounded-xl = cards and
+     tables, rounded-2xl = large dashboard containers. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --shadow-card: 0 1px 2px rgba(7, 47, 24, 0.05), 0 0 0 1px rgba(7, 47, 24, 0.015);
+  --shadow-raised: 0 4px 14px -6px rgba(7, 47, 24, 0.14), 0 1px 2px rgba(7, 47, 24, 0.06);
+  --shadow-pop: 0 18px 40px -16px rgba(7, 47, 24, 0.32);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -57,7 +64,7 @@
   --qbay-green-soft: #DCEBE0;
   --qbay-green-tint: #EEF5F0;
 
-  --background: #F6F8F5;
+  --background: #F3F6F3;
   --foreground: #121212;
   --canvas: #FFFFFF;
   --card: #FFFFFF;
@@ -74,10 +81,11 @@
   --accent-foreground: #121212;
   --destructive: #C8463C;
   --destructive-foreground: #FFFFFF;
-  --border: #DFE7E1;
-  --input: #DFE7E1;
+  --border: #E1E8E3;
+  --input: #E1E8E3;
   --ring: #0A4623;
-  --sidebar: #0D1B13;
+  /* Deep Q-Bay green navigation (a darker tone of the brand green, not near-black). */
+  --sidebar: #072F18;
   --sidebar-foreground: #FAFAF8;
 }
 

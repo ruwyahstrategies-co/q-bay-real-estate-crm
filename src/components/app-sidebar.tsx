@@ -116,8 +116,12 @@ const navGroups: NavGroup[] = [
   { key: "settings", to: "/settings", label: "Settings", icon: Settings, module: "settings" },
 ];
 
-export const SIDEBAR_WIDTH_COLLAPSED = 80;
-export const SIDEBAR_WIDTH_EXPANDED = 248;
+export const SIDEBAR_WIDTH_COLLAPSED = 76;
+export const SIDEBAR_WIDTH_EXPANDED = 236;
+
+/** Active = lighter tone of the sidebar green plus an accent bar; idle = quiet, lifts on hover. */
+const ITEM_ACTIVE = "bg-white/[0.13] text-white";
+const ITEM_IDLE = "text-white/60 hover:bg-white/[0.07] hover:text-white";
 
 function isActivePath(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(to + "/");
@@ -175,7 +179,7 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-30 hidden h-screen flex-col bg-sidebar py-5 shadow-[8px_0_40px_-16px_rgba(10,70,35,0.6)] transition-[width] duration-200 ease-out md:flex",
+        "fixed left-0 top-0 z-30 hidden h-screen flex-col bg-sidebar py-4 transition-[width] duration-200 ease-out md:flex",
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
     >
@@ -201,7 +205,7 @@ export function AppSidebar({
         </Link>
       </div>
 
-      <nav className={cn("mt-8 flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden scrollbar-dark", collapsed ? "items-center px-2" : "px-3")}>
+      <nav className={cn("mt-6 flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden scrollbar-dark", collapsed ? "items-center px-2" : "px-3")}>
         {visibleGroups.map(({ group, ownPageVisible, children }) => {
           const Icon = group.icon;
           const isOpen = openKey === group.key && children.length > 0;
@@ -213,12 +217,15 @@ export function AppSidebar({
           if (collapsed) {
             return (
               <div key={group.key} className="group relative">
+                {active && (
+                  <span aria-hidden className="absolute -left-2 bottom-2 top-2 w-[3px] rounded-r-full bg-qbay-soft" />
+                )}
                 {ownPageVisible && group.to ? (
                   <Link
                     to={group.to}
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
-                      active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55 hover:bg-white/5 hover:text-white",
+                      "flex h-10 w-10 items-center justify-center rounded-xl text-sm transition-colors",
+                      active ? ITEM_ACTIVE : ITEM_IDLE,
                     )}
                     aria-label={group.label}
                   >
@@ -227,15 +234,16 @@ export function AppSidebar({
                 ) : (
                   <div
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg text-sm",
-                      active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55",
+                      "flex h-10 w-10 items-center justify-center rounded-xl text-sm",
+                      active ? ITEM_ACTIVE : "text-white/60",
                     )}
                     aria-label={group.label}
                   >
                     <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
                   </div>
                 )}
-                <div className="pointer-events-none absolute left-full top-0 z-40 ml-3 hidden min-w-[190px] rounded-lg border border-white/10 bg-foreground p-1.5 shadow-lg group-hover:pointer-events-auto group-hover:block">
+                <div className="pointer-events-none absolute left-full top-0 z-40 hidden pl-3 group-focus-within:pointer-events-auto group-focus-within:block group-hover:pointer-events-auto group-hover:block">
+                  <div className="min-w-[190px] rounded-xl border border-white/10 bg-sidebar p-1.5 shadow-pop">
                   <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/60">{group.label}</p>
                   {hasChildren ? (
                     <div className="flex flex-col gap-0.5">
@@ -258,6 +266,7 @@ export function AppSidebar({
                       })}
                     </div>
                   ) : null}
+                  </div>
                 </div>
               </div>
             );
@@ -267,10 +276,13 @@ export function AppSidebar({
             <div key={group.key}>
               <div
                 className={cn(
-                  "flex h-10 items-center rounded-lg text-sm transition-colors",
-                  active ? "bg-qbay text-white shadow-[0_6px_18px_-8px_rgba(10,70,35,0.95)] ring-1 ring-white/10" : "text-white/55 hover:bg-white/5 hover:text-white",
+                  "relative flex h-9 items-center rounded-lg text-sm transition-colors",
+                  active ? ITEM_ACTIVE : ITEM_IDLE,
                 )}
               >
+                {active && (
+                  <span aria-hidden className="absolute -left-3 bottom-2 top-2 w-[3px] rounded-r-full bg-qbay-soft" />
+                )}
                 {ownPageVisible && group.to ? (
                   <Link to={group.to} className="flex h-full min-w-0 flex-1 items-center gap-3 px-3" aria-label={group.label}>
                     <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
@@ -315,8 +327,8 @@ export function AppSidebar({
                             key={child.to}
                             to={child.to}
                             className={cn(
-                              "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
-                              childActiveOne ? "bg-qbay/70 text-white" : "text-white/50 hover:bg-white/5 hover:text-white",
+                              "flex h-8 items-center gap-2 rounded-lg px-2 text-[13px] transition-colors",
+                              childActiveOne ? "bg-white/[0.12] text-white" : "text-white/55 hover:bg-white/[0.07] hover:text-white",
                             )}
                           >
                             <ChildIcon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.9} />
@@ -387,7 +399,7 @@ export function MobileBottomNav() {
     .slice(0, 6);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border bg-sidebar px-2 py-2 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-white/10 bg-sidebar px-2 py-2 md:hidden">
       {items.map((item) => {
         const active = isActivePath(pathname, item.to);
         const Icon = item.icon;
@@ -396,8 +408,8 @@ export function MobileBottomNav() {
             key={item.to}
             to={item.to}
             className={cn(
-              "flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-[10px]",
-              active ? "text-white" : "text-white/55",
+              "flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-[10px]",
+              active ? "bg-white/[0.12] text-white" : "text-white/60",
             )}
           >
             <Icon className="h-5 w-5" strokeWidth={1.9} />

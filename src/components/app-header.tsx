@@ -1,50 +1,16 @@
-import { useRouterState } from "@tanstack/react-router";
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { AccountMenu } from "@/components/account-menu";
 
-const titles: Record<string, string> = {
-  "/overview": "Overview",
-  "/leads": "Leads",
-  "/properties": "Properties",
-  "/developments": "Developments",
-  "/viewings": "Viewings",
-  "/offers": "Offers",
-  "/owners": "Owners",
-  "/conversations": "Conversations",
-  "/uploads": "Uploads",
-  "/ai-insights": "AI Insights",
-  "/pipeline": "Pipeline",
-  "/property-demand": "Property Demand",
-  "/marketing-intelligence": "Marketing Intelligence",
-  "/journal": "Journal",
-  "/website-enquiries": "Website Enquiries",
-  "/analytics": "Analytics",
-  "/accounting": "Accounting",
-  "/team": "Team",
-  "/staff-activity": "Staff Activity",
-  "/settings": "Settings",
-  "/profile": "My Profile",
-};
-
-function deriveTitle(pathname: string): string {
-  if (titles[pathname]) return titles[pathname];
-  const base = "/" + pathname.split("/").filter(Boolean)[0];
-  if (titles[base]) return titles[base];
-  return "Overview";
-}
-
+/**
+ * Command bar. Search, notifications and the account menu are the real controls; the page title
+ * lives in each page's own header so it is never shown twice.
+ */
 export function AppHeader() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = deriveTitle(pathname);
-
   return (
-    <header className="flex items-center justify-between gap-4 pb-6">
-      <h1 className="text-[28px] font-semibold leading-none tracking-tight text-foreground">
-        {title}
-      </h1>
-      <div className="flex items-center gap-2">
-        <GlobalSearch />
+    <header className="sticky top-3 z-20 mb-5 flex items-center gap-2 rounded-2xl border border-border bg-canvas/95 px-2.5 py-2 shadow-raised backdrop-blur supports-[backdrop-filter]:bg-canvas/85 md:gap-3">
+      <GlobalSearch />
+      <div className="ml-auto flex flex-shrink-0 items-center gap-1.5">
         <NotificationBell />
         <AccountMenu />
       </div>

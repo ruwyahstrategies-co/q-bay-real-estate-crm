@@ -61,10 +61,13 @@ export function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="glass flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-foreground transition hover:bg-white/80"
+        className="flex h-10 items-center gap-2 rounded-xl border border-border bg-canvas py-1 pl-1.5 pr-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
         {avatar}
-        <span className="hidden sm:inline">{displayName}</span>
+        <span className="hidden min-w-0 text-left leading-tight sm:block">
+          <span className="block max-w-[140px] truncate text-[13px] font-medium">{displayName}</span>
+          <span className="block max-w-[140px] truncate text-[10px] capitalize text-muted-foreground">{role}</span>
+        </span>
         <ChevronDown
           className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")}
         />
@@ -74,7 +77,7 @@ export function AccountMenu() {
         <div
           role="menu"
           aria-label="Account"
-          className="absolute right-0 z-50 mt-2 w-[min(92vw,280px)] overflow-hidden rounded-2xl border border-border bg-canvas p-1.5 shadow-2xl"
+          className="absolute right-0 z-50 mt-2 w-[min(92vw,280px)] overflow-hidden rounded-2xl border border-border bg-canvas p-1.5 shadow-pop"
         >
           <div className="flex items-center gap-3 px-3 py-3">
             <span className="flex-shrink-0 [&>*]:h-10 [&>*]:w-10">{avatar}</span>

@@ -97,11 +97,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MobileBottomNav />
       <main
         className={cn(
-          "min-h-screen bg-canvas transition-[margin] duration-200 ease-out md:rounded-l-[28px]",
-          collapsed ? "md:ml-[80px]" : "md:ml-[248px]",
+          "min-h-screen bg-background transition-[margin] duration-200 ease-out md:rounded-l-[24px]",
+          collapsed ? "md:ml-[76px]" : "md:ml-[236px]",
         )}
       >
-        <div className="mx-auto max-w-[1600px] px-5 pb-24 pt-6 md:px-8 md:pb-10 md:pt-8">
+        <div className="mx-auto max-w-[1600px] px-4 pb-24 pt-3 md:px-6 md:pb-10 md:pt-3">
           <AppHeader />
           {children}
         </div>

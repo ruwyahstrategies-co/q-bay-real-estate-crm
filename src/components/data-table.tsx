@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/** Shared row styling so every table hovers and focuses the same way. */
+export const dataRowCls =
+  "border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60";
+
 export function DataTable({
   columns,
   children,
@@ -19,19 +23,22 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border bg-canvas",
+        "overflow-hidden rounded-xl border border-border bg-canvas shadow-card",
         className,
       )}
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-background/60">
-              {leadingHeader !== undefined && <th className="w-10 px-4 py-3 text-left">{leadingHeader}</th>}
+            <tr className="border-b border-border bg-muted/50">
+              {leadingHeader !== undefined && (
+                <th className="w-10 px-4 py-2.5 text-left">{leadingHeader}</th>
+              )}
               {columns.map((c) => (
                 <th
                   key={c}
-                  className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  scope="col"
+                  className="whitespace-nowrap px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   {c}
                 </th>

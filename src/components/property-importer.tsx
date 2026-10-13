@@ -36,7 +36,7 @@ const PROPERTY_FIELDS = [
 
 type FieldKey = (typeof PROPERTY_FIELDS)[number]["key"];
 
-const inputCls = "h-8 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring";
+const inputCls = "h-8 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function autoMatch(headers: string[]): Record<FieldKey, string> {
   const map: Partial<Record<FieldKey, string>> = {};
@@ -190,7 +190,7 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
   return (
     <DialogShell open={open} onOpenChange={(v) => { if (!v) handleClose(); }} widthClassName="max-w-3xl" ariaLabel="Import properties">
       <div className="flex max-h-[90vh] w-full flex-col">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
           <h3 className="text-base font-semibold">Import Properties</h3>
           <button onClick={handleClose} disabled={busy} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-50" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>

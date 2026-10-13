@@ -17,7 +17,7 @@ export const Route = createFileRoute("/login")({
 });
 
 const inputCls =
-  "h-11 w-full rounded-lg border border-border bg-canvas px-3.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-11 w-full rounded-lg border border-border bg-canvas px-3.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function LoginPage() {
   const navigate = useNavigate();

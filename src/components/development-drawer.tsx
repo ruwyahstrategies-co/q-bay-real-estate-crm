@@ -18,7 +18,7 @@ import type { Development } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function slugify(name: string): string {
   return name
@@ -134,7 +134,7 @@ export function DevelopmentDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit development" : "Add development"}>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Development" : "Add Development"}</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
           <X className="h-4 w-4" />
@@ -238,7 +238,7 @@ export function DevelopmentDrawer({
             className="h-56"
           />
         </div>
-        <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
+        <div className="sm:col-span-2 flex items-center justify-end gap-2 sticky bottom-0 z-10 -mx-5 -mb-5 border-t border-border bg-canvas/95 px-5 py-3 backdrop-blur">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving..." : isEdit ? "Save changes" : "Save Development"}</Button>
         </div>

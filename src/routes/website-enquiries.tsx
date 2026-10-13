@@ -80,7 +80,7 @@ function EnquiriesTab() {
       }
     >
       {enquiries.map((e) => (
-        <tr key={e.id} className="border-b border-border last:border-0 hover:bg-background/60">
+        <tr key={e.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
           <td className="px-4 py-3 text-xs">{fmtDateTime(e.created_at)}</td>
           <td className="px-4 py-3 text-sm font-medium">{e.name}</td>
           <td className="px-4 py-3 text-xs">{e.phone ?? e.email ?? "-"}</td>
@@ -146,7 +146,7 @@ function SubmissionsTab() {
         }
       >
         {submissions.map((s) => (
-          <tr key={s.id} className="border-b border-border last:border-0 hover:bg-background/60">
+          <tr key={s.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
             <td className="px-4 py-3 text-xs">{fmtDateTime(s.created_at)}</td>
             <td className="px-4 py-3 text-sm font-medium">
               {s.full_name ?? "-"}

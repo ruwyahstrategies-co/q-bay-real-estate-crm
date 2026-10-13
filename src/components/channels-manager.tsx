@@ -13,7 +13,7 @@ import {
 import type { LeadChannel } from "@/lib/db";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function codeFor(name: string): string {
   return (
@@ -190,7 +190,7 @@ function ChannelRow({
               setEditing(false);
             }
           }}
-          className="h-8 flex-1 rounded-md border border-border bg-canvas px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-8 flex-1 rounded-md border border-border bg-canvas px-2 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
         />
       ) : (
         <button

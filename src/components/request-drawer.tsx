@@ -14,7 +14,7 @@ import {
 import { cn, titleCase } from "@/lib/utils";
 
 const inputCls =
-  "rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 /** Send a new request, or edit one of your own while it is still Submitted. */
 export function RequestDrawer({
@@ -76,7 +76,7 @@ export function RequestDrawer({
       onOpenChange={onOpenChange}
       ariaLabel={isEdit ? "Edit request" : "New request"}
     >
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Request" : "New Request"}</h3>
         <button
           onClick={() => onOpenChange(false)}
@@ -140,7 +140,7 @@ export function RequestDrawer({
           Only you and management can see this request. You can edit or withdraw it until someone
           picks it up.
         </p>
-        <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+        <div className="flex items-center justify-end gap-2 sticky bottom-0 z-10 -mx-5 -mb-5 border-t border-border bg-canvas/95 px-5 py-3 backdrop-blur">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

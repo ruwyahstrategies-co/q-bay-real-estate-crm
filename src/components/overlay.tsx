@@ -62,7 +62,7 @@ type ShellProps = {
 };
 
 /** Side panel sliding in from the right, with a fading backdrop. */
-export function DrawerShell({ open, onOpenChange, children, widthClassName = "max-w-md", ariaLabel }: ShellProps) {
+export function DrawerShell({ open, onOpenChange, children, widthClassName = "max-w-xl", ariaLabel }: ShellProps) {
   const { shouldRender, visible } = useDelayedUnmount(open);
   const panelRef = useRef<HTMLDivElement>(null);
   useEscapeToClose(open, () => onOpenChange(false));
@@ -73,7 +73,7 @@ export function DrawerShell({ open, onOpenChange, children, widthClassName = "ma
   return (
     <div className={cn("fixed inset-0 z-50 flex justify-end", !visible && "pointer-events-none")}>
       <div
-        className={cn("absolute inset-0 bg-foreground/30 transition-opacity ease-out", visible ? "opacity-100" : "opacity-0")}
+        className={cn("absolute inset-0 bg-foreground/35 transition-opacity ease-out", visible ? "opacity-100" : "opacity-0")}
         style={{ transitionDuration: `${TRANSITION_MS}ms` }}
         onMouseDown={() => onOpenChange(false)}
         aria-hidden="true"
@@ -84,7 +84,7 @@ export function DrawerShell({ open, onOpenChange, children, widthClassName = "ma
         aria-modal="true"
         aria-label={ariaLabel}
         className={cn(
-          "relative flex w-full flex-col bg-canvas shadow-2xl transition-transform ease-out",
+          "relative flex w-full flex-col bg-canvas shadow-pop transition-transform ease-out sm:rounded-l-2xl",
           widthClassName,
           visible ? "translate-x-0" : "translate-x-full",
         )}
@@ -119,7 +119,7 @@ export function DialogShell({ open, onOpenChange, children, widthClassName = "ma
         aria-modal="true"
         aria-label={ariaLabel}
         className={cn(
-          "relative w-full rounded-2xl bg-canvas shadow-2xl transition-all ease-out",
+          "relative w-full rounded-2xl bg-canvas shadow-pop transition-all ease-out",
           widthClassName,
           visible ? "scale-100 opacity-100" : "scale-[0.98] opacity-0",
         )}

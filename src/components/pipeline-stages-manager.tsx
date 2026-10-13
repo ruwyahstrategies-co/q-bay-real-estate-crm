@@ -150,7 +150,7 @@ export function PipelineStagesManager() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New stage name..."
-          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -226,7 +226,7 @@ function StageRow({
               setEditing(false);
             }
           }}
-          className="h-8 flex-1 rounded-md border border-border bg-canvas px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-8 flex-1 rounded-md border border-border bg-canvas px-2 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
         />
       ) : (
         <button

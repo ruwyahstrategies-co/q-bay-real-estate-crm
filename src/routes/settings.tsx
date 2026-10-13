@@ -73,7 +73,7 @@ const sections = [
 ] as const;
 
 const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function SettingsPage() {
   const [active, setActive] = useState<(typeof sections)[number]>(sections[0]);
@@ -134,16 +134,17 @@ function SettingsPage() {
         />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-          <nav className="flex flex-col gap-0.5 rounded-xl border border-border bg-canvas p-2">
+          <nav aria-label="Settings sections" className="flex flex-col gap-0.5 self-start rounded-xl border border-border bg-canvas p-2 shadow-card lg:sticky lg:top-24">
             {sections.map((s) => (
               <button
                 key={s}
+                aria-current={active === s ? "page" : undefined}
                 onClick={() => setActive(s)}
                 className={cn(
-                  "rounded-lg px-3 py-2 text-left text-sm",
+                  "rounded-lg px-3 py-2 text-left text-sm transition-colors",
                   active === s
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60",
+                    ? "bg-qbay-tint font-medium text-qbay"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}
               >
                 {s}
@@ -677,7 +678,7 @@ function LocationRow({
                 setEditing(false);
               }
             }}
-            className="h-7 flex-1 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-7 flex-1 rounded-md border border-border bg-canvas px-2 text-xs focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
           />
         ) : onSelect ? (
           <button

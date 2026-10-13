@@ -9,7 +9,7 @@ import { sb, type Viewing } from "@/lib/db";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { cn, titleCase } from "@/lib/utils";
 
-const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 type Destination = "lead_note" | "lead_requirements" | "property_feedback" | "follow_up" | "offer_interest" | "property_issue" | "owner_notes";
 
@@ -126,7 +126,7 @@ export function ImportViewingDialog({ open, onOpenChange, viewing }: { open: boo
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Import viewing information">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Import from Viewing</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close"><X className="h-4 w-4" /></button>
       </div>

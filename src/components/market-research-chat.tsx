@@ -106,7 +106,7 @@ export function MarketResearchChat() {
         onSubmit={(e) => { e.preventDefault(); handleSend(draft); }}
       >
         <input
-          className="h-10 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-10 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
           placeholder="Ask about pricing, demand, or a comparison..."
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

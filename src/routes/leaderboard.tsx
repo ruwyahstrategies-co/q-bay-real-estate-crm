@@ -137,7 +137,7 @@ function LeaderboardPage() {
               empty={<EmptyState compact title="No data yet" />}
             >
               {salesRows.map((r, i) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                <tr key={r.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                   <td className="px-4 py-3 text-xs font-medium">#{i + 1}</td>
                   <td className="px-4 py-3 text-sm font-medium">{r.name}</td>
                   <td className="px-4 py-3 text-xs tabular-nums">{r.closedSales}</td>
@@ -171,7 +171,7 @@ function LeaderboardPage() {
               empty={<EmptyState compact title="No data yet" />}
             >
               {activityRows.map((r, i) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                <tr key={r.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                   <td className="px-4 py-3 text-xs font-medium">#{i + 1}</td>
                   <td className="px-4 py-3 text-sm font-medium">{r.name}</td>
                   <td className="px-4 py-3 text-xs tabular-nums">{r.contacted}</td>

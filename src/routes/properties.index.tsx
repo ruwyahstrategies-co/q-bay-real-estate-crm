@@ -30,7 +30,7 @@ import { PropertyImporter } from "@/components/property-importer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { SegmentedControl } from "@/components/segmented-control";
-import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton } from "@/components/filter-toolbar";
+import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
 import { StaffAvatar } from "@/components/staff-avatar";
 import { AvailabilityRing, PurposeBadge } from "@/components/status-badge";
 import { PropertyWebsiteLinkIcon } from "@/components/property-website-link";
@@ -217,7 +217,7 @@ function PropertiesPage() {
           </p>
         </div>
 
-        <FilterToolbar ariaLabel="Property filters">
+        <FilterToolbar ariaLabel="Property filters" activeCount={activeFilterCount}>
           <FilterSearch
             value={search}
             onChange={setSearch}
@@ -249,17 +249,19 @@ function PropertiesPage() {
             options={STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
           />
           <ClearFiltersButton count={activeFilterCount} onClick={clearFilters} />
-          <SegmentedControl
-            ariaLabel="View"
-            size="md"
-            className="ml-auto"
-            value={view}
-            onChange={setView}
-            options={[
-              { value: "table", ariaLabel: "Table view", icon: <Rows3 className="h-3.5 w-3.5" /> },
-              { value: "grid", ariaLabel: "Grid view", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
-            ]}
-          />
+          <ToolbarAlways>
+            <SegmentedControl
+              ariaLabel="View"
+              size="md"
+              className="ml-auto"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "table", ariaLabel: "Table view", icon: <Rows3 className="h-3.5 w-3.5" /> },
+                { value: "grid", ariaLabel: "Grid view", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+              ]}
+            />
+          </ToolbarAlways>
         </FilterToolbar>
 
         {view === "table" ? (

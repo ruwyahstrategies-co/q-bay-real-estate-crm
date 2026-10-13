@@ -84,7 +84,7 @@ function OffersPage() {
           empty={<EmptyState icon={<FileSignature className="h-4 w-4" />} title="No offers yet" description="Offers are logged from a lead's profile during negotiation." />}
         >
           {offers.map((o) => (
-            <tr key={o.id} className="border-b border-border last:border-0 hover:bg-background/60">
+            <tr key={o.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
               <td className="px-4 py-3 text-xs">{fmtDateTime(o.created_at)}</td>
               <td className="px-4 py-3 text-sm font-medium">
                 {o.lead_id ? <Link to="/leads/$leadId" params={{ leadId: o.lead_id }} className="hover:underline">{o.leads?.full_name ?? "Lead"}</Link> : "-"}

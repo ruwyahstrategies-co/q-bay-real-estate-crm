@@ -134,7 +134,7 @@ function DevelopmentsPage() {
           }
         />
 
-        <FilterToolbar ariaLabel="Development filters">
+        <FilterToolbar ariaLabel="Development filters" activeCount={activeFilterCount}>
           <FilterSearch
             value={search}
             onChange={setSearch}

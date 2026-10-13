@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui-primitives";
+import { Button, Card } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { SelectField } from "@/components/select-field";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
@@ -26,6 +26,14 @@ const TYPE_COLOR: Record<CalEvent["type"], string> = {
   contract: "bg-pastel-cream",
   tenancy: "bg-pastel-green",
   rent: "bg-muted",
+};
+/** Solid edge/dot tone per type, so chips and the legend stay legible on white. */
+const TYPE_TONE: Record<CalEvent["type"], string> = {
+  viewing: "#6FA8DC",
+  task: "#A58AD0",
+  contract: "#D6B24A",
+  tenancy: "#4FA374",
+  rent: "#94A3B8",
 };
 const TYPE_LABEL: Record<CalEvent["type"], string> = {
   viewing: "Viewing",
@@ -134,32 +142,56 @@ function CalendarPage() {
       />
 
       <Card className="mb-4">
-        <div className="flex items-center justify-between">
-          <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <p className="text-sm font-semibold">{cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
-          <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setCursor(new Date(year, month + 1, 1))} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <button className="rounded-lg p-1.5 hover:bg-muted" onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="Previous month">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button className="rounded-lg p-1.5 hover:bg-muted" onClick={() => setCursor(new Date(year, month + 1, 1))} aria-label="Next month">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <p className="ml-2 text-base font-semibold">{cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setCursor(startOfMonth(new Date()))}>
+            Today
+          </Button>
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mt-4 grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <div key={d}>{d}</div>
           ))}
         </div>
-        <div className="mt-1 grid grid-cols-7 gap-1">
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5">
           {cells.map((d, i) => {
-            if (!d) return <div key={i} className="min-h-20 rounded-md border border-transparent" />;
+            if (!d) return <div key={i} className="min-h-24 rounded-lg border border-transparent" />;
             const key = toDateKey(d);
             const dayEvents = eventsByDay.get(key) ?? [];
             return (
-              <div key={i} className={cn("min-h-20 rounded-md border border-border p-1.5", key === todayKey && "border-foreground")}>
-                <p className={cn("text-[11px]", key === todayKey && "font-semibold")}>{d.getDate()}</p>
+              <div
+                key={i}
+                className={cn(
+                  "min-h-24 rounded-lg border border-border bg-canvas p-1.5 transition-colors hover:bg-background",
+                  key === todayKey && "border-qbay/50 bg-qbay-tint hover:bg-qbay-tint",
+                )}
+              >
+                <p
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums",
+                    key === todayKey ? "bg-qbay font-semibold text-white" : "text-muted-foreground",
+                  )}
+                  aria-label={key === todayKey ? `${d.getDate()}, today` : undefined}
+                >
+                  {d.getDate()}
+                </p>
                 <div className="mt-1 space-y-0.5">
                   {dayEvents.slice(0, 3).map((e, ei) => (
-                    <p key={ei} className={cn("truncate rounded px-1 py-0.5 text-[10px]", TYPE_COLOR[e.type])} title={e.label}>
+                    <p
+                      key={ei}
+                      className={cn("truncate rounded-md border-l-2 px-1.5 py-0.5 text-[10px]", TYPE_COLOR[e.type])}
+                      style={{ borderLeftColor: TYPE_TONE[e.type] }}
+                      title={e.label}
+                    >
                       {e.label}
                     </p>
                   ))}
@@ -176,7 +208,7 @@ function CalendarPage() {
         <div className="mt-2 flex flex-wrap gap-3 text-xs">
           {(Object.keys(TYPE_LABEL) as CalEvent["type"][]).map((t) => (
             <span key={t} className="inline-flex items-center gap-1.5">
-              <span className={cn("h-2.5 w-2.5 rounded-full", TYPE_COLOR[t])} /> {TYPE_LABEL[t]}
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_TONE[t] }} /> {TYPE_LABEL[t]}
             </span>
           ))}
         </div>

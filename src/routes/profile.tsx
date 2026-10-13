@@ -18,7 +18,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:bg-muted disabled:text-muted-foreground";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20 disabled:bg-muted disabled:text-muted-foreground";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/journal")({
   component: JournalPage,
 });
 
-const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function JournalPage() {
   const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ function JournalPage() {
         empty={<EmptyState icon={<Newspaper className="h-4 w-4" />} title="No journal posts yet" description="Publish your first article." />}
       >
         {posts.map((p) => (
-          <tr key={p.id} className="border-b border-border last:border-0 hover:bg-background/60">
+          <tr key={p.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
             <td className="px-4 py-3 text-sm font-medium">{p.title}</td>
             <td className="px-4 py-3 text-xs text-muted-foreground">/{p.slug}</td>
             <td className="px-4 py-3 text-xs">
@@ -141,7 +141,7 @@ function BlogDrawer({ open, onOpenChange, post }: { open: boolean; onOpenChange:
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} widthClassName="max-w-2xl" ariaLabel={isEdit ? "Edit post" : "New post"}>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Post" : "New Post"}</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close"><X className="h-4 w-4" /></button>
       </div>

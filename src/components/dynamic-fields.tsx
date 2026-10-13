@@ -12,7 +12,7 @@ export type CustomFieldValues = Record<string, Json>;
 
 const labelCls = "text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function optionsOf(def: FormFieldDefinition): string[] {
   const raw = def.options;

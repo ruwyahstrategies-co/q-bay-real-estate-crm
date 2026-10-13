@@ -452,7 +452,7 @@ function AnalyticsPage() {
               >
                 {agentRows.length > 0
                   ? agentRows.map((r) => (
-                      <tr key={r.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                      <tr key={r.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                         <td className="px-4 py-3 text-sm font-medium">{r.name}</td>
                         <td className="px-4 py-3 text-xs capitalize text-muted-foreground">{r.role || "Staff"}</td>
                         <td className="px-4 py-3 text-xs tabular-nums">{r.leads}</td>

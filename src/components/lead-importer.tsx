@@ -288,7 +288,7 @@ export function LeadImporter({
       ariaLabel="Import leads"
     >
       <div className="flex max-h-[90vh] w-full flex-col">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
           <div>
             <h3 className="text-base font-semibold">Import Leads</h3>
             <ol className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">

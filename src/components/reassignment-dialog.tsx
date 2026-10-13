@@ -86,7 +86,7 @@ export function ReassignmentDialog({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Reassign records">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Reassign {member.full_name}'s records</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
           <X className="h-4 w-4" />

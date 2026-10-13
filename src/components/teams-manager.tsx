@@ -69,7 +69,7 @@ export function TeamsManager() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New team name..."
-          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
         />
         <Button type="button" size="sm" onClick={handleAdd} disabled={create.isPending}>

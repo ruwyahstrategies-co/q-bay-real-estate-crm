@@ -18,7 +18,7 @@ import { LEAD_CLASSIFICATION_LABELS, fmtDate, fmtMoney, type Property } from "@/
 const MAX_ROWS = 100;
 
 const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 /**
  * Share one property with several leads at once. Every share is recorded in
@@ -237,7 +237,7 @@ export function SharePropertyDrawer({
                     <li key={l.id} className="border-b border-border last:border-0">
                       <label
                         className={cn(
-                          "flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-background/60",
+                          "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors hover:bg-qbay-tint/60",
                           checked && "bg-background",
                         )}
                       >

@@ -20,7 +20,7 @@ import { qatarDayKey } from "@/lib/qatar-time";
 import { cn } from "@/lib/utils";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 const PAYMENT_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -148,7 +148,7 @@ function SaleDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Sale details">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <div>
           <h3 className="text-base font-semibold">{sale ? "Edit sale details" : "Record sale"}</h3>
           <p className="text-xs text-muted-foreground">

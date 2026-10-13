@@ -15,7 +15,7 @@ import { LEASE_STATUSES, PAYMENT_FREQUENCIES, type PropertyLease } from "@/lib/d
 import { cn, titleCase } from "@/lib/utils";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function Field({
   label,
@@ -152,7 +152,7 @@ export function TenancyDrawer({
         onOpenChange={onOpenChange}
         ariaLabel={isEdit ? "Edit tenancy" : "Add tenancy"}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
           <h3 className="text-base font-semibold">{isEdit ? "Edit Tenancy" : "Add Tenancy"}</h3>
           <button
             onClick={() => onOpenChange(false)}

@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { UserCog, Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
+import { UserCog, Plus, Pencil, Trash2, ShieldCheck, Users, Wallet, Trophy, XCircle, Percent } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
-import { DataTable } from "@/components/data-table";
+import { DataTable, dataRowCls } from "@/components/data-table";
+import { MetricCard } from "@/components/metric-card";
+import { StaffAvatar } from "@/components/staff-avatar";
+import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { TeamMemberDrawer } from "@/components/team-member-drawer";
 import { TeamsManager } from "@/components/teams-manager";
@@ -58,12 +61,12 @@ function TeamPage() {
   const conv = totalClosed + totalLost > 0 ? `${Math.round((totalClosed / (totalClosed + totalLost)) * 100)}%` : "-";
 
   const metrics = [
-    { label: "Team members", value: String(team.length) },
-    { label: "Assigned leads", value: String(totalAssigned) },
-    { label: "Pipeline value", value: totalPipeline > 0 ? fmtMoney(totalPipeline, leads[0]?.currency) : "-" },
-    { label: "Closed deals", value: String(totalClosed) },
-    { label: "Lost deals", value: String(totalLost) },
-    { label: "Conversion rate", value: conv },
+    { label: "Team members", value: String(team.length), icon: <UserCog />, tone: "green" as const },
+    { label: "Assigned leads", value: String(totalAssigned), icon: <Users />, tone: "blue" as const },
+    { label: "Pipeline value", value: totalPipeline > 0 ? fmtMoney(totalPipeline, leads[0]?.currency) : "-", icon: <Wallet />, tone: "cream" as const },
+    { label: "Closed deals", value: String(totalClosed), icon: <Trophy />, tone: "green" as const },
+    { label: "Lost deals", value: String(totalLost), icon: <XCircle />, tone: "purple" as const },
+    { label: "Conversion rate", value: conv, icon: <Percent />, tone: "blue" as const },
   ];
 
   return (
@@ -84,10 +87,7 @@ function TeamPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map((m) => (
-          <Card key={m.label} className="p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{m.label}</p>
-            <p className="mt-3 text-xl font-semibold">{m.value}</p>
-          </Card>
+          <MetricCard key={m.label} label={m.label} value={m.value} icon={m.icon} tone={m.tone} />
         ))}
       </div>
 
@@ -104,12 +104,19 @@ function TeamPage() {
       >
         {team.length > 0
           ? team.map((m) => (
-              <tr key={m.id} className="border-b border-border last:border-0 hover:bg-background/60">
+              <tr key={m.id} className={dataRowCls}>
                 <td className="px-4 py-3 text-sm font-medium">
-                  <div>{m.full_name}</div>
-                  <div className="text-xs text-muted-foreground">{m.email ?? m.phone ?? ""}</div>
+                  <div className="flex items-center gap-3">
+                    <StaffAvatar name={m.full_name} url={m.avatar_url} size="md" />
+                    <div className="min-w-0">
+                      <div className="truncate">{m.full_name}</div>
+                      <div className="truncate text-xs font-normal text-muted-foreground">{m.email ?? m.phone ?? ""}</div>
+                    </div>
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-xs">{isRolePresetKey(m.role) ? ROLE_PRESETS[m.role].label : (m.role ?? "-")}</td>
+                <td className="px-4 py-3 text-xs">
+                  <StatusBadge variant="slate">{isRolePresetKey(m.role) ? ROLE_PRESETS[m.role].label : (m.role ?? "-")}</StatusBadge>
+                </td>
                 <td className="px-4 py-3 text-xs">
                   {m.user_id ? (
                     <span className="inline-flex items-center gap-1 text-foreground"><ShieldCheck className="h-3 w-3" /> Has login</span>
@@ -119,8 +126,9 @@ function TeamPage() {
                 </td>
                 <td className="px-4 py-3 text-xs">
                   <button
-                    className={`rounded-full px-2 py-0.5 text-[11px] ${m.is_active ? "bg-pastel-green" : "bg-muted"}`}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium disabled:cursor-default ${m.is_active ? "bg-pastel-green" : "bg-muted text-muted-foreground"}`}
                     disabled={!canManage}
+                    aria-label={m.is_active ? `Deactivate ${m.full_name}` : `Reactivate ${m.full_name}`}
                     onClick={async () => {
                       // Reactivating needs no reassignment check. Deactivating does:
                       // route through the same reassignment dialog the delete icon uses,
@@ -142,8 +150,8 @@ function TeamPage() {
                 <td className="px-4 py-3">
                   {canManage && (
                     <div className="flex items-center gap-1">
-                      <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
-                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={() => setReassignTarget(m)}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button className="rounded-md p-1.5 hover:bg-muted" title="Edit" aria-label={`Edit ${m.full_name}`} onClick={() => { setEdit(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
+                      <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Remove" aria-label={`Remove ${m.full_name}`} onClick={() => setReassignTarget(m)}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
                 </td>

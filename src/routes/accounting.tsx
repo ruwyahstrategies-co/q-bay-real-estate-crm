@@ -27,7 +27,7 @@ export const Route = createFileRoute("/accounting")({
   component: AccountingPage,
 });
 
-const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 const tabs = ["Overview", "Transactions", "Invoices", "Receivables", "Payables", "Payments", "Commissions"] as const;
 
 function AccountingPage() {
@@ -72,7 +72,7 @@ function AccountingPage() {
               onClick={() => setTab(t)}
               className={cn(
                 "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                tab === t ? "border-qbay text-qbay" : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {t}
@@ -132,7 +132,7 @@ function TransactionsTab({ canManage }: { canManage: boolean }) {
         empty={<EmptyState icon={<Wallet className="h-4 w-4" />} title="No transactions yet" description="Record a sale or rental transaction." />}
       >
         {transactions.map((t) => (
-          <tr key={t.id} className="border-b border-border last:border-0 hover:bg-background/60">
+          <tr key={t.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
             <td className="px-4 py-3 text-xs capitalize">{t.transaction_type.replace(/_/g, " ")}</td>
             <td className="px-4 py-3 text-sm">{(t as any).properties?.title ?? "-"}</td>
             <td className="px-4 py-3 text-xs">{(t as any).team_members?.full_name ?? "-"}</td>
@@ -211,7 +211,7 @@ function TransactionDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Add transaction">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Add Transaction</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close"><X className="h-4 w-4" /></button>
       </div>
@@ -348,7 +348,7 @@ function InvoiceDrawer({ open, onOpenChange, defaultType }: { open: boolean; onO
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="New invoice">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">New Invoice</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close"><X className="h-4 w-4" /></button>
       </div>
@@ -438,7 +438,7 @@ function PaymentsTab({ canManage }: { canManage: boolean }) {
         </div>
       )}
       <DrawerShell open={open} onOpenChange={setOpen} ariaLabel="Record payment">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
           <h3 className="text-base font-semibold">Record Payment</h3>
           <button onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>

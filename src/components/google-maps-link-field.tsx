@@ -5,7 +5,7 @@ import { sb } from "@/lib/db";
 import { looksLikeGoogleMapsLink, isShortenedGoogleMapsLink, parseGoogleMapsCoordinates } from "@/lib/google-maps-link";
 
 const inputCls =
-  "h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 /**
  * Paste a Google Maps share/location link and have it populate lat/lng.

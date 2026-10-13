@@ -80,7 +80,7 @@ function StaffActivityPage() {
             empty={<EmptyState icon={<Radar className="h-4 w-4" />} title="No check-ins yet" />}
           >
             {sessions.map((s) => (
-              <tr key={s.id} className="border-b border-border last:border-0 hover:bg-background/60">
+              <tr key={s.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                 <td className="px-4 py-3 text-sm font-medium">{(s as any).team_members?.full_name ?? "-"}</td>
                 <td className="px-4 py-3 text-xs">{fmtDateTime(s.checked_in_at)}</td>
                 <td className="px-4 py-3 text-xs">{s.checked_out_at ? fmtDateTime(s.checked_out_at) : "Active"}</td>
@@ -99,7 +99,7 @@ function StaffActivityPage() {
             empty={<EmptyState icon={<Radar className="h-4 w-4" />} title="No activity recorded yet" />}
           >
             {events.slice(0, 50).map((e) => (
-              <tr key={e.id} className="border-b border-border last:border-0 hover:bg-background/60">
+              <tr key={e.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                 <td className="px-4 py-3 text-xs">{fmtDateTime(e.occurred_at)}</td>
                 <td className="px-4 py-3 text-xs capitalize">{e.event_type.replace(/_/g, " ")}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{[e.lead_id && "lead", e.property_id && "property", e.viewing_id && "viewing"].filter(Boolean).join(", ") || "-"}</td>

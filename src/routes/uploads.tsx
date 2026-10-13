@@ -111,7 +111,7 @@ function UploadsPage() {
         >
           {uploads.length > 0
             ? uploads.map((u) => (
-                <tr key={u.id} className="border-b border-border last:border-0 hover:bg-background/60">
+                <tr key={u.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
                   <td className="px-4 py-3 text-sm">{u.filename}</td>
                   <td className="px-4 py-3 text-xs">{u.category}</td>
                   <td className="px-4 py-3 text-xs">

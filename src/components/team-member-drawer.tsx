@@ -33,7 +33,7 @@ import {
 } from "@/lib/permissions";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -319,7 +319,7 @@ export function TeamMemberDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} widthClassName="max-w-lg" ariaLabel={isEdit ? "Edit team member" : "Add team member"}>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Team Member" : "Add Team Member"}</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
           <X className="h-4 w-4" />

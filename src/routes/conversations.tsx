@@ -57,7 +57,7 @@ function ConversationsPage() {
           placeholder="Search interactions…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-9 flex-1 min-w-[200px] rounded-lg bg-background px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
         />
         <SelectField
           value={type}

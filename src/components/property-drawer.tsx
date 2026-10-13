@@ -77,7 +77,7 @@ function Field({
 }
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 type FormState = Omit<Partial<Property>, "custom_fields"> & {
   amenities_str?: string;
@@ -282,7 +282,7 @@ export function PropertyDrawer({
       onOpenChange={onOpenChange}
       ariaLabel={isEdit ? "Edit property" : "Add property"}
     >
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Property" : "Add Property"}</h3>
         <button
           onClick={() => onOpenChange(false)}
@@ -736,7 +736,7 @@ export function PropertyDrawer({
           onChange={(v) => set("custom_fields", v)}
         />
 
-        <div className="sm:col-span-2 flex items-center justify-end gap-2 border-t border-border pt-4 mt-2">
+        <div className="sm:col-span-2 flex items-center justify-end gap-2 sticky bottom-0 z-10 -mx-5 -mb-5 border-t border-border bg-canvas/95 px-5 py-3 backdrop-blur">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

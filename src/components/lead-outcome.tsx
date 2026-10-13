@@ -142,7 +142,7 @@ export function LeadOutcomeMenu({ lead }: { lead: Lead }) {
               Note (optional)
             </span>
             <textarea
-              className="h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-20 rounded-lg border border-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
               placeholder="Where or how they rented, for example another agency or directly from a landlord"
               value={note}
               onChange={(e) => setNote(e.target.value)}

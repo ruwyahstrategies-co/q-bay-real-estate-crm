@@ -25,7 +25,7 @@ export function OfferAttachmentsDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Offer attachments">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <div>
           <h3 className="text-base font-semibold">Offer attachments</h3>
           <p className="text-xs text-muted-foreground">{offer.leads?.full_name ?? "Lead"}</p>

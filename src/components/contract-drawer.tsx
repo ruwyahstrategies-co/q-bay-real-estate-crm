@@ -12,7 +12,7 @@ import { fillContractTemplate, openContractPdf, contractTitle } from "@/lib/cont
 import { CONTRACT_PURPOSES, type Owner, type OwnerContract } from "@/lib/db";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
@@ -150,7 +150,7 @@ export function ContractDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit contract" : "Generate contract"}>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">{isEdit ? "Edit Contract" : "Generate Contract"} - {owner.name}</h3>
         <button onClick={() => onOpenChange(false)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close">
           <X className="h-4 w-4" />
@@ -219,7 +219,7 @@ export function ContractDrawer({
           <textarea className={cn(inputCls, "h-24 py-2")} value={form.terms ?? ""} onChange={(e) => set("terms", e.target.value)} />
         </Field>
 
-        <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4 mt-2">
+        <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-2 sticky bottom-0 z-10 -mx-5 -mb-5 border-t border-border bg-canvas/95 px-5 py-3 backdrop-blur">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleGenerate}>
             <FileDown className="h-3.5 w-3.5" /> Save & Generate PDF

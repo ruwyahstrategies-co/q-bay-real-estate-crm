@@ -39,7 +39,7 @@ const STATUS_VARIANT: Record<string, "blue" | "purple" | "amber" | "green" | "sl
 };
 
 const inputCls =
-  "rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  "rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function RequestsPage() {
   const { can } = usePermissions();

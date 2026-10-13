@@ -20,7 +20,7 @@ import type { TenantRecord } from "@/lib/tenant-privacy";
 import { cn, titleCase } from "@/lib/utils";
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
@@ -65,7 +65,7 @@ export function TenantDrawer({
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Add tenant">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Add Tenant</h3>
         <button
           onClick={() => onOpenChange(false)}
@@ -231,7 +231,7 @@ export function TenantDetailDrawer({
 
   return (
     <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Tenant profile">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Tenant Profile</h3>
         <button
           onClick={onClose}

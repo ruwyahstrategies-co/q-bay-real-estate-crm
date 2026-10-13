@@ -58,7 +58,7 @@ export const Route = createFileRoute("/property-management")({
 });
 
 const inputCls =
-  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 const tabs = [
   "Dashboard",
   "Managed Properties",
@@ -121,7 +121,7 @@ function PropertyManagementPage() {
               className={cn(
                 "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                 tab === t
-                  ? "border-foreground text-foreground"
+                  ? "border-qbay text-qbay"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
@@ -531,7 +531,7 @@ function TenanciesTab() {
 function RentContractDrawer({ lease, onClose }: { lease: PropertyLease; onClose: () => void }) {
   return (
     <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Rent Contract" widthClassName="max-w-lg">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <div>
           <h3 className="text-base font-semibold">Rent Contract</h3>
           {lease.contract_number && (
@@ -566,7 +566,7 @@ function GenerateScheduleDialog({
   const [months, setMonths] = useState(12);
   return (
     <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Generate rent schedule">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Generate Rent Schedule</h3>
         <button
           onClick={onClose}
@@ -734,7 +734,7 @@ function RecordPaymentDialog({
   const [reference, setReference] = useState("");
   return (
     <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Record payment">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Record Payment</h3>
         <button
           onClick={onClose}
@@ -889,7 +889,7 @@ function MaintenanceDrawer({ onClose }: { onClose: () => void }) {
 
   return (
     <DrawerShell open onOpenChange={(v) => !v && onClose()} ariaLabel="Log maintenance issue">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <h3 className="text-base font-semibold">Log Maintenance Issue</h3>
         <button
           onClick={onClose}

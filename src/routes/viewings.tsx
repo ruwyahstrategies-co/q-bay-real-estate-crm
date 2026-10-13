@@ -71,7 +71,7 @@ function ViewingsPage() {
         empty={<EmptyState icon={<CalendarCheck2 className="h-4 w-4" />} title="No viewings scheduled" description="Schedule a viewing from a lead's profile." />}
       >
         {viewings.map((v) => (
-          <tr key={v.id} className="border-b border-border last:border-0 hover:bg-background/60">
+          <tr key={v.id} className="border-b border-border last:border-0 transition-colors hover:bg-qbay-tint/60">
             <td className="px-4 py-3 text-xs">{fmtDateTime(v.scheduled_at)}</td>
             <td className="px-4 py-3 text-sm font-medium">
               {v.lead_id ? <Link to="/leads/$leadId" params={{ leadId: v.lead_id }} className="hover:underline">{v.leads?.full_name ?? "Lead"}</Link> : "-"}

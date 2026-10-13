@@ -107,7 +107,7 @@ on conflict do nothing;
 with src as (
   select btrim(company) as v from public.owners
   where nullif(btrim(company), '') is not null
-    and btrim(company) !~ '^[-–—.\s]+$'   -- placeholder dashes are not companies
+    and btrim(company) !~ E'^[-\u2013\u2014.\\s]+$'   -- placeholder dashes are not companies
 ),
 ranked as (
   select public.master_data_norm(v) as k, v, count(*) as n from src group by 1, 2

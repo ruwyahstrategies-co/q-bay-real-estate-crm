@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { sb, type Property, type PropertyInsert, type PropertyUpdate } from "@/lib/db";
+import {
+  sb,
+  PROPERTY_PURPOSES,
+  type Property,
+  type PropertyInsert,
+  type PropertyUpdate,
+} from "@/lib/db";
 import { getR2SignedReadUrl } from "@/lib/r2";
 
 export const propertyKeys = {
@@ -9,32 +15,90 @@ export const propertyKeys = {
   media: (id: string) => ["properties", "media", id] as const,
 };
 
-export function useProperties(opts?: {
+/** The two inventory sides. Sale also covers off-plan, off-plan resale and commercial purposes. */
+export type PropertyPurposeTab = "sale" | "rent";
+
+/** Every stored purpose that belongs on the Sale side: all of them except "rent". */
+export const SALE_PURPOSES: string[] = PROPERTY_PURPOSES.filter((p) => p !== "rent");
+
+/** Which side of the inventory a stored purpose value belongs to. */
+export function purposeTabOf(purpose: string | null | undefined): PropertyPurposeTab {
+  return purpose === "rent" ? "rent" : "sale";
+}
+
+export type PropertyFilters = {
   search?: string;
   type?: string | null;
+  /** Archive state, independent of the Sale/Rent side and of availability. */
   status?: "active" | "archived" | "all";
   /** Availability filter: a stored availability value, or "needs_confirmation" for overdue check-ins. */
   availability?: string | null;
-}) {
-  const { search = "", type = null, status = "active", availability = null } = opts ?? {};
+  /** Sale or Rent, applied in the database on properties.purpose. null = both sides. */
+  purpose?: PropertyPurposeTab | null;
+};
+
+type FilterChain<T> = {
+  eq(column: string, value: unknown): T;
+  in(column: string, values: unknown[]): T;
+  lt(column: string, value: unknown): T;
+  or(filters: string): T;
+};
+
+/** The one place inventory filters are translated to database conditions (list and counts share it). */
+function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters, includePurpose = true): T {
+  const { search = "", type = null, status = "active", availability = null, purpose = null } = f;
+  if (status !== "all") q = q.eq("status", status);
+  if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
+  if (includePurpose && purpose === "sale") q = q.in("purpose", SALE_PURPOSES);
+  if (type) q = q.eq("property_type", type);
+  if (availability === "needs_confirmation") {
+    q = q.lt("availability_next_due_at", new Date().toISOString());
+  } else if (availability) {
+    q = q.eq("availability", availability);
+  }
+  if (search.trim()) {
+    const term = `%${search.trim()}%`;
+    q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);
+  }
+  return q;
+}
+
+export function useProperties(opts?: PropertyFilters) {
+  const { search = "", type = null, status = "active", availability = null, purpose = null } = opts ?? {};
   return useQuery({
-    queryKey: propertyKeys.list({ search, type, status, availability }),
+    queryKey: propertyKeys.list({ search, type, status, availability, purpose }),
     queryFn: async (): Promise<Property[]> => {
-      let q = sb.from("properties").select("*").order("created_at", { ascending: false });
-      if (status !== "all") q = q.eq("status", status);
-      if (type) q = q.eq("property_type", type);
-      if (availability === "needs_confirmation") {
-        q = q.lt("availability_next_due_at", new Date().toISOString());
-      } else if (availability) {
-        q = q.eq("availability", availability);
-      }
-      if (search.trim()) {
-        const term = `%${search.trim()}%`;
-        q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);
-      }
+      const q = applyPropertyFilters(
+        sb.from("properties").select("*").order("created_at", { ascending: false }),
+        { search, type, status, availability, purpose },
+      );
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+/**
+ * How many properties each side (Sale / Rent) holds under the page's OTHER filters, for the tab
+ * badges. Two cheap head-only count queries, so the numbers always match what the tab will show.
+ */
+export function usePropertyPurposeCounts(opts?: Omit<PropertyFilters, "purpose">) {
+  const { search = "", type = null, status = "active", availability = null } = opts ?? {};
+  return useQuery({
+    queryKey: [...propertyKeys.all, "purpose-counts", { search, type, status, availability }],
+    queryFn: async (): Promise<Record<PropertyPurposeTab, number>> => {
+      const base = { search, type, status, availability };
+      const count = async (purpose: PropertyPurposeTab) => {
+        const { count: n, error } = await applyPropertyFilters(
+          sb.from("properties").select("id", { count: "exact", head: true }),
+          { ...base, purpose },
+        );
+        if (error) throw error;
+        return n ?? 0;
+      };
+      const [sale, rent] = await Promise.all([count("sale"), count("rent")]);
+      return { sale, rent };
     },
   });
 }

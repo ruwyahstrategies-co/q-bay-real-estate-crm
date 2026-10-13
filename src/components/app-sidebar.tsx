@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutGrid,
@@ -139,6 +140,120 @@ function useVisibleGroups() {
     .filter(({ ownPageVisible, children }) => ownPageVisible || children.length > 0);
 }
 
+/**
+ * One icon in the collapsed rail. The label / sub-pages flyout is rendered through a portal at a
+ * fixed position taken from the icon, because the nav scrolls and clips its children. It opens on
+ * hover or keyboard focus, closes after a short grace period (so the pointer can cross from the
+ * icon to the flyout), and closes on Escape.
+ */
+function CollapsedItem({
+  group,
+  ownPageVisible,
+  children,
+  pathname,
+  active,
+}: {
+  group: NavGroup;
+  ownPageVisible: boolean;
+  children: NavLeaf[];
+  pathname: string;
+  active: boolean;
+}) {
+  const Icon = group.icon;
+  const ref = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  const open = () => {
+    clearTimeout(timer.current);
+    setRect(ref.current?.getBoundingClientRect() ?? null);
+  };
+  const scheduleClose = () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setRect(null), 140);
+  };
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const iconCls = cn(
+    "flex h-10 w-10 items-center justify-center rounded-xl text-sm transition-colors",
+    active ? ITEM_ACTIVE : ITEM_IDLE,
+  );
+
+  return (
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={open}
+      onMouseLeave={scheduleClose}
+      onFocus={open}
+      onBlur={scheduleClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setRect(null);
+      }}
+    >
+      {active && (
+        <span aria-hidden className="absolute -left-2 bottom-2 top-2 w-[3px] rounded-r-full bg-qbay-soft" />
+      )}
+      {ownPageVisible && group.to ? (
+        <Link to={group.to} className={iconCls} aria-label={group.label}>
+          <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+        </Link>
+      ) : (
+        <button type="button" className={iconCls} aria-label={group.label} aria-haspopup="menu" aria-expanded={!!rect}>
+          <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
+        </button>
+      )}
+      {rect &&
+        createPortal(
+          <div
+            style={{ position: "fixed", left: rect.right, top: rect.top }}
+            className="z-50 pl-3"
+            onMouseEnter={open}
+            onMouseLeave={scheduleClose}
+            onFocus={open}
+            onBlur={scheduleClose}
+          >
+            <div
+              role="menu"
+              aria-label={group.label}
+              className="min-w-[190px] rounded-xl border border-white/10 bg-sidebar p-1.5 shadow-pop"
+            >
+              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/60">
+                {group.label}
+              </p>
+              {children.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  {children.map((child) => {
+                    const ChildIcon = child.icon;
+                    const childIsActive = isActivePath(pathname, child.to);
+                    return (
+                      <Link
+                        key={child.to}
+                        to={child.to}
+                        role="menuitem"
+                        onClick={() => setRect(null)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
+                          childIsActive
+                            ? "bg-white/15 text-primary-foreground"
+                            : "text-primary-foreground/80 hover:bg-white/10",
+                        )}
+                      >
+                        <ChildIcon className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.9} />
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 export function AppSidebar({
   collapsed,
   onToggle,
@@ -198,7 +313,7 @@ export function AppSidebar({
             alt="Q-Bay Real Estate"
             className={cn(
               "h-11 w-auto max-w-none select-none",
-              collapsed && "h-10 w-11 object-cover object-left",
+              collapsed && "h-10 w-[29px] object-cover object-left",
             )}
             draggable={false}
           />
@@ -216,59 +331,14 @@ export function AppSidebar({
 
           if (collapsed) {
             return (
-              <div key={group.key} className="group relative">
-                {active && (
-                  <span aria-hidden className="absolute -left-2 bottom-2 top-2 w-[3px] rounded-r-full bg-qbay-soft" />
-                )}
-                {ownPageVisible && group.to ? (
-                  <Link
-                    to={group.to}
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl text-sm transition-colors",
-                      active ? ITEM_ACTIVE : ITEM_IDLE,
-                    )}
-                    aria-label={group.label}
-                  >
-                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
-                  </Link>
-                ) : (
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl text-sm",
-                      active ? ITEM_ACTIVE : "text-white/60",
-                    )}
-                    aria-label={group.label}
-                  >
-                    <Icon className="h-[18px] w-[18px] flex-shrink-0" strokeWidth={1.9} />
-                  </div>
-                )}
-                <div className="pointer-events-none absolute left-full top-0 z-40 hidden pl-3 group-focus-within:pointer-events-auto group-focus-within:block group-hover:pointer-events-auto group-hover:block">
-                  <div className="min-w-[190px] rounded-xl border border-white/10 bg-sidebar p-1.5 shadow-pop">
-                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/60">{group.label}</p>
-                  {hasChildren ? (
-                    <div className="flex flex-col gap-0.5">
-                      {children.map((child) => {
-                        const ChildIcon = child.icon;
-                        const childIsActive = isActivePath(pathname, child.to);
-                        return (
-                          <Link
-                            key={child.to}
-                            to={child.to}
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
-                              childIsActive ? "bg-white/15 text-primary-foreground" : "text-primary-foreground/80 hover:bg-white/10",
-                            )}
-                          >
-                            <ChildIcon className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.9} />
-                            {child.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  </div>
-                </div>
-              </div>
+              <CollapsedItem
+                key={group.key}
+                group={group}
+                ownPageVisible={ownPageVisible}
+                children={children}
+                pathname={pathname}
+                active={active}
+              />
             );
           }
 

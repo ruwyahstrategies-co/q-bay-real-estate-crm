@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Contact2, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
-import { DataTable } from "@/components/data-table";
+import { DataTable, dataRowCls } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
+import { MasterSelectField } from "@/components/master-select-field";
+import { useMasterData } from "@/hooks/use-master-data";
+import { initialMasterSelection, resolveMasterSelection } from "@/lib/master-data";
 import { usePermissions } from "@/hooks/use-auth";
 import {
   useOwners,
@@ -22,6 +25,9 @@ import { useTeamMembers } from "@/hooks/use-team";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useRowSelection } from "@/hooks/use-row-selection";
 import { SearchableSelectField } from "@/components/select-field";
+import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton } from "@/components/filter-toolbar";
+import { StaffAvatar } from "@/components/staff-avatar";
+import { buildMasterFilterOptions } from "@/lib/master-data";
 import { OWNER_PHONE_HIDDEN_LABEL, type SafeOwner } from "@/lib/owner-privacy";
 import { normalizePhone, phoneError } from "@/lib/phone";
 import { cn } from "@/lib/utils";
@@ -39,11 +45,37 @@ const inputCls =
 function OwnersPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [ownerType, setOwnerType] = useState<"individual" | "developer" | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Owner | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Owner | null>(null);
   const debouncedSearch = useDebounced(search, 250);
-  const { data: owners = [] } = useOwners(debouncedSearch);
+  // Type, Company and Assigned agent filter the matching owners columns in the database. The text
+  // search stays the secure server-side search (phones only count where the viewer may see them),
+  // and filter options never include phone or ID values.
+  const { data: owners = [], isLoading } = useOwners({
+    search: debouncedSearch,
+    isDeveloper: ownerType === null ? null : ownerType === "developer",
+    companyId,
+    agentId,
+  });
+  const { data: companyValues = [] } = useMasterData("company");
+  const { data: team = [] } = useTeamMembers();
+  const companyOptions = useMemo(() => buildMasterFilterOptions(companyValues), [companyValues]);
+  const agentOptions = useMemo(
+    () => team.filter((m) => m.is_active).map((m) => ({ value: m.id, label: m.full_name })),
+    [team],
+  );
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) + (ownerType ? 1 : 0) + (companyId ? 1 : 0) + (agentId ? 1 : 0);
+  function clearFilters() {
+    setSearch("");
+    setOwnerType(null);
+    setCompanyId(null);
+    setAgentId(null);
+  }
   const selection = useRowSelection(owners.map((o) => o.id));
   const selectAllRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -76,17 +108,44 @@ function OwnersPage() {
             ) : undefined
           }
         />
-        <div className="mb-4">
-          <input
+        <FilterToolbar ariaLabel="Owner filters" className="mb-2">
+          <FilterSearch
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search by name, company, email or phone number..."
-            className={cn(inputCls, "w-full max-w-md")}
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Phone numbers are searchable only for owners whose phone you are allowed to see.
-          </p>
-        </div>
+          <FilterSelect
+            label="Owner type"
+            value={ownerType}
+            onChange={(v) => setOwnerType(v as "individual" | "developer" | null)}
+            options={[
+              { value: "individual", label: "Individual" },
+              { value: "developer", label: "Developer" },
+            ]}
+            allLabel="All types"
+          />
+          <FilterSelect
+            label="Company"
+            value={companyId}
+            onChange={setCompanyId}
+            options={companyOptions}
+            allLabel="All companies"
+            searchable
+          />
+          <FilterSelect
+            label="Assigned agent"
+            value={agentId}
+            onChange={setAgentId}
+            options={agentOptions}
+            allLabel="All agents"
+            searchable
+          />
+          <ClearFiltersButton count={activeFilterCount} onClick={clearFilters} />
+        </FilterToolbar>
+        <p className="mb-3 text-[11px] text-muted-foreground" aria-live="polite">
+          {isLoading ? "Loading..." : `${owners.length} ${owners.length === 1 ? "owner" : "owners"}${activeFilterCount ? " match the filters" : ""}. `}
+          Phone numbers are searchable only for owners whose phone you are allowed to see.
+        </p>
         {selection.count > 0 && (
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
             <span>{selection.count} selected</span>
@@ -106,12 +165,19 @@ function OwnersPage() {
               onChange={(e) => selection.toggleAll(e.target.checked)}
             />
           }
-          columns={["Code", "Name", "Type", "Company", "Phone", "Email", "Actions"]}
+          columns={["Code", "Name", "Type", "Company", "Agent", "Phone", "Email", "Actions"]}
           empty={
             <EmptyState
               icon={<Contact2 className="h-4 w-4" />}
-              title="No owners yet"
-              description="Add a property or development owner."
+              title={activeFilterCount ? "No owners match these filters" : "No owners yet"}
+              description={activeFilterCount ? "Try removing a filter." : "Add a property or development owner."}
+              action={
+                activeFilterCount ? (
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
             />
           }
         >
@@ -119,6 +185,7 @@ function OwnersPage() {
             <OwnerRow
               key={o.id}
               owner={o}
+              agent={team.find((m) => m.id === o.assigned_agent_id) ?? null}
               selected={selection.selected.has(o.id)}
               onSelectedChange={(checked) => selection.toggle(o.id, checked)}
               canEdit={canEdit}
@@ -162,6 +229,7 @@ function OwnersPage() {
 
 function OwnerRow({
   owner,
+  agent,
   selected,
   onSelectedChange,
   canEdit,
@@ -171,6 +239,7 @@ function OwnerRow({
   onDelete,
 }: {
   owner: Owner;
+  agent: { full_name: string; avatar_url: string | null } | null;
   selected: boolean;
   onSelectedChange: (checked: boolean) => void;
   canEdit: boolean;
@@ -185,7 +254,7 @@ function OwnerRow({
       role="link"
       tabIndex={0}
       aria-label={`Open ${owner.name}`}
-      className="cursor-pointer border-b border-border last:border-0 hover:bg-background/60 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
+      className={cn(dataRowCls, "cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring/40")}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button,a,input,label")) return;
         onOpen();
@@ -220,6 +289,16 @@ function OwnerRow({
       <td className="px-4 py-3 text-xs">{owner.is_developer ? "Developer" : "Individual"}</td>
       <td className="px-4 py-3 text-xs">{owner.company ?? "-"}</td>
       <td className="px-4 py-3 text-xs">
+        {agent ? (
+          <span className="inline-flex items-center gap-2">
+            <StaffAvatar name={agent.full_name} url={agent.avatar_url} size="xs" />
+            <span className="max-w-[110px] truncate">{agent.full_name}</span>
+          </span>
+        ) : (
+          "-"
+        )}
+      </td>
+      <td className="px-4 py-3 text-xs">
         {owner.phone_hidden ? (
           <span
             className="text-muted-foreground"
@@ -235,12 +314,12 @@ function OwnerRow({
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
           {canEdit && (
-            <button className="rounded-md p-1.5 hover:bg-muted" onClick={onEdit}>
+            <button className="rounded-md p-1.5 hover:bg-muted" title="Edit" aria-label={`Edit ${owner.name}`} onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </button>
           )}
           {canDelete && (
-            <button className="rounded-md p-1.5 hover:bg-muted text-destructive" onClick={onDelete}>
+            <button className="rounded-md p-1.5 hover:bg-muted text-destructive" title="Delete" aria-label={`Delete ${owner.name}`} onClick={onDelete}>
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
@@ -264,7 +343,10 @@ function OwnerDrawer({
   const isEdit = !!owner?.id;
   const { data: team = [] } = useTeamMembers();
   const [name, setName] = useState(owner?.name ?? "");
-  const [company, setCompany] = useState(owner?.company ?? "");
+  const { data: companyValues = [] } = useMasterData("company");
+  const [company, setCompany] = useState(
+    initialMasterSelection({ id: owner?.company_id, text: owner?.company }),
+  );
   const [phone, setPhone] = useState(owner?.phone ?? "");
   const [email, setEmail] = useState(owner?.email ?? "");
   const [address, setAddress] = useState(owner?.address ?? "");
@@ -276,7 +358,7 @@ function OwnerDrawer({
   useEffect(() => {
     if (!open) return;
     setName(owner?.name ?? "");
-    setCompany(owner?.company ?? "");
+    setCompany(initialMasterSelection({ id: owner?.company_id, text: owner?.company }));
     setPhone(owner?.phone ?? "");
     setEmail(owner?.email ?? "");
     setAddress(owner?.address ?? "");
@@ -301,7 +383,10 @@ function OwnerDrawer({
     }
     const payload = {
       name: name.trim(),
-      company: company || null,
+      ...(() => {
+        const sel = resolveMasterSelection(company, companyValues, owner?.company);
+        return { company_id: sel.id, company: sel.text };
+      })(),
       ...(phoneHidden ? {} : { phone: normalizePhone(phone) || null }),
       email: email || null,
       address: address || null,
@@ -356,10 +441,11 @@ function OwnerDrawer({
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Company
           </span>
-          <input
-            className={inputCls}
-            value={company ?? ""}
-            onChange={(e) => setCompany(e.target.value)}
+          <MasterSelectField
+            kind="company"
+            value={company}
+            onChange={setCompany}
+            current={{ id: owner?.company_id, text: owner?.company }}
           />
         </label>
         <label className="flex flex-col gap-1.5">

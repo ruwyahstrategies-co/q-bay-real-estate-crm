@@ -3,18 +3,96 @@ import { sb, type Development, type DevelopmentInsert, type DevelopmentUpdate } 
 
 export const developmentKeys = {
   all: ["developments"] as const,
-  list: (search?: string) => ["developments", "list", search ?? ""] as const,
+  list: (filters?: Record<string, unknown>) => ["developments", "list", filters ?? {}] as const,
   detail: (id: string) => ["developments", "detail", id] as const,
 };
 
-export function useDevelopments(opts?: { search?: string; publishedOnly?: boolean }) {
-  const { search = "", publishedOnly = false } = opts ?? {};
+/** Stored developments.status values with the labels the Development form uses. */
+export const DEVELOPMENT_STATUS_OPTIONS = [
+  { value: "off_plan", label: "Off-plan" },
+  { value: "under_construction", label: "Under construction" },
+  { value: "ready", label: "Ready" },
+] as const;
+
+export function developmentStatusLabel(status: string | null | undefined): string {
+  return DEVELOPMENT_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status ?? "-";
+}
+
+export type DevelopmentFilters = {
+  /** Matches the development name or its developer name. */
+  search?: string;
+  publishedOnly?: boolean;
+  /** Approved Developer (master data) the development is linked to. */
+  developerId?: string | null;
+  /** Owner the development belongs to. */
+  ownerId?: string | null;
+  status?: string | null;
+  countryId?: string | null;
+  areaId?: string | null;
+  placeId?: string | null;
+  /** Assigned agent (team member id). */
+  agentId?: string | null;
+  published?: "published" | "draft" | null;
+};
+
+/** Removes characters that would break a PostgREST or() expression from free-typed search text. */
+function safeSearchTerm(raw: string): string {
+  return raw.replace(/[,()*%\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Developments list. Every filter is a database condition on the matching column, so they combine
+ * freely with each other and with search, and the full filter set is part of the query key.
+ */
+export function useDevelopments(opts?: DevelopmentFilters) {
+  const {
+    search = "",
+    publishedOnly = false,
+    developerId = null,
+    ownerId = null,
+    status = null,
+    countryId = null,
+    areaId = null,
+    placeId = null,
+    agentId = null,
+    published = null,
+  } = opts ?? {};
   return useQuery({
-    queryKey: developmentKeys.list(search + (publishedOnly ? ":published" : "")),
+    queryKey: developmentKeys.list({
+      search: search.trim(),
+      publishedOnly,
+      developerId,
+      ownerId,
+      status,
+      countryId,
+      areaId,
+      placeId,
+      agentId,
+      published,
+    }),
     queryFn: async (): Promise<Development[]> => {
       let q = sb.from("developments").select("*").order("created_at", { ascending: false });
       if (publishedOnly) q = q.eq("is_published", true);
-      if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
+      if (published === "published") q = q.eq("is_published", true);
+      if (published === "draft") q = q.eq("is_published", false);
+      if (developerId) q = q.eq("developer_id", developerId);
+      if (ownerId) q = q.eq("owner_id", ownerId);
+      if (status) q = q.eq("status", status);
+      if (agentId) q = q.eq("assigned_agent_id", agentId);
+      if (placeId) q = q.eq("place_id", placeId);
+      if (areaId) {
+        q = q.eq("area_id", areaId);
+      } else if (countryId) {
+        // Older records can carry an area but no country; they belong to the country of that area.
+        const { data: areas, error: areaError } = await sb.from("areas").select("id").eq("country_id", countryId);
+        if (areaError) throw areaError;
+        const areaIds = (areas ?? []).map((a) => a.id);
+        q = areaIds.length
+          ? q.or(`country_id.eq.${countryId},area_id.in.(${areaIds.join(",")})`)
+          : q.eq("country_id", countryId);
+      }
+      const term = safeSearchTerm(search);
+      if (term) q = q.or(`name.ilike.%${term}%,developer.ilike.%${term}%`);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];

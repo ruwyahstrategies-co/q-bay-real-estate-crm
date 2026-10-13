@@ -4,8 +4,21 @@ import { OWNER_COLUMNS, attachOwnerPrivateFields, type SafeOwner } from "@/lib/o
 
 export const ownerKeys = {
   all: ["owners"] as const,
-  list: (search?: string) => ["owners", "list", search ?? ""] as const,
+  list: (filters?: Record<string, unknown>) => ["owners", "list", filters ?? {}] as const,
+  options: ["owners", "options"] as const,
   detail: (id: string) => ["owners", "detail", id] as const,
+};
+
+/** Structured Owners filters. Each maps to one non-private owners column. */
+export type OwnerFilters = {
+  /** Secure text search (name, company, code, email; phone only where the viewer may see it). */
+  search?: string;
+  /** owners.is_developer: true = Developer, false = Individual, null = both. */
+  isDeveloper?: boolean | null;
+  /** Approved Company (master data) the owner is linked to. */
+  companyId?: string | null;
+  /** owners.assigned_agent_id. */
+  agentId?: string | null;
 };
 
 /** How many owners a search returns at most (the rest are found by typing more). */
@@ -17,12 +30,18 @@ const OWNER_SEARCH_LIMIT = 100;
  * whose phone the signed-in user is allowed to see. The browser never receives phones to filter
  * on, and typing a hidden owner's number finds nothing.
  */
-export function useOwners(search = "") {
-  const term = search.trim();
+export function useOwners(searchOrFilters: string | OwnerFilters = "") {
+  const filters: OwnerFilters =
+    typeof searchOrFilters === "string" ? { search: searchOrFilters } : searchOrFilters;
+  const term = (filters.search ?? "").trim();
+  const { isDeveloper = null, companyId = null, agentId = null } = filters;
   return useQuery({
-    queryKey: ownerKeys.list(term),
+    queryKey: ownerKeys.list({ search: term, isDeveloper, companyId, agentId }),
     queryFn: async (): Promise<SafeOwner[]> => {
       let q = sb.from("owners").select(OWNER_COLUMNS).order("name", { ascending: true });
+      if (isDeveloper !== null) q = q.eq("is_developer", isDeveloper);
+      if (companyId) q = q.eq("company_id", companyId);
+      if (agentId) q = q.eq("assigned_agent_id", agentId);
       if (term) {
         const { data: matches, error: searchError } = await sb.rpc("search_owner_ids", {
           _query: term,
@@ -36,6 +55,22 @@ export function useOwners(search = "") {
       const { data, error } = await q;
       if (error) throw error;
       return attachOwnerPrivateFields((data ?? []) as never);
+    },
+  });
+}
+
+/**
+ * Owner names for pickers and filters. Selects only id, name and company: never phone or ID number,
+ * so it is safe to use anywhere a list of owners is offered as choices.
+ */
+export function useOwnerOptions() {
+  return useQuery({
+    queryKey: ownerKeys.options,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb.from("owners").select("id, name, company").order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 }

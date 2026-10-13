@@ -16,6 +16,22 @@ export const locationKeys = {
   places: (areaId?: string) => ["locations", "places", areaId ?? "all"] as const,
 };
 
+/**
+ * Resolves a record's stored location ids to "Place, Area, Country" text. Legacy records that kept
+ * an area without a country still show the country of that area.
+ */
+export function useLocationLabel() {
+  const { data: countries = [] } = useCountries();
+  const { data: areas = [] } = useAreas();
+  const { data: places = [] } = usePlaces();
+  return (loc: { country_id?: string | null; area_id?: string | null; place_id?: string | null }): string => {
+    const area = areas.find((a) => a.id === loc.area_id);
+    const country = countries.find((c) => c.id === (loc.country_id ?? area?.country_id));
+    const place = places.find((p) => p.id === loc.place_id);
+    return [place?.name, area?.name, country?.name].filter(Boolean).join(", ");
+  };
+}
+
 export function useCountries() {
   return useQuery({
     queryKey: locationKeys.countries,

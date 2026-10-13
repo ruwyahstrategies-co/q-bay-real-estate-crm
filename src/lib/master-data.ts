@@ -13,6 +13,11 @@ export const MASTER_KIND_LABELS: Record<MasterKind, { singular: string; plural: 
   company: { singular: "Company", plural: "Companies" },
 };
 
+/** Case and spacing insensitive key, same rule as the database (master_data_norm). */
+export function masterDataNorm(value: string | null | undefined): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 /** Select value used for a record whose stored text never matched an approved value. */
 export const LEGACY_VALUE = "__legacy__";
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ChevronLeft, Pencil, Trash2, Share2, FileText, Sparkles } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2, Share2, FileText, Sparkles, BedDouble, Bath, Ruler, Mail, Phone } from "lucide-react";
 import { useProspectsForProperty, useSimilarProperties } from "@/hooks/use-matching";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
 import { toast } from "sonner";
@@ -11,7 +11,9 @@ import { PropertyDrawer } from "@/components/property-drawer";
 import { MapboxPicker } from "@/components/mapbox-picker";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { AvailabilityRing } from "@/components/status-badge";
+import { AvailabilityRing, PurposeBadge } from "@/components/status-badge";
+import { PropertyGallery, type GalleryImage, type GalleryUpload } from "@/components/property-gallery";
+import { StaffAvatar } from "@/components/staff-avatar";
 import { PropertyPublicationDestinations } from "@/components/property-publication-destinations";
 import { PropertyAvailabilityConfirmation } from "@/components/property-availability-confirmation";
 import { PropertyLeadsSection } from "@/components/property-leads-section";
@@ -100,6 +102,18 @@ function PropertyDetailPage() {
     }
   }
 
+  const galleryImages: GalleryImage[] = (
+    media as unknown as {
+      id: string;
+      is_hero: boolean;
+      media_type?: string | null;
+      uploads: GalleryUpload | null;
+    }[]
+  )
+    .filter((m) => m.uploads && (!m.media_type || m.media_type === "image"))
+    .map((m) => ({ id: m.id, isHero: !!m.is_hero, upload: m.uploads as GalleryUpload }));
+  const assignedAgent = team.find((m) => m.id === property?.assigned_agent_id) ?? null;
+
   if (isLoading)
     return (
       <AppShell>
@@ -123,26 +137,87 @@ function PropertyDetailPage() {
           <ChevronLeft className="h-3.5 w-3.5" /> All properties
         </Link>
 
-        <Card className="mb-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold tracking-tight">{property.title}</h2>
-                <AvailabilityRing
-                  availability={property.availability}
-                  needsConfirmation={isConfirmationOverdue(property)}
-                />
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {property.reference_code ? `${property.reference_code} · ` : ""}
-                {property.property_type ?? "-"} · {property.location ?? "-"}
-              </p>
-              <p className="mt-3 text-2xl font-semibold">
-                {fmtMoney(property.price, property.currency)}
-              </p>
-              <PropertyWebsiteLinkButtons property={property} showHint className="mt-3" />
+        <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <Card className="p-3 lg:col-span-3">
+            <PropertyGallery images={galleryImages} />
+          </Card>
+
+          <Card className="flex flex-col lg:col-span-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <PurposeBadge purpose={property.purpose} />
+              <AvailabilityRing
+                availability={property.availability}
+                needsConfirmation={isConfirmationOverdue(property)}
+              />
             </div>
-            <div className="flex items-center gap-2">
+            <h1 className="mt-3 text-xl font-semibold leading-snug tracking-tight">{property.title}</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {property.reference_code ? `${property.reference_code} · ` : ""}
+              {property.property_type ?? "-"} · {property.location ?? "-"}
+            </p>
+            <p className="mt-4 text-3xl font-semibold tabular-nums">
+              {fmtMoney(property.price, property.currency)}
+            </p>
+
+            {(property.bedrooms != null || property.bathrooms != null || property.size) && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {property.bedrooms != null && (
+                  <div className="rounded-lg bg-background px-3 py-2.5">
+                    <BedDouble className="h-4 w-4 text-qbay" />
+                    <p className="mt-1 text-sm font-semibold tabular-nums">{property.bedrooms}</p>
+                    <p className="text-[11px] text-muted-foreground">Bedrooms</p>
+                  </div>
+                )}
+                {property.bathrooms != null && (
+                  <div className="rounded-lg bg-background px-3 py-2.5">
+                    <Bath className="h-4 w-4 text-qbay" />
+                    <p className="mt-1 text-sm font-semibold tabular-nums">{property.bathrooms}</p>
+                    <p className="text-[11px] text-muted-foreground">Bathrooms</p>
+                  </div>
+                )}
+                {property.size ? (
+                  <div className="rounded-lg bg-background px-3 py-2.5">
+                    <Ruler className="h-4 w-4 text-qbay" />
+                    <p className="mt-1 text-sm font-semibold tabular-nums">
+                      {property.size} <span className="text-[11px] font-normal">{property.size_unit ?? ""}</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Size</p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {assignedAgent && (
+              <div className="mt-4 flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                <StaffAvatar name={assignedAgent.full_name} url={assignedAgent.avatar_url} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] text-muted-foreground">Assigned agent</p>
+                  <p className="truncate text-sm font-medium">{assignedAgent.full_name}</p>
+                </div>
+                {assignedAgent.phone && (
+                  <a
+                    href={`tel:${assignedAgent.phone}`}
+                    aria-label={`Call ${assignedAgent.full_name}`}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
+                {assignedAgent.email && (
+                  <a
+                    href={`mailto:${assignedAgent.email}`}
+                    aria-label={`Email ${assignedAgent.full_name}`}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Mail className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            )}
+
+            <PropertyWebsiteLinkButtons property={property} showHint className="mt-4" />
+
+            <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
               <Button variant="outline" size="sm" onClick={() => openPropertyPdf(property)}>
                 <FileText className="h-3.5 w-3.5" /> PDF
               </Button>
@@ -165,13 +240,13 @@ function PropertyDetailPage() {
                 </Button>
               )}
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Card>
             <h4 className="text-sm font-semibold">Specifications</h4>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <dl className="mt-3 grid grid-cols-2 text-xs [&>dd]:border-b [&>dd]:border-border/70 [&>dd]:py-2 [&>dd]:font-medium [&>dt]:border-b [&>dt]:border-border/70 [&>dt]:py-2 [&>dt]:text-muted-foreground [&>:nth-last-child(-n+2)]:border-b-0">
               <dt className="text-muted-foreground">Bedrooms</dt>
               <dd>{property.bedrooms ?? "-"}</dd>
               <dt className="text-muted-foreground">Bathrooms</dt>

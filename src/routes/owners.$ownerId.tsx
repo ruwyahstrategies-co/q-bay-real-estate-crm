@@ -38,6 +38,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/db";
 import type { OwnerContract, PropertySubmission } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { developmentStatusLabel } from "@/hooks/use-developments";
 
 export const Route = createFileRoute("/owners/$ownerId")({
   head: () => ({ meta: [{ title: "Owner Profile" }] }),
@@ -356,7 +357,7 @@ function OwnerProfilePage() {
                     >
                       {d.name}
                     </Link>
-                    <span className="capitalize text-muted-foreground">{d.status ?? "-"}</span>
+                    <span className="text-muted-foreground">{developmentStatusLabel(d.status)}</span>
                   </li>
                 ))}
               </ul>

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
-import { useDevelopment, useDevelopmentProperties, useUpdateDevelopment } from "@/hooks/use-developments";
+import { useDevelopment, useDevelopmentProperties, useUpdateDevelopment, developmentStatusLabel } from "@/hooks/use-developments";
 import { useOwner } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useCountries, useAreas, usePlaces } from "@/hooks/use-locations";
@@ -91,7 +91,7 @@ function DevelopmentDetailPage() {
         <Card>
           <h3 className="mb-2 text-sm font-semibold">Overview</h3>
           <dl className="space-y-1.5 text-xs">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Status</dt><dd className="capitalize">{development.status?.replace(/_/g, " ") ?? "-"}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Status</dt><dd>{developmentStatusLabel(development.status)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted-foreground">Developer</dt><dd>{development.developer ?? "-"}</dd></div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Owner</dt>

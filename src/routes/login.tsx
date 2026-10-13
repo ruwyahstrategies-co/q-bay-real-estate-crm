@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandMark } from "@/components/brand-mark";
+import qbayLogo from "@/assets/qbay-logo.png";
 import { Button } from "@/components/ui-primitives";
 import { APP_CONFIG } from "@/lib/config";
 
@@ -54,16 +54,14 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-            <BrandMark className="h-7 w-7 text-white" />
-          </div>
+          <img src={qbayLogo} alt="" className="h-14 w-auto select-none" draggable={false} />
           <h1 className="mt-4 text-lg font-semibold text-white">{APP_CONFIG.companyName}</h1>
           <p className="mt-1 text-xs text-white/50">{APP_CONFIG.productDescriptor}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-white/10 bg-canvas p-6 shadow-2xl"
+          className="rounded-2xl border border-white/10 bg-canvas p-6 shadow-pop"
           aria-label="Sign in"
         >
           <h2 className="text-base font-semibold text-foreground">Sign in</h2>

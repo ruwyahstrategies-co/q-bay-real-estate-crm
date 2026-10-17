@@ -56,6 +56,7 @@ import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/u
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
+import { MaskedPhone } from "@/components/masked-phone";
 import { DynamicFieldsView, type CustomFieldValues } from "@/components/dynamic-fields";
 
 export const Route = createFileRoute("/leads/$leadId")({
@@ -283,7 +284,9 @@ function LeadProfilePage() {
               <h4 className="text-sm font-semibold">Contact</h4>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <dt className="text-muted-foreground">Phone</dt>
-                <dd>{lead.phone ?? "-"}</dd>
+                <dd>
+                  <MaskedPhone value={lead.phone} />
+                </dd>
                 <dt className="text-muted-foreground">Email</dt>
                 <dd>{lead.email ?? "-"}</dd>
                 <dt className="text-muted-foreground">Nationality</dt>

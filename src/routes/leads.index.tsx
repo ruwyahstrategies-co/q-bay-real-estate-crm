@@ -53,6 +53,7 @@ import {
 } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
 import { useAreas } from "@/hooks/use-locations";
+import { MaskedPhone } from "@/components/masked-phone";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
@@ -464,7 +465,9 @@ function LeadsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
-                      <div>{l.phone ?? "-"}</div>
+                      <div>
+                        <MaskedPhone value={l.phone} />
+                      </div>
                       <div>{l.email ?? ""}</div>
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -588,7 +591,7 @@ function LeadsPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h4 className="truncate text-sm font-semibold">{l.full_name}</h4>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{l.phone ?? l.email ?? "-"}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{l.phone ? <MaskedPhone value={l.phone} /> : (l.email ?? "-")}</p>
                       </div>
                       <PipelineStageBadge stage={stageLabelFrom(stages, l.pipeline_stage)} />
                     </div>

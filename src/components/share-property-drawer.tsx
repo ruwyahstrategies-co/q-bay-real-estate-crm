@@ -13,6 +13,7 @@ import { usePropertyShares, useSharePropertyWithLeads } from "@/hooks/use-proper
 import { buildPropertyShareMessage } from "@/lib/property-share";
 import { usePublicWebsiteUrl } from "@/hooks/use-public-website";
 import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
+import { MaskedPhone } from "@/components/masked-phone";
 import { LEAD_CLASSIFICATION_LABELS, fmtDate, fmtMoney, type Property } from "@/lib/db";
 
 const MAX_ROWS = 100;
@@ -257,8 +258,9 @@ export function SharePropertyDrawer({
                             )}
                           </span>
                           <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            <MaskedPhone value={l.phone} emptyLabel="No phone" />
+                            {" · "}
                             {[
-                              l.phone ?? "No phone",
                               l.classification
                                 ? (LEAD_CLASSIFICATION_LABELS[l.classification] ?? l.classification)
                                 : null,

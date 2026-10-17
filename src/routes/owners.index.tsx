@@ -30,6 +30,7 @@ import { StaffAvatar } from "@/components/staff-avatar";
 import { buildMasterFilterOptions } from "@/lib/master-data";
 import { OWNER_PHONE_HIDDEN_LABEL, type SafeOwner } from "@/lib/owner-privacy";
 import { normalizePhone, phoneError } from "@/lib/phone";
+import { MaskedPhone } from "@/components/masked-phone";
 import { cn } from "@/lib/utils";
 
 type Owner = SafeOwner;
@@ -299,16 +300,12 @@ function OwnerRow({
         )}
       </td>
       <td className="px-4 py-3 text-xs">
-        {owner.phone_hidden ? (
-          <span
-            className="text-muted-foreground"
-            title="Only the owner's agent and administrators can see this number"
-          >
-            {OWNER_PHONE_HIDDEN_LABEL}
-          </span>
-        ) : (
-          (owner.phone ?? "-")
-        )}
+        <MaskedPhone
+          value={owner.phone_hidden ? null : owner.phone}
+          hidden={owner.phone_hidden}
+          hiddenLabel={OWNER_PHONE_HIDDEN_LABEL}
+          hiddenTitle="Only the owner's agent and administrators can see this number"
+        />
       </td>
       <td className="px-4 py-3 text-xs">{owner.email ?? "-"}</td>
       <td className="px-4 py-3">

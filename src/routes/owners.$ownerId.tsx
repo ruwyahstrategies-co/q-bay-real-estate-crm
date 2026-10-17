@@ -38,6 +38,7 @@ import { usePermissions } from "@/hooks/use-auth";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/db";
 import type { OwnerContract, PropertySubmission } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { MaskedPhone } from "@/components/masked-phone";
 import { developmentStatusLabel } from "@/hooks/use-developments";
 
 export const Route = createFileRoute("/owners/$ownerId")({
@@ -203,16 +204,12 @@ function OwnerProfilePage() {
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <dt className="text-muted-foreground">Phone</dt>
               <dd>
-                {owner.phone_hidden ? (
-                  <span
-                    className="text-muted-foreground"
-                    title="Only the owner's agent and administrators can see this number"
-                  >
-                    Hidden
-                  </span>
-                ) : (
-                  (owner.phone ?? "-")
-                )}
+                <MaskedPhone
+                  value={owner.phone_hidden ? null : owner.phone}
+                  hidden={owner.phone_hidden}
+                  hiddenLabel="Hidden"
+                  hiddenTitle="Only the owner's agent and administrators can see this number"
+                />
               </dd>
               <dt className="text-muted-foreground">Email</dt>
               <dd>{owner.email ?? "-"}</dd>

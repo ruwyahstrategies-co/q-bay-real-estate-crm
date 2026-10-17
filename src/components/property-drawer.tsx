@@ -79,6 +79,11 @@ function Field({
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
 
+// Manual Arabic content inputs: only these fields are right-to-left, the rest of the CRM
+// stays LTR. Staff type the Arabic themselves; nothing here is translated automatically.
+const arabicProps = { dir: "rtl", lang: "ar", spellCheck: false } as const;
+const arabicCls = "text-right";
+
 type FormState = Omit<Partial<Property>, "custom_fields"> & {
   amenities_str?: string;
   custom_fields?: CustomFieldValues;
@@ -102,6 +107,10 @@ function initialForm(property: Property | null | undefined): FormState {
     completion_status: property?.completion_status ?? "",
     availability: property?.availability ?? "available",
     description: property?.description ?? "",
+    title_ar: property?.title_ar ?? "",
+    description_ar: property?.description_ar ?? "",
+    seo_title_ar: property?.seo_title_ar ?? "",
+    seo_description_ar: property?.seo_description_ar ?? "",
     amenities_str: (property?.amenities ?? []).join(", "),
     purpose: property?.purpose ?? "sale",
     country_id: property?.country_id ?? null,
@@ -239,6 +248,11 @@ export function PropertyDrawer({
       longitude: form.longitude ? Number(form.longitude) : null,
       seo_title: form.seo_title || null,
       seo_description: form.seo_description || null,
+      // Arabic companions are optional and saved independently of the English fields.
+      title_ar: form.title_ar?.trim() || null,
+      description_ar: form.description_ar?.trim() || null,
+      seo_title_ar: form.seo_title_ar?.trim() || null,
+      seo_description_ar: form.seo_description_ar?.trim() || null,
       is_published: !!form.is_published,
       tower_name: form.tower_name || null,
       floor_number: form.floor_number || null,
@@ -296,12 +310,20 @@ export function PropertyDrawer({
         className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start"
         onSubmit={handleSubmit}
       >
-        <Field label="Title *" full>
+        <Field label="Title (English) *" full>
           <input
             className={inputCls}
             value={form.title ?? ""}
             onChange={(e) => set("title", e.target.value)}
             required
+          />
+        </Field>
+        <Field label="Title (Arabic)" full>
+          <input
+            {...arabicProps}
+            className={cn(inputCls, arabicCls)}
+            value={form.title_ar ?? ""}
+            onChange={(e) => set("title_ar", e.target.value)}
           />
         </Field>
         <Field label="Reference code">
@@ -626,18 +648,34 @@ export function PropertyDrawer({
             placeholder="https://..."
           />
         </Field>
-        <Field label="SEO title">
+        <Field label="SEO title (English)">
           <input
             className={inputCls}
             value={form.seo_title ?? ""}
             onChange={(e) => set("seo_title", e.target.value)}
           />
         </Field>
-        <Field label="SEO description">
+        <Field label="SEO title (Arabic)">
+          <input
+            {...arabicProps}
+            className={cn(inputCls, arabicCls)}
+            value={form.seo_title_ar ?? ""}
+            onChange={(e) => set("seo_title_ar", e.target.value)}
+          />
+        </Field>
+        <Field label="SEO description (English)">
           <input
             className={inputCls}
             value={form.seo_description ?? ""}
             onChange={(e) => set("seo_description", e.target.value)}
+          />
+        </Field>
+        <Field label="SEO description (Arabic)">
+          <input
+            {...arabicProps}
+            className={cn(inputCls, arabicCls)}
+            value={form.seo_description_ar ?? ""}
+            onChange={(e) => set("seo_description_ar", e.target.value)}
           />
         </Field>
         <Field label="Website publication" full>
@@ -721,11 +759,19 @@ export function PropertyDrawer({
             onChange={(e) => set("amenities_str", e.target.value)}
           />
         </Field>
-        <Field label="Description" full>
+        <Field label="Description (English)" full>
           <textarea
             className={cn(inputCls, "h-24 py-2")}
             value={form.description ?? ""}
             onChange={(e) => set("description", e.target.value)}
+          />
+        </Field>
+        <Field label="Description (Arabic)" full>
+          <textarea
+            {...arabicProps}
+            className={cn(inputCls, arabicCls, "h-24 py-2")}
+            value={form.description_ar ?? ""}
+            onChange={(e) => set("description_ar", e.target.value)}
           />
         </Field>
 

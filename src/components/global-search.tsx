@@ -4,6 +4,7 @@ import { Search, Loader2 } from "lucide-react";
 import { DialogShell } from "@/components/overlay";
 import { useGlobalSearch, type SearchResult, type SearchResultType } from "@/hooks/use-global-search";
 import { cn } from "@/lib/utils";
+import { MaskedPhone } from "@/components/masked-phone";
 
 const TYPE_ORDER: SearchResultType[] = ["Lead", "Property", "Owner", "Development", "Team member"];
 
@@ -169,8 +170,12 @@ export function GlobalSearch() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{r.title}</span>
-                  {r.subtitle && (
-                    <span className="block truncate text-xs text-muted-foreground">{r.subtitle}</span>
+                  {(r.phone || r.subtitle) && (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {r.phone && <MaskedPhone value={r.phone} />}
+                      {r.phone && r.subtitle && " · "}
+                      {r.subtitle}
+                    </span>
                   )}
                 </span>
               </button>

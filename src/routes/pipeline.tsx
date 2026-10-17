@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { MaskedPhone } from "@/components/masked-phone";
 import { fmtMoney, type Lead } from "@/lib/db";
 
 export const Route = createFileRoute("/pipeline")({
@@ -271,7 +272,7 @@ function DraggableCard({ lead, draggable, agent }: { lead: Lead; draggable: bool
     >
       <ArrowUpRight className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       <p className="truncate pr-5 text-sm font-medium">{lead.full_name}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.phone ?? lead.email ?? ""}</p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.phone ? <MaskedPhone value={lead.phone} /> : (lead.email ?? "")}</p>
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <span className="text-xs font-medium tabular-nums">{fmtMoney(lead.budget_max, lead.currency)}</span>
         {agent ? (

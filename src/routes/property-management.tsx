@@ -51,6 +51,7 @@ import {
   MAINTENANCE_REPORTED_BY,
 } from "@/lib/db";
 import { cn, titleCase } from "@/lib/utils";
+import { MaskedPhone } from "@/components/masked-phone";
 
 export const Route = createFileRoute("/property-management")({
   head: () => ({ meta: [{ title: "Property Management" }] }),
@@ -291,7 +292,16 @@ function ManagedPropertiesTab() {
                   </Link>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Owner: {p.owners?.name ?? "-"}
-                    {p.owners?.phone ? ` · ${p.owners.phone}` : p.owner_id ? " · Phone hidden" : ""}
+                    {p.owners?.phone ? (
+                      <>
+                        {" · "}
+                        <MaskedPhone value={p.owners.phone} />
+                      </>
+                    ) : p.owner_id ? (
+                      " · Phone hidden"
+                    ) : (
+                      ""
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

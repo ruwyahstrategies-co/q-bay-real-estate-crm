@@ -2194,6 +2194,7 @@ export type Database = {
           currency: string | null
           custom_fields: Json
           description: string | null
+          description_ar: string | null
           developer: string | null
           developer_id: string | null
           development_id: string | null
@@ -2234,12 +2235,15 @@ export type Database = {
           purpose: string
           reference_code: string | null
           seo_description: string | null
+          seo_description_ar: string | null
           seo_title: string | null
+          seo_title_ar: string | null
           size: number | null
           size_unit: string | null
           slug: string | null
           status: string
           title: string
+          title_ar: string | null
           tour_360_url: string | null
           tower_name: string | null
           unit_number: string | null
@@ -2271,6 +2275,7 @@ export type Database = {
           currency?: string | null
           custom_fields?: Json
           description?: string | null
+          description_ar?: string | null
           developer?: string | null
           developer_id?: string | null
           development_id?: string | null
@@ -2311,12 +2316,15 @@ export type Database = {
           purpose?: string
           reference_code?: string | null
           seo_description?: string | null
+          seo_description_ar?: string | null
           seo_title?: string | null
+          seo_title_ar?: string | null
           size?: number | null
           size_unit?: string | null
           slug?: string | null
           status?: string
           title: string
+          title_ar?: string | null
           tour_360_url?: string | null
           tower_name?: string | null
           unit_number?: string | null
@@ -2348,6 +2356,7 @@ export type Database = {
           currency?: string | null
           custom_fields?: Json
           description?: string | null
+          description_ar?: string | null
           developer?: string | null
           developer_id?: string | null
           development_id?: string | null
@@ -2388,12 +2397,15 @@ export type Database = {
           purpose?: string
           reference_code?: string | null
           seo_description?: string | null
+          seo_description_ar?: string | null
           seo_title?: string | null
+          seo_title_ar?: string | null
           size?: number | null
           size_unit?: string | null
           slug?: string | null
           status?: string
           title?: string
+          title_ar?: string | null
           tour_360_url?: string | null
           tower_name?: string | null
           unit_number?: string | null
@@ -4598,6 +4610,7 @@ export type Database = {
           created_at: string
           currency: string
           description: string
+          description_ar: string
           developer: string
           development_id: string
           development_name: string
@@ -4624,11 +4637,14 @@ export type Database = {
           purpose: string
           reference_code: string
           seo_description: string
+          seo_description_ar: string
           seo_title: string
+          seo_title_ar: string
           size: number
           size_unit: string
           slug: string
           title: string
+          title_ar: string
           tour_360_url: string
           tower_name: string
           unit_number: string

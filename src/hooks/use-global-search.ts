@@ -8,6 +8,8 @@ export type SearchResult = {
   type: SearchResultType;
   title: string;
   subtitle: string;
+  /** Lead or owner phone the user may see. Shown masked: never put it in `subtitle`. */
+  phone?: string | null;
   to: string;
   params?: Record<string, string>;
 };
@@ -66,7 +68,8 @@ export function useGlobalSearch(query: string, enabled: boolean) {
           key: `lead:${l.id}`,
           type: "Lead",
           title: l.full_name,
-          subtitle: join(l.phone, l.email, l.transaction_intent === "rent" ? "Rent" : "Sale"),
+          subtitle: join(l.email, l.transaction_intent === "rent" ? "Rent" : "Sale"),
+          phone: l.phone,
           to: "/leads/$leadId",
           params: { leadId: l.id },
         });
@@ -86,7 +89,8 @@ export function useGlobalSearch(query: string, enabled: boolean) {
           key: `owner:${o.id}`,
           type: "Owner",
           title: o.name,
-          subtitle: join(o.company, o.code, o.phone_hidden ? "Phone hidden" : o.phone),
+          subtitle: join(o.company, o.code, o.phone_hidden && "Phone hidden"),
+          phone: o.phone_hidden ? null : o.phone,
           to: "/owners/$ownerId",
           params: { ownerId: o.id },
         });

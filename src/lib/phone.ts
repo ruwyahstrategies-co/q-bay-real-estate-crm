@@ -47,3 +47,17 @@ export function cleanSpreadsheetPhone(raw: unknown): { value: string; problem: s
   }
   return { value: s, problem: null };
 }
+
+const MASK_CHAR = "•";
+
+/**
+ * Visual mask for a phone number: every digit becomes a bullet except the last two, and the
+ * spacing and punctuation are kept so the shape still reads as a phone number. Numbers shorter
+ * than 7 digits are masked completely. Display only: it is not a security boundary.
+ */
+export function maskPhone(value: string): string {
+  const total = (value.match(/\d/g) ?? []).length;
+  const keep = total >= 7 ? 2 : 0;
+  let seen = 0;
+  return value.replace(/\d/g, (d) => (++seen > total - keep ? d : MASK_CHAR));
+}

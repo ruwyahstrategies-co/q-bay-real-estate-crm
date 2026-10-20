@@ -199,6 +199,17 @@ Deno.serve(async (req) => {
   if (propErr) return json({ error: propErr.message }, 500);
   if (!property) return json({ error: "Property not found" }, 404);
 
+  // Nothing leaves Q-Bay for an external listing site until an Administrator has approved it.
+  // (Unpublishing is always allowed.) Returned as a normal response so the screen can show the reason.
+  if (action === "publish" && (property as { approval_status?: string }).approval_status !== "approved") {
+    return json({
+      ok: false,
+      status: "blocked",
+      error:
+        "This property has not been approved yet. An Administrator must approve it before it can be published to external listing sites.",
+    });
+  }
+
   const statusCol = destination === "mazad" ? "mazad_status" : "property_finder_status";
   const errorCol = destination === "mazad" ? "mazad_error" : "property_finder_error";
   const externalIdCol =

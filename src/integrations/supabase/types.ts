@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -233,6 +233,45 @@ export type Database = {
           },
         ]
       }
+      assignment_events: {
+        Row: {
+          actor_team_member_id: string | null
+          actor_user_id: string | null
+          batch_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          from_agent_id: string | null
+          id: string
+          reason: string | null
+          to_agent_id: string | null
+        }
+        Insert: {
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          batch_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          from_agent_id?: string | null
+          id?: string
+          reason?: string | null
+          to_agent_id?: string | null
+        }
+        Update: {
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          batch_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          from_agent_id?: string | null
+          id?: string
+          reason?: string | null
+          to_agent_id?: string | null
+        }
+        Relationships: []
+      }
       blog_posts: {
         Row: {
           author_id: string | null
@@ -427,6 +466,7 @@ export type Database = {
           area_id: string | null
           assigned_agent_id: string | null
           brochure_upload_id: string | null
+          code: string | null
           completion_status: string | null
           country_id: string | null
           created_at: string
@@ -463,6 +503,7 @@ export type Database = {
           area_id?: string | null
           assigned_agent_id?: string | null
           brochure_upload_id?: string | null
+          code?: string | null
           completion_status?: string | null
           country_id?: string | null
           created_at?: string
@@ -499,6 +540,7 @@ export type Database = {
           area_id?: string | null
           assigned_agent_id?: string | null
           brochure_upload_id?: string | null
+          code?: string | null
           completion_status?: string | null
           country_id?: string | null
           created_at?: string
@@ -550,6 +592,13 @@ export type Database = {
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "master_data_values"
             referencedColumns: ["id"]
           },
           {
@@ -1857,6 +1906,8 @@ export type Database = {
       owners: {
         Row: {
           address: string | null
+          archived_at: string | null
+          archived_by: string | null
           assigned_agent_id: string | null
           code: string | null
           company: string | null
@@ -1871,10 +1922,13 @@ export type Database = {
           notes: string | null
           phone: string | null
           source_lead_id: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           assigned_agent_id?: string | null
           code?: string | null
           company?: string | null
@@ -1889,10 +1943,13 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           source_lead_id?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           assigned_agent_id?: string | null
           code?: string | null
           company?: string | null
@@ -1907,14 +1964,29 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           source_lead_id?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "owners_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "owners_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owners_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "master_data_values"
             referencedColumns: ["id"]
           },
           {
@@ -2170,6 +2242,7 @@ export type Database = {
       properties: {
         Row: {
           amenities: string[] | null
+          approval_status: string
           archived_at: string | null
           area_id: string | null
           assigned_agent_id: string | null
@@ -2234,6 +2307,8 @@ export type Database = {
           property_type: string | null
           purpose: string
           reference_code: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           seo_description: string | null
           seo_description_ar: string | null
           seo_title: string | null
@@ -2242,6 +2317,8 @@ export type Database = {
           size_unit: string | null
           slug: string | null
           status: string
+          submitted_at: string | null
+          submitted_by: string | null
           title: string
           title_ar: string | null
           tour_360_url: string | null
@@ -2251,6 +2328,7 @@ export type Database = {
         }
         Insert: {
           amenities?: string[] | null
+          approval_status?: string
           archived_at?: string | null
           area_id?: string | null
           assigned_agent_id?: string | null
@@ -2315,6 +2393,8 @@ export type Database = {
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seo_description?: string | null
           seo_description_ar?: string | null
           seo_title?: string | null
@@ -2323,6 +2403,8 @@ export type Database = {
           size_unit?: string | null
           slug?: string | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           title: string
           title_ar?: string | null
           tour_360_url?: string | null
@@ -2332,6 +2414,7 @@ export type Database = {
         }
         Update: {
           amenities?: string[] | null
+          approval_status?: string
           archived_at?: string | null
           area_id?: string | null
           assigned_agent_id?: string | null
@@ -2396,6 +2479,8 @@ export type Database = {
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           seo_description?: string | null
           seo_description_ar?: string | null
           seo_title?: string | null
@@ -2404,6 +2489,8 @@ export type Database = {
           size_unit?: string | null
           slug?: string | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           title?: string
           title_ar?: string | null
           tour_360_url?: string | null
@@ -2441,6 +2528,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "properties_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "master_data_values"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "properties_development_id_fkey"
             columns: ["development_id"]
             isOneToOne: false
@@ -2467,6 +2561,71 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "places"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_approval_events: {
+        Row: {
+          action: string
+          actor_team_member_id: string | null
+          actor_user_id: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          note: string | null
+          property_id: string
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          property_id: string
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          property_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_approval_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_approval_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
           },
         ]
       }
@@ -4159,45 +4318,116 @@ export type Database = {
           },
         ]
       }
+      viewing_events: {
+        Row: {
+          action: string
+          actor_team_member_id: string | null
+          actor_user_id: string | null
+          created_at: string
+          from_scheduled_at: string | null
+          from_status: string | null
+          id: string
+          lead_id: string | null
+          note: string | null
+          property_id: string | null
+          to_scheduled_at: string | null
+          to_status: string | null
+          viewing_id: string
+        }
+        Insert: {
+          action: string
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_scheduled_at?: string | null
+          from_status?: string | null
+          id?: string
+          lead_id?: string | null
+          note?: string | null
+          property_id?: string | null
+          to_scheduled_at?: string | null
+          to_status?: string | null
+          viewing_id: string
+        }
+        Update: {
+          action?: string
+          actor_team_member_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_scheduled_at?: string | null
+          from_status?: string | null
+          id?: string
+          lead_id?: string | null
+          note?: string | null
+          property_id?: string | null
+          to_scheduled_at?: string | null
+          to_status?: string | null
+          viewing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viewing_events_viewing_id_fkey"
+            columns: ["viewing_id"]
+            isOneToOne: false
+            referencedRelation: "viewings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       viewings: {
         Row: {
           assigned_agent_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           completed_at: string | null
           created_at: string
+          created_by: string | null
           id: string
+          last_rescheduled_at: string | null
           latitude: number | null
           lead_id: string | null
           longitude: number | null
           notes: string | null
           property_id: string | null
+          reschedule_count: number
           scheduled_at: string
           status: string
           updated_at: string
         }
         Insert: {
           assigned_agent_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
+          last_rescheduled_at?: string | null
           latitude?: number | null
           lead_id?: string | null
           longitude?: number | null
           notes?: string | null
           property_id?: string | null
+          reschedule_count?: number
           scheduled_at: string
           status?: string
           updated_at?: string
         }
         Update: {
           assigned_agent_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
+          last_rescheduled_at?: string | null
           latitude?: number | null
           lead_id?: string | null
           longitude?: number | null
           notes?: string | null
           property_id?: string | null
+          reschedule_count?: number
           scheduled_at?: string
           status?: string
           updated_at?: string
@@ -4387,20 +4617,55 @@ export type Database = {
       }
     }
     Functions: {
+      advance_lead_for_viewing: { Args: { _lead_id: string }; Returns: string }
+      assign_development_code: { Args: { _seed: string }; Returns: string }
       assign_two_letter_code: {
         Args: { _seed: string; _table: string }
         Returns: string
       }
+      bulk_archive_leads: {
+        Args: { _archive?: boolean; _ids: string[] }
+        Returns: Json
+      }
+      bulk_archive_owners: {
+        Args: { _archive?: boolean; _ids: string[] }
+        Returns: Json
+      }
+      bulk_delete_leads: { Args: { _ids: string[] }; Returns: Json }
+      bulk_delete_owners: { Args: { _ids: string[] }; Returns: Json }
+      bulk_reassign_leads: {
+        Args: { _ids: string[]; _reason?: string; _to_agent_id: string }
+        Returns: Json
+      }
+      bulk_reassign_owners: {
+        Args: { _ids: string[]; _reason?: string; _to_agent_id: string }
+        Returns: Json
+      }
+      can_access_lead: { Args: { _lead_id: string }; Returns: boolean }
       can_view_owner_phone: { Args: { _owner_id: string }; Returns: boolean }
       can_view_submission_id: {
         Args: { _submission_id: string }
         Returns: boolean
       }
       can_view_tenant_id: { Args: { _tenant_id: string }; Returns: boolean }
+      cancel_viewing: {
+        Args: { _reason?: string; _viewing_id: string }
+        Returns: Json
+      }
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
       }
+      complete_viewing: {
+        Args: {
+          _latitude?: number
+          _longitude?: number
+          _notes?: string
+          _viewing_id: string
+        }
+        Returns: Json
+      }
+      confirm_viewing: { Args: { _viewing_id: string }; Returns: Json }
       current_team_id: { Args: never; Returns: string }
       current_team_member_id: { Args: never; Returns: string }
       current_team_permissions: { Args: never; Returns: Json }
@@ -4479,6 +4744,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner_phone_elevated: { Args: never; Returns: boolean }
+      lead_created_by_me: { Args: { _lead_id: string }; Returns: boolean }
       lead_effective_intent_score: {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: number
@@ -4492,6 +4758,7 @@ export type Database = {
         Returns: undefined
       }
       mark_overdue_rent_items: { Args: never; Returns: number }
+      master_data_norm: { Args: { _value: string }; Returns: string }
       match_properties_for_lead: {
         Args: { _lead_id: string; _limit?: number }
         Returns: {
@@ -4508,8 +4775,25 @@ export type Database = {
           score: number
         }[]
       }
+      pipeline_stage_info: {
+        Args: { _key: string }
+        Returns: {
+          is_active: boolean
+          is_lost: boolean
+          is_won: boolean
+          stage_position: number
+        }[]
+      }
       preview_property_reference: {
         Args: { _agent_id: string; _owner_id: string }
+        Returns: string
+      }
+      preview_property_reference_for: {
+        Args: { _agent_id: string; _development_id?: string; _owner_id: string }
+        Returns: string
+      }
+      property_reference_prefix: {
+        Args: { _agent_id: string; _development_id?: string; _owner_id: string }
         Returns: string
       }
       public_agents: {
@@ -4685,6 +4969,34 @@ export type Database = {
         }
         Returns: string
       }
+      reschedule_viewing: {
+        Args: {
+          _agent_id?: string
+          _note?: string
+          _property_id?: string
+          _scheduled_at: string
+          _viewing_id: string
+        }
+        Returns: Json
+      }
+      resubmit_property: {
+        Args: { _note?: string; _property_id: string }
+        Returns: Json
+      }
+      review_property: {
+        Args: { _decision: string; _note?: string; _property_id: string }
+        Returns: Json
+      }
+      schedule_viewing: {
+        Args: {
+          _agent_id?: string
+          _lead_id: string
+          _notes?: string
+          _property_id: string
+          _scheduled_at: string
+        }
+        Returns: Json
+      }
       search_owner_ids: {
         Args: { _limit?: number; _query: string }
         Returns: {
@@ -4701,6 +5013,33 @@ export type Database = {
           phone: string
           phone_hidden: boolean
         }[]
+      }
+      search_properties_for_picker: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _purpose?: string
+          _query?: string
+        }
+        Returns: {
+          approval_status: string
+          area_name: string
+          bedrooms: number
+          currency: string
+          development_name: string
+          id: string
+          location: string
+          price: number
+          property_type: string
+          purpose: string
+          reference_code: string
+          title: string
+          total_count: number
+        }[]
+      }
+      set_lead_property_interests: {
+        Args: { _lead_id: string; _property_ids: string[] }
+        Returns: string[]
       }
       similar_properties: {
         Args: { _limit?: number; _property_id: string }

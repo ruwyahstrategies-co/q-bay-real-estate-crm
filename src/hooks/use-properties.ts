@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   sb,
   PROPERTY_PURPOSES,
@@ -26,6 +26,15 @@ export function purposeTabOf(purpose: string | null | undefined): PropertyPurpos
   return purpose === "rent" ? "rent" : "sale";
 }
 
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "changes_requested";
+
+export const APPROVAL_LABELS: Record<ApprovalStatus, string> = {
+  pending: "Pending approval",
+  approved: "Approved",
+  rejected: "Rejected",
+  changes_requested: "Changes requested",
+};
+
 export type PropertyFilters = {
   search?: string;
   type?: string | null;
@@ -35,18 +44,44 @@ export type PropertyFilters = {
   availability?: string | null;
   /** Sale or Rent, applied in the database on properties.purpose. null = both sides. */
   purpose?: PropertyPurposeTab | null;
+  /** Price range, inclusive, in the property's own currency. */
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  /** Any of these assigned agents. */
+  agentIds?: string[];
+  /** Country, then any of these areas, then one place. Each narrows the one before it. */
+  countryId?: string | null;
+  areaIds?: string[];
+  placeId?: string | null;
+  /** Approval state. null = every state. */
+  approval?: ApprovalStatus | null;
 };
 
 type FilterChain<T> = {
   eq(column: string, value: unknown): T;
   in(column: string, values: unknown[]): T;
   lt(column: string, value: unknown): T;
+  gte(column: string, value: unknown): T;
+  lte(column: string, value: unknown): T;
   or(filters: string): T;
 };
 
-/** The one place inventory filters are translated to database conditions (list and counts share it). */
+/** The one place inventory filters are translated to database conditions (list, pages and counts share it). */
 function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters, includePurpose = true): T {
-  const { search = "", type = null, status = "active", availability = null, purpose = null } = f;
+  const {
+    search = "",
+    type = null,
+    status = "active",
+    availability = null,
+    purpose = null,
+    minPrice = null,
+    maxPrice = null,
+    agentIds = [],
+    countryId = null,
+    areaIds = [],
+    placeId = null,
+    approval = null,
+  } = f;
   if (status !== "all") q = q.eq("status", status);
   if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
   if (includePurpose && purpose === "sale") q = q.in("purpose", SALE_PURPOSES);
@@ -56,21 +91,37 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   } else if (availability) {
     q = q.eq("availability", availability);
   }
+  if (minPrice != null) q = q.gte("price", minPrice);
+  if (maxPrice != null) q = q.lte("price", maxPrice);
+  if (agentIds.length > 0) q = q.in("assigned_agent_id", agentIds);
+  if (countryId) q = q.eq("country_id", countryId);
+  if (areaIds.length > 0) q = q.in("area_id", areaIds);
+  if (placeId) q = q.eq("place_id", placeId);
+  if (approval) q = q.eq("approval_status", approval);
   if (search.trim()) {
-    const term = `%${search.trim()}%`;
+    const term = `%${search.trim().replace(/[,()]/g, " ")}%`;
     q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);
   }
   return q;
 }
 
+/** A stable key for the filter object (arrays sorted) so equal filters share one cache entry. */
+function filterKey(f: PropertyFilters) {
+  return {
+    ...f,
+    agentIds: [...(f.agentIds ?? [])].sort(),
+    areaIds: [...(f.areaIds ?? [])].sort(),
+  };
+}
+
 export function useProperties(opts?: PropertyFilters) {
-  const { search = "", type = null, status = "active", availability = null, purpose = null } = opts ?? {};
+  const f = opts ?? {};
   return useQuery({
-    queryKey: propertyKeys.list({ search, type, status, availability, purpose }),
+    queryKey: propertyKeys.list(filterKey(f)),
     queryFn: async (): Promise<Property[]> => {
       const q = applyPropertyFilters(
         sb.from("properties").select("*").order("created_at", { ascending: false }),
-        { search, type, status, availability, purpose },
+        f,
       );
       const { data, error } = await q;
       if (error) throw error;
@@ -79,20 +130,69 @@ export function useProperties(opts?: PropertyFilters) {
   });
 }
 
+export const PROPERTY_PAGE_SIZE = 50;
+
+/**
+ * One page of the inventory with the exact total. The database filters, sorts and slices; the browser only
+ * ever holds the page it is showing, however large the inventory grows.
+ */
+export function usePropertiesPage(filters: PropertyFilters, page: number, pageSize = PROPERTY_PAGE_SIZE) {
+  return useQuery({
+    queryKey: [...propertyKeys.all, "page", filterKey(filters), page, pageSize],
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<{ rows: Property[]; total: number }> => {
+      const q = applyPropertyFilters(
+        sb
+          .from("properties")
+          .select("*", { count: "exact" })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(page * pageSize, page * pageSize + pageSize - 1),
+        filters,
+      );
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+  });
+}
+
+/** Every property matching the filters, fetched in database-sized chunks, for export. Not used for rendering. */
+export async function fetchPropertiesForExport(filters: PropertyFilters): Promise<Property[]> {
+  const out: Property[] = [];
+  const CHUNK = 1000;
+  for (let from = 0; ; from += CHUNK) {
+    const q = applyPropertyFilters(
+      sb
+        .from("properties")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + CHUNK - 1),
+      filters,
+    );
+    const { data, error } = await q;
+    if (error) throw error;
+    out.push(...(data ?? []));
+    if (!data || data.length < CHUNK) break;
+  }
+  return out;
+}
+
 /**
  * How many properties each side (Sale / Rent) holds under the page's OTHER filters, for the tab
  * badges. Two cheap head-only count queries, so the numbers always match what the tab will show.
  */
 export function usePropertyPurposeCounts(opts?: Omit<PropertyFilters, "purpose">) {
-  const { search = "", type = null, status = "active", availability = null } = opts ?? {};
+  const f = opts ?? {};
   return useQuery({
-    queryKey: [...propertyKeys.all, "purpose-counts", { search, type, status, availability }],
+    queryKey: [...propertyKeys.all, "purpose-counts", filterKey(f)],
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<Record<PropertyPurposeTab, number>> => {
-      const base = { search, type, status, availability };
       const count = async (purpose: PropertyPurposeTab) => {
         const { count: n, error } = await applyPropertyFilters(
           sb.from("properties").select("id", { count: "exact", head: true }),
-          { ...base, purpose },
+          { ...f, purpose },
         );
         if (error) throw error;
         return n ?? 0;
@@ -100,6 +200,76 @@ export function usePropertyPurposeCounts(opts?: Omit<PropertyFilters, "purpose">
       const [sale, rent] = await Promise.all([count("sale"), count("rent")]);
       return { sale, rent };
     },
+  });
+}
+
+/** Properties waiting for an Administrator, for the review banner. */
+export function usePendingApprovalCount(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: [...propertyKeys.all, "pending-approval-count"],
+    staleTime: 20_000,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await sb
+        .from("properties")
+        .select("id", { count: "exact", head: true })
+        .eq("approval_status", "pending");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
+export type ApprovalEvent = {
+  id: string;
+  action: string;
+  from_status: string | null;
+  to_status: string | null;
+  note: string | null;
+  actor_team_member_id: string | null;
+  created_at: string;
+};
+
+export function usePropertyApprovalEvents(propertyId: string | undefined) {
+  return useQuery({
+    enabled: !!propertyId,
+    queryKey: [...propertyKeys.all, "approval-events", propertyId ?? "none"],
+    queryFn: async (): Promise<ApprovalEvent[]> => {
+      const { data, error } = await sb
+        .from("property_approval_events")
+        .select("id, action, from_status, to_status, note, actor_team_member_id, created_at")
+        .eq("property_id", propertyId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ApprovalEvent[];
+    },
+  });
+}
+
+/** Approve, reject or return a property for changes. Allowed only for people with the approve permission. */
+export function useReviewProperty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; decision: "approve" | "reject" | "return"; note?: string }) => {
+      const { error } = await sb.rpc("review_property", {
+        _property_id: input.id,
+        _decision: input.decision,
+        _note: input.note ?? undefined,
+      });
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
+  });
+}
+
+export function useResubmitProperty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; note?: string }) => {
+      const { error } = await sb.rpc("resubmit_property", { _property_id: input.id, _note: input.note ?? undefined });
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
   });
 }
 
@@ -295,18 +465,25 @@ export function useRestoreProperty() {
   });
 }
 
-/** Live preview of the reference code a new/edited property will get once saved (owner+agent both selected). Purely informational - the real value is reserved server-side on insert/update. */
+/**
+ * Live preview of the reference code a new/edited property will get once saved. Needs an owner and an agent.
+ * For a developer-owned property linked to a development the reference is built from the DEVELOPMENT code and
+ * the agent code; otherwise from the owner code and the agent code. Purely informational: the real value is
+ * reserved server-side on insert/update, and an existing reference is never replaced.
+ */
 export function usePropertyReferencePreview(
   ownerId: string | null | undefined,
   agentId: string | null | undefined,
+  developmentId?: string | null,
 ) {
   return useQuery({
-    queryKey: ["properties", "reference-preview", ownerId ?? "none", agentId ?? "none"],
+    queryKey: ["properties", "reference-preview", ownerId ?? "none", agentId ?? "none", developmentId ?? "none"],
     enabled: !!ownerId && !!agentId,
     queryFn: async (): Promise<string | null> => {
-      const { data, error } = await sb.rpc("preview_property_reference", {
+      const { data, error } = await sb.rpc("preview_property_reference_for", {
         _owner_id: ownerId!,
         _agent_id: agentId!,
+        _development_id: developmentId ?? undefined,
       });
       if (error) throw error;
       return data ?? null;

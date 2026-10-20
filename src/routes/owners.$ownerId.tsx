@@ -10,6 +10,7 @@ import {
   FileText,
   FileDown,
   Globe,
+  ClipboardPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +19,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
+import { AssignmentHistory } from "@/components/assignment-history";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ContractDrawer } from "@/components/contract-drawer";
 import { SubmissionDetailDrawer } from "@/components/submission-detail-drawer";
@@ -66,6 +68,7 @@ function OwnerProfilePage() {
 
   const [interactionOpen, setInteractionOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [interactionTask, setInteractionTask] = useState<{ id: string; subject: string | null } | null>(null);
   const [contractOpen, setContractOpen] = useState(false);
   const [editContract, setEditContract] = useState<OwnerContract | null>(null);
   const [activeSubmission, setActiveSubmission] = useState<PropertySubmission | null>(null);
@@ -139,6 +142,9 @@ function OwnerProfilePage() {
                     <span className="flex items-center gap-1 rounded-full bg-pastel-green px-2 py-0.5 text-[10px]">
                       <Building2 className="h-3 w-3" /> Developer
                     </span>
+                  )}
+                  {owner.status === "archived" && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">Archived</span>
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -552,6 +558,17 @@ function OwnerProfilePage() {
                         </p>
                       )}
                     </div>
+                    {canCreateTask && (
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 hover:bg-muted"
+                        title="Add a task from this conversation"
+                        aria-label="Add a task from this conversation"
+                        onClick={() => setInteractionTask(i)}
+                      >
+                        <ClipboardPlus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     {canDeleteInteraction && (
                       <button
                         className="rounded-md p-1.5 hover:bg-muted text-destructive"
@@ -572,6 +589,8 @@ function OwnerProfilePage() {
               </div>
             )}
           </Card>
+
+          <AssignmentHistory entity="owner" id={owner.id} />
 
           <Card className="md:col-span-2">
             <h4 className="text-sm font-semibold">Follow-ups</h4>
@@ -642,6 +661,14 @@ function OwnerProfilePage() {
           defaultOwnerId={owner.id}
         />
         <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultOwnerId={owner.id} />
+        <TaskDrawer
+          open={!!interactionTask}
+          onOpenChange={(v) => !v && setInteractionTask(null)}
+          defaultOwnerId={owner.id}
+          defaultTitle={interactionTask?.subject ? `Follow up: ${interactionTask.subject}` : `Follow up: ${owner.name}`}
+          source="interaction"
+          sourceRef={interactionTask?.id}
+        />
         <ContractDrawer
           open={contractOpen}
           onOpenChange={setContractOpen}

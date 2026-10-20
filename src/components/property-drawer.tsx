@@ -18,6 +18,8 @@ import { DynamicFieldsSection, useRequiredCustomFieldError, type CustomFieldValu
 import { useDevelopments } from "@/hooks/use-developments";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
+import { usePermissions } from "@/hooks/use-auth";
+import { ApprovalBadge } from "./approval-badge";
 import { MasterSelectField } from "./master-select-field";
 import { useMasterData } from "@/hooks/use-master-data";
 import { initialMasterSelection, resolveMasterSelection } from "@/lib/master-data";
@@ -162,14 +164,20 @@ export function PropertyDrawer({
   const { data: owners = [] } = useOwners();
   const { data: team = [] } = useTeamMembers();
   const { data: developerValues = [] } = useMasterData("developer");
+  const { can } = usePermissions();
+  const canPublish = can("properties", "publish");
+  const canApprove = can("properties", "approve");
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
   const { data: referencePreview } = usePropertyReferencePreview(
     form.owner_id,
     form.assigned_agent_id,
+    form.development_id,
   );
 
   const selectedDevelopment = developments.find((d) => d.id === form.development_id) ?? null;
+  const selectedOwner = owners.find((o) => o.id === form.owner_id) ?? null;
+  const referenceUsesDevelopment = !!selectedOwner?.is_developer && !!selectedDevelopment;
   const developerOwnerId = selectedDevelopment?.owner_id ?? null;
   const ownerOptions = owners.map((o) => ({
     value: o.id,
@@ -281,7 +289,11 @@ export function PropertyDrawer({
         onSaved?.(saved, false);
       } else {
         const saved = await create.mutateAsync(payload);
-        toast.success("Property created");
+        toast.success(
+          canApprove
+            ? "Property created"
+            : "Property saved and submitted for approval. An Administrator will review it before it can be published.",
+        );
         onSaved?.(saved, true);
       }
       onOpenChange(false);
@@ -331,8 +343,14 @@ export function PropertyDrawer({
             {form.reference_code ? (
               form.reference_code
             ) : referencePreview ? (
-              <span title="Provisional - the final code is reserved when you save">
-                {referencePreview} (preview)
+              <span
+                title={
+                  referenceUsesDevelopment
+                    ? "Provisional. This owner is a developer, so the code uses the development code plus the agent code. The final code is reserved when you save."
+                    : "Provisional. The final code is reserved when you save."
+                }
+              >
+                {referencePreview} (preview{referenceUsesDevelopment ? ", development code" : ""})
               </span>
             ) : (
               "Select an owner and agent to generate"
@@ -679,14 +697,37 @@ export function PropertyDrawer({
           />
         </Field>
         <Field label="Website publication" full>
-          <label className="flex h-9 items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={!!form.is_published}
-              onChange={(e) => set("is_published", e.target.checked)}
-            />
-            Publish this listing to the future public website
-          </label>
+          {(() => {
+            // Approval and publication are separate: approval makes a property eligible, this decides whether it
+            // is shown. The database enforces the same rules, so a disabled control is never the only guard.
+            const approved = isEdit ? property?.approval_status === "approved" : canApprove;
+            const blockedReason = !canPublish
+              ? "You do not have permission to publish properties."
+              : !approved
+                ? isEdit
+                  ? "This property must be approved by an Administrator before it can be published."
+                  : "New properties are reviewed by an Administrator before they can be published."
+                : null;
+            return (
+              <div className="space-y-1.5">
+                <label className={cn("flex h-9 items-center gap-2 text-xs", blockedReason && "text-muted-foreground")}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.is_published}
+                    disabled={!!blockedReason}
+                    onChange={(e) => set("is_published", e.target.checked)}
+                  />
+                  Publish this listing to the public website
+                </label>
+                {isEdit && property && property.approval_status !== "approved" && (
+                  <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <ApprovalBadge status={property.approval_status} /> It is hidden from the public website until approved.
+                  </p>
+                )}
+                {blockedReason && <p className="text-[11px] text-muted-foreground">{blockedReason}</p>}
+              </div>
+            );
+          })()}
         </Field>
 
         <div className="sm:col-span-2 mt-1 border-t border-border pt-3">

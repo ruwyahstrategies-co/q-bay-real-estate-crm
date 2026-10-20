@@ -26,6 +26,9 @@ const STATUS_VARIANT: Record<DestinationStatus, "neutral" | "amber" | "green" | 
 export function PropertyPublicationDestinations({ property }: { property: Property }) {
   const { can } = usePermissions();
   const canPublish = can("properties", "publish");
+  // Approval comes first: an unapproved property cannot be PUBLISHED anywhere (unpublishing is always allowed).
+  // The database and the publishing function enforce the same rule.
+  const approved = property.approval_status === "approved";
   const update = useUpdateProperty();
   const [pending, setPending] = useState<"mazad" | "property_finder" | null>(null);
 
@@ -75,6 +78,11 @@ export function PropertyPublicationDestinations({ property }: { property: Proper
         <Globe className="h-4 w-4" />
         <h4 className="text-sm font-semibold">Publication destinations</h4>
       </div>
+      {canPublish && !approved && (
+        <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          This property has not been approved yet, so it cannot be published to the website or to listing sites.
+        </p>
+      )}
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
           <div>
@@ -84,7 +92,12 @@ export function PropertyPublicationDestinations({ property }: { property: Proper
             </StatusBadge>
           </div>
           {canPublish && (
-            <Button variant="outline" size="sm" disabled={update.isPending} onClick={toggleQBay}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={update.isPending || (!property.is_published && !approved)}
+              onClick={toggleQBay}
+            >
               {property.is_published ? "Unpublish" : "Publish"}
             </Button>
           )}
@@ -96,6 +109,7 @@ export function PropertyPublicationDestinations({ property }: { property: Proper
           error={property.mazad_error}
           syncedAt={property.mazad_synced_at}
           canPublish={canPublish}
+          publishBlocked={!approved}
           pending={pending === "mazad"}
           onPublish={() => callDestination("mazad", "publish")}
           onUnpublish={() => callDestination("mazad", "unpublish")}
@@ -106,6 +120,7 @@ export function PropertyPublicationDestinations({ property }: { property: Proper
           error={property.property_finder_error}
           syncedAt={property.property_finder_synced_at}
           canPublish={canPublish}
+          publishBlocked={!approved}
           pending={pending === "property_finder"}
           onPublish={() => callDestination("property_finder", "publish")}
           onUnpublish={() => callDestination("property_finder", "unpublish")}
@@ -121,6 +136,7 @@ function DestinationRow({
   error,
   syncedAt,
   canPublish,
+  publishBlocked,
   pending,
   onPublish,
   onUnpublish,
@@ -130,6 +146,8 @@ function DestinationRow({
   error: string | null;
   syncedAt: string | null;
   canPublish: boolean;
+  /** True while the property is not approved: Publish is disabled, Unpublish is not. */
+  publishBlocked: boolean;
   pending: boolean;
   onPublish: () => void;
   onUnpublish: () => void;
@@ -150,7 +168,7 @@ function DestinationRow({
                 {pending ? "Working..." : "Unpublish"}
               </Button>
             ) : (
-              <Button variant="outline" size="sm" disabled={pending} onClick={onPublish}>
+              <Button variant="outline" size="sm" disabled={pending || publishBlocked} onClick={onPublish}>
                 {pending ? "Working..." : "Publish"}
               </Button>
             )}

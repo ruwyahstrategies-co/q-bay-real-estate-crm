@@ -43,8 +43,9 @@ export function createSupabaseImportClient(): LeadImportClient {
       if (error) return { error: { code: error.code, message: error.message }, updated: false };
       return { error: null, updated: (data ?? []).length > 0 };
     },
-    async insertHistory(rows) {
-      await sb.from("pipeline_history").insert(rows);
+    async insertHistory() {
+      // The database writes each new lead's first pipeline_history row when the lead is inserted
+      // (leads_record_pipeline_history), so writing them here too would record every lead twice.
     },
   };
 }

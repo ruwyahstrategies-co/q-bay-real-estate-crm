@@ -18,7 +18,7 @@ export function useLeadReferences(leadId: string | undefined) {
     enabled: !!leadId,
     queryKey: ["refs", "lead", leadId],
     queryFn: async () => {
-      const [{ data: interests = [] }, { data: interactions = [] }] = await Promise.all([
+      const [interestsRes, interactionsRes] = await Promise.all([
         sb
           .from("lead_property_interests")
           .select(
@@ -27,6 +27,11 @@ export function useLeadReferences(leadId: string | undefined) {
           .eq("lead_id", leadId!),
         sb.from("interactions").select("id").eq("lead_id", leadId!),
       ]);
+      // A failed read must never look like "no interests yet".
+      if (interestsRes.error) throw interestsRes.error;
+      if (interactionsRes.error) throw interactionsRes.error;
+      const interests = interestsRes.data ?? [];
+      const interactions = interactionsRes.data ?? [];
       const intIds = (interactions as any[]).map((i) => i.id);
       let mentioned: any[] = [];
       if (intIds.length) {
@@ -60,36 +65,27 @@ export function useLeadPropertyInterests(leadId: string | undefined) {
   });
 }
 
-/** Diffs the desired property_id set against lead_property_interests and inserts/deletes accordingly. */
+/**
+ * Replaces a lead's property interests with exactly this set, in ONE atomic database call
+ * (set_lead_property_interests). Either the whole change is saved or none of it is, and a failure is
+ * thrown to the caller instead of being swallowed.
+ */
 export function useSyncLeadPropertyInterests() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ leadId, propertyIds }: { leadId: string; propertyIds: string[] }) => {
-      const { data: existing, error: readErr } = await sb
-        .from("lead_property_interests")
-        .select("id, property_id")
-        .eq("lead_id", leadId);
-      if (readErr) throw readErr;
-      const existingIds = new Set((existing ?? []).map((r) => r.property_id));
-      const desired = new Set(propertyIds);
-
-      const toInsert = propertyIds.filter((id) => !existingIds.has(id));
-      const toDelete = (existing ?? []).filter((r) => !desired.has(r.property_id)).map((r) => r.id);
-
-      if (toInsert.length) {
-        const { error } = await sb
-          .from("lead_property_interests")
-          .insert(toInsert.map((property_id) => ({ lead_id: leadId, property_id })));
-        if (error) throw error;
-      }
-      if (toDelete.length) {
-        const { error } = await sb.from("lead_property_interests").delete().in("id", toDelete);
-        if (error) throw error;
-      }
+      const { data, error } = await sb.rpc("set_lead_property_interests", {
+        _lead_id: leadId,
+        _property_ids: propertyIds,
+      });
+      if (error) throw error;
+      return (data ?? []) as string[];
     },
-    onSuccess: (_d, vars) => {
+    onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: ["lead_property_interest_ids", vars.leadId] });
-      qc.invalidateQueries({ queryKey: ["refs", "lead", vars.leadId] });
+      // Lead profile tab, property profiles ("leads interested"), matching and demand all read these.
+      qc.invalidateQueries({ queryKey: ["refs"] });
+      qc.invalidateQueries({ queryKey: ["property-demand"] });
     },
   });
 }

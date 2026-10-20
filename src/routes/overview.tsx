@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Flame,
   Target,
@@ -11,12 +11,15 @@ import {
   Megaphone,
   CheckCircle2,
   ListChecks,
+  Plus,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { DataTable, dataRowCls } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+import { SegmentedControl } from "@/components/segmented-control";
+import { TaskDrawer } from "@/components/task-drawer";
 import { Button, Card } from "@/components/ui-primitives";
 import { PipelineStageBadge } from "@/components/status-badge";
 import { useLeads } from "@/hooks/use-leads";
@@ -25,12 +28,13 @@ import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { usePropertyEvents } from "@/hooks/use-property-events";
 import { useProperties } from "@/hooks/use-properties";
 import { useMarketReports } from "@/hooks/use-market-intelligence";
-import { fmtDate, fmtMoney, stageLabel, type Task } from "@/lib/db";
+import { useTeamMembers } from "@/hooks/use-team";
+import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
+import { fmtDate, fmtMoney, fmtMoneyCompact, stageLabel, type Lead, type Task } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
-import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
-import { useOpenTasks, useUpdateTask } from "@/hooks/use-tasks";
-import { isQatarToday } from "@/lib/qatar-time";
+import { useOpenTasks, useUpdateTask, type TaskScope } from "@/hooks/use-tasks";
+import { fmtQatarDateTime, fmtQatarTime, isQatarToday } from "@/lib/qatar-time";
 import { toast } from "sonner";
 
 type TaskWithRelations = Task & {
@@ -55,33 +59,115 @@ export const Route = createFileRoute("/overview")({
 /** Restrained tonal greens for the stage breakdown; the last tones stay neutral so many stages remain readable. */
 const STAGE_TONES = ["#0A4623", "#1E6B3D", "#3F8F5F", "#7BB592", "#B3D4BF", "#D7E7DC", "#9CA8A0", "#C9D0CB"];
 
+/**
+ * Whose work the Overview is about. "mine" is only what is assigned to the signed-in person. "team" and
+ * "organisation" are offered only when their permissions allow, and are always labelled. Row-level security
+ * still decides what the database returns at all; this decides what is presented as personal.
+ */
+type Scope = "mine" | "team" | "organisation";
+
+const SCOPE_LABEL: Record<Scope, string> = { mine: "My work", team: "My team", organisation: "Organisation" };
+const SCOPE_NOTE: Record<Scope, string> = {
+  mine: "Your own leads and tasks.",
+  team: "Leads and tasks for everyone on your team.",
+  organisation: "Every lead and task your access allows. This is not just your own work.",
+};
+const SCOPE_STORAGE_KEY = "qbay.overview.scope";
+
+function readStoredScope(): Scope | null {
+  try {
+    const v = window.localStorage.getItem(SCOPE_STORAGE_KEY);
+    return v === "mine" || v === "team" || v === "organisation" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function budgetByCurrency(leads: Lead[]) {
+  const map = new Map<string, { sum: number; count: number }>();
+  for (const l of leads) {
+    if (l.budget_max == null || l.budget_max <= 0) continue;
+    const cur = l.currency || "QAR";
+    const e = map.get(cur) ?? { sum: 0, count: 0 };
+    e.sum += l.budget_max;
+    e.count += 1;
+    map.set(cur, e);
+  }
+  // QAR first (the business currency), then the biggest of the rest.
+  return Array.from(map.entries())
+    .map(([currency, v]) => ({ currency, ...v }))
+    .sort((a, b) => (a.currency === "QAR" ? -1 : b.currency === "QAR" ? 1 : b.sum - a.sum));
+}
+
 function OverviewPage() {
   const navigate = useNavigate();
-  const { data: leads = [] } = useLeads({ status: "all" });
+  const { can } = usePermissions();
+  const { teamMember: me } = useCurrentUser();
+  const { data: team = [] } = useTeamMembers();
+
+  const canOrganisation = can("leads", "view_all") || can("tasks", "view_all");
+  const canTeam =
+    !!me?.team_id && (can("leads", "view_team") || can("tasks", "view_team") || canOrganisation);
+  const scopes: Scope[] = ["mine", ...(canTeam ? (["team"] as Scope[]) : []), ...(canOrganisation ? (["organisation"] as Scope[]) : [])];
+  // Default to the person's own work. Only someone who can see every lead AND every task starts on the organisation view.
+  const defaultScope: Scope = can("leads", "view_all") && can("tasks", "view_all") ? "organisation" : "mine";
+  const [chosen, setChosen] = useState<Scope | null>(null);
+  useEffect(() => setChosen(readStoredScope()), []);
+  const scope: Scope = chosen && scopes.includes(chosen) ? chosen : scopes.includes(defaultScope) ? defaultScope : "mine";
+  function chooseScope(next: Scope) {
+    setChosen(next);
+    try {
+      window.localStorage.setItem(SCOPE_STORAGE_KEY, next);
+    } catch {
+      /* the choice just is not remembered */
+    }
+  }
+
+  const teamMemberIds = useMemo(
+    () => (me?.team_id ? team.filter((m) => m.team_id === me.team_id).map((m) => m.id) : []),
+    [team, me?.team_id],
+  );
+  const taskScope: TaskScope = useMemo(
+    () =>
+      scope === "mine"
+        ? { kind: "mine", memberId: me?.id ?? null }
+        : scope === "team"
+          ? { kind: "team", memberIds: teamMemberIds }
+          : { kind: "organisation" },
+    [scope, me?.id, teamMemberIds],
+  );
+
+  const { data: allLeads = [] } = useLeads({ status: "all", agent: scope === "mine" ? (me?.id ?? null) : null });
   const { data: interactions = [] } = useInteractions();
   const { data: completedAnalyses = [] } = useAllCompletedAnalyses();
   const { data: properties = [] } = useProperties({ status: "all" });
   const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(), []);
   const { data: events = [] } = usePropertyEvents(sinceISO);
   const { data: reports = [] } = useMarketReports();
-  const { data: openTasksRaw = [] } = useOpenTasks();
+  const { data: openTasksRaw = [] } = useOpenTasks(taskScope);
   const openTasks = openTasksRaw as TaskWithRelations[];
+  const updateTask = useUpdateTask();
+  const [taskDrawer, setTaskDrawer] = useState<{ open: boolean; task: Task | null }>({ open: false, task: null });
 
-  // Today's Tasks: every unfinished task whose due date falls on today's calendar day in
-  // Qatar, whether or not it is also listed below as overdue (earlier today) or upcoming
-  // (later today). Same `tasks` table Calendar and the Owner/Lead drawers write to.
+  // Leads in scope. For "mine" and "team" this narrows what row-level security returned, never widens it.
+  const leads = useMemo(() => {
+    if (scope === "organisation") return allLeads;
+    if (scope === "mine") return allLeads.filter((l) => l.assigned_agent_id === me?.id);
+    const ids = new Set(teamMemberIds);
+    return allLeads.filter((l) => (l.assigned_agent_id && ids.has(l.assigned_agent_id)) || (me?.team_id && l.team_id === me.team_id));
+  }, [allLeads, scope, me?.id, me?.team_id, teamMemberIds]);
+  const leadIdsInScope = useMemo(() => new Set(leads.map((l) => l.id)), [leads]);
+
+  // Today's Tasks: every unfinished task whose due date falls on today's calendar day in Qatar, whether or
+  // not it is also listed below as overdue (earlier today) or upcoming (later today).
   const todaysTasks = openTasks
     .filter((t) => t.due_at && isQatarToday(t.due_at))
     .sort((a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime());
-  const updateTodayTask = useUpdateTask();
 
-  function taskLinkTarget(
-    t: TaskWithRelations,
-  ): { to: string; params: Record<string, string> } | null {
+  function taskLinkTarget(t: TaskWithRelations): { to: string; params: Record<string, string> } | null {
     if (t.lead_id) return { to: "/leads/$leadId", params: { leadId: t.lead_id } };
     if (t.owner_id) return { to: "/owners/$ownerId", params: { ownerId: t.owner_id } };
-    if (t.property_id)
-      return { to: "/properties/$propertyId", params: { propertyId: t.property_id } };
+    if (t.property_id) return { to: "/properties/$propertyId", params: { propertyId: t.property_id } };
     return null;
   }
 
@@ -95,43 +181,47 @@ function OverviewPage() {
     .slice(0, 6);
 
   const activeLeads = leads.filter((l) => l.status === "active");
-  const pipelineValue = activeLeads
-    .filter((l) => !["won", "lost"].includes(l.pipeline_stage))
-    .reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
+  const openLeads = activeLeads.filter((l) => !["won", "lost"].includes(l.pipeline_stage));
+  const budgets = budgetByCurrency(openLeads);
+  const leadsWithBudget = budgets.reduce((n, b) => n + b.count, 0);
+  const primaryBudget = budgets[0];
 
   const newLeadsCount = activeLeads.filter((l) => l.pipeline_stage === "new_lead").length;
 
   // Open leads per pipeline stage (won and lost are outcomes, not open pipeline), in first-seen order.
   const stageBreakdown = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const l of activeLeads) {
-      if (["won", "lost"].includes(l.pipeline_stage)) continue;
-      counts.set(l.pipeline_stage, (counts.get(l.pipeline_stage) ?? 0) + 1);
-    }
+    for (const l of openLeads) counts.set(l.pipeline_stage, (counts.get(l.pipeline_stage) ?? 0) + 1);
     return Array.from(counts.entries())
       .map(([stage, count]) => ({ stage, label: stageLabel(stage), count }))
       .sort((a, b) => b.count - a.count);
-  }, [activeLeads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads]);
   const openLeadCount = stageBreakdown.reduce((n, s) => n + s.count, 0);
   const recentLeads = activeLeads.slice(0, 7);
-  const recentInteractions = interactions.slice(0, 5);
-  const currency = activeLeads[0]?.currency ?? "QAR";
 
-  // Newest completed analysis per lead
+  // Conversations: the ones about leads in scope, plus (for "mine") ones the person logged themselves.
+  const recentInteractions = interactions
+    .filter(
+      (i) =>
+        scope === "organisation" ||
+        (i.lead_id && leadIdsInScope.has(i.lead_id)) ||
+        (scope === "mine" && !!me?.user_id && i.created_by === me.user_id),
+    )
+    .slice(0, 5);
+
+  // Newest completed analysis per lead, for the leads in scope only.
   const currentByLead = new Map<string, any>();
-  for (const a of completedAnalyses)
+  for (const a of completedAnalyses) {
+    if (!a.lead_id || (scope !== "organisation" && !leadIdsInScope.has(a.lead_id))) continue;
     if (!currentByLead.has(a.lead_id)) currentByLead.set(a.lead_id, a);
+  }
   const currents = Array.from(currentByLead.values());
-  const leadById = new Map(leads.map((l) => [l.id, l]));
-  const getStatus = (a: any) =>
-    a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
-  const getBaseIntent = (a: any) =>
-    a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
-  // High Intent reflects effective intent (base AI score blended with how close
-  // the lead's intended transaction date/timeframe is) - buyer_status ("hot")
-  // stays purely the AI's own categorical judgement, untouched, so a lead can
-  // still surface as High Intent as its target date approaches even before the
-  // AI re-classifies it as hot on fresh communication data.
+  const leadById = new Map(allLeads.map((l) => [l.id, l]));
+  const getStatus = (a: any) => a.output_json?.deep_analysis?.buyer_status ?? a.output_json?.buyerStatus;
+  const getBaseIntent = (a: any) => a.output_json?.deep_analysis?.intent_score ?? a.output_json?.intentScore ?? 0;
+  // High Intent reflects effective intent (base AI score blended with how close the lead's intended
+  // transaction date/timeframe is) - buyer_status ("hot") stays purely the AI's own categorical judgement.
   const getEffectiveIntent = (a: any) => {
     const lead = a.lead_id ? leadById.get(a.lead_id) : null;
     return lead ? effectiveIntentScore(getBaseIntent(a), lead) : getBaseIntent(a);
@@ -140,12 +230,9 @@ function OverviewPage() {
   const highIntentCount = currents.filter((a) => getEffectiveIntent(a) >= 70).length;
   const atRiskCount = currents.filter((a) => getStatus(a) === "at_risk").length;
 
-  // Demand signals
+  // Demand signals are about the shared property inventory, not about one person's work.
   const demandAgg = useMemo(() => {
-    const perProp = new Map<
-      string,
-      { views: number; mentions: number; loc: string | null; type: string | null; score: number }
-    >();
+    const perProp = new Map<string, { views: number; mentions: number; loc: string | null; type: string | null; score: number }>();
     const locCounts = new Map<string, number>();
     const typeCounts = new Map<string, number>();
     let topPriceOp: { pid: string; signal: number } | null = null;
@@ -153,24 +240,13 @@ function OverviewPage() {
       if (!e.property_id) continue;
       const p = propertyById.get(e.property_id);
       if (!p) continue;
-      const cur = perProp.get(e.property_id) ?? {
-        views: 0,
-        mentions: 0,
-        loc: p.location,
-        type: p.property_type,
-        score: 0,
-      };
+      const cur = perProp.get(e.property_id) ?? { views: 0, mentions: 0, loc: p.location, type: p.property_type, score: 0 };
       cur.score += Number(e.weight ?? 1);
       if (e.event_type === "view") cur.views++;
       if (e.event_type === "mention") cur.mentions++;
       perProp.set(e.property_id, cur);
-      if (p.location)
-        locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
-      if (p.property_type)
-        typeCounts.set(
-          p.property_type,
-          (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1),
-        );
+      if (p.location) locCounts.set(p.location, (locCounts.get(p.location) ?? 0) + Number(e.weight ?? 1));
+      if (p.property_type) typeCounts.set(p.property_type, (typeCounts.get(p.property_type) ?? 0) + Number(e.weight ?? 1));
       const isStrong = ["enquiry", "viewing_request", "offer", "shortlist"].includes(e.event_type);
       if (isStrong) {
         const cur2 = topPriceOp;
@@ -188,6 +264,7 @@ function OverviewPage() {
 
   const latestReport = reports.find((r) => r.status === "completed");
   const reportOut = latestReport?.output_json;
+  const scopeNoun = scope === "mine" ? "your" : scope === "team" ? "your team's" : "all";
 
   return (
     <AppShell>
@@ -195,7 +272,7 @@ function OverviewPage() {
         <PageHeader
           eyebrow="Buyer Intelligence"
           title="Overview"
-          description="Pipeline value, buyer intent and today's follow-ups in one view."
+          description="Buyer intent, open pipeline and today's follow-ups in one view."
           actions={
             <>
               <Link to="/pipeline">
@@ -213,6 +290,23 @@ function OverviewPage() {
           }
         />
 
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {scopes.length > 1 ? (
+            <SegmentedControl<Scope>
+              ariaLabel="Whose work to show"
+              size="md"
+              value={scope}
+              onChange={chooseScope}
+              options={scopes.map((s) => ({ value: s, label: SCOPE_LABEL[s] }))}
+            />
+          ) : (
+            <span className="rounded-lg bg-muted/80 px-3 py-1.5 text-xs font-medium">{SCOPE_LABEL.mine}</span>
+          )}
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {SCOPE_NOTE[scope]}
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <MetricCard label="Hot Leads" value={String(hotCount)} tone="purple" icon={<Flame />} />
           <MetricCard label="High Intent" value={String(highIntentCount)} tone="green" icon={<Target />} />
@@ -221,21 +315,29 @@ function OverviewPage() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <Card className="lg:col-span-3">
-            <p className="text-[13px] font-medium text-muted-foreground">Active Pipeline</p>
-            <h3 className="mt-2 text-[34px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
-              {pipelineValue > 0 ? fmtMoney(pipelineValue, currency) : "0"}
+          <Card className="min-w-0 overflow-hidden lg:col-span-3">
+            <p className="text-[13px] font-medium text-muted-foreground">Open pipeline: stated buyer budgets</p>
+            <h3
+              className="mt-2 min-w-0 text-[28px] font-semibold leading-none tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-[34px]"
+              title={primaryBudget ? fmtMoney(primaryBudget.sum, primaryBudget.currency) : undefined}
+            >
+              {primaryBudget ? fmtMoneyCompact(primaryBudget.sum, primaryBudget.currency) : "No budgets recorded"}
+              {primaryBudget && <span className="sr-only"> ({fmtMoney(primaryBudget.sum, primaryBudget.currency)})</span>}
             </h3>
+            {budgets.length > 1 && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Also: {budgets.slice(1).map((b) => `${fmtMoneyCompact(b.sum, b.currency)}`).join(" · ")}. Different currencies are never added together.
+              </p>
+            )}
             <p className="mt-2 text-xs text-muted-foreground">
-              Qualified Buyer Value ({activeLeads.length} active leads)
+              The combined maximum budget buyers have stated across {leadsWithBudget} of {openLeadCount} open {scopeNoun} leads. It is a view of
+              buyer budget, not sales, revenue or commission.
             </p>
 
             {openLeadCount === 0 ? (
               <div className="mt-6 rounded-xl border border-dashed border-border bg-background px-4 py-8 text-center">
                 <p className="text-xs font-medium text-foreground">No open leads in the pipeline yet</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Stages will appear here as leads are added and moved.
-                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Stages will appear here as leads are added and moved.</p>
               </div>
             ) : (
               <div className="mt-6">
@@ -254,7 +356,7 @@ function OverviewPage() {
                 </div>
                 <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
                   {stageBreakdown.map((x, i) => (
-                    <li key={x.stage} className="flex items-center gap-2 text-xs">
+                    <li key={x.stage} className="flex min-w-0 items-center gap-2 text-xs">
                       <span
                         className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
                         style={{ background: STAGE_TONES[i % STAGE_TONES.length] }}
@@ -269,93 +371,91 @@ function OverviewPage() {
             )}
           </Card>
 
-          <Card className="lg:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
+          <Card className="min-w-0 lg:col-span-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <ListChecks className="h-4 w-4 text-qbay" />
                 <h3 className="text-[15px] font-semibold">Today's Tasks</h3>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums">
-                  {todaysTasks.length}
-                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums">{todaysTasks.length}</span>
               </div>
-              <Link to="/calendar">
-                <Button variant="outline" size="sm">
-                  Open calendar
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                {can("tasks", "create") && (
+                  <Button size="sm" variant="outline" onClick={() => setTaskDrawer({ open: true, task: null })}>
+                    <Plus className="h-3.5 w-3.5" /> Add task
+                  </Button>
+                )}
+                <Link to="/calendar">
+                  <Button variant="outline" size="sm">
+                    Open calendar
+                  </Button>
+                </Link>
+              </div>
             </div>
             <div className="max-h-[320px] overflow-y-auto">
-          {todaysTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {todaysTasks.map((t) => {
-                const target = taskLinkTarget(t);
-                const related = t.leads?.full_name ?? t.owners?.name ?? t.properties?.title ?? null;
-                const row = (
-                  <div className="flex items-center gap-3 py-2.5 text-sm">
-                    <button
-                      type="button"
-                      title="Mark complete"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        updateTodayTask.mutate(
-                          {
-                            id: t.id,
-                            patch: { status: "completed", completed_at: new Date().toISOString() },
-                          },
-                          {
-                            onSuccess: () => toast.success("Task completed"),
-                            onError: (err) => toast.error((err as Error).message),
-                          },
-                        );
-                      }}
-                      className="flex-shrink-0 text-muted-foreground hover:text-foreground"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{t.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {t.task_type ? `${t.task_type} · ` : ""}
-                        {t.due_at
-                          ? new Date(t.due_at).toLocaleTimeString(undefined, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "No time set"}
-                        {related ? ` · ${related}` : ""}
-                      </p>
-                    </div>
-                    <span className="flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">
-                      {t.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                );
-                return target ? (
-                  <li
-                    key={t.id}
-                    className="cursor-pointer rounded-lg px-1 transition-colors hover:bg-qbay-tint/60"
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
-                    onClick={() => navigate(target as any)}
-                  >
-                    {row}
-                  </li>
-                ) : (
-                  <li key={t.id} className="px-1">
-                    {row}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+              {todaysTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nothing due today - you're clear.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {todaysTasks.map((t) => {
+                    const target = taskLinkTarget(t);
+                    const related = t.leads?.full_name ?? t.owners?.name ?? t.properties?.title ?? null;
+                    const row = (
+                      <div className="flex items-center gap-3 py-2.5 text-sm">
+                        <button
+                          type="button"
+                          title="Mark complete"
+                          aria-label={`Mark "${t.title}" complete`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            updateTask.mutate(
+                              { id: t.id, patch: { status: "completed", completed_at: new Date().toISOString() } },
+                              {
+                                onSuccess: () => toast.success("Task completed"),
+                                onError: (err) => toast.error((err as Error).message),
+                              },
+                            );
+                          }}
+                          className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{t.title}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {t.task_type ? `${t.task_type} · ` : ""}
+                            {t.due_at ? fmtQatarTime(t.due_at) : "No time set"}
+                            {related ? ` · ${related}` : ""}
+                          </p>
+                        </div>
+                        <span className="flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">
+                          {t.status.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                    );
+                    return target ? (
+                      <li
+                        key={t.id}
+                        className="cursor-pointer rounded-lg px-1 transition-colors hover:bg-qbay-tint/60"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- target is one of a small set of typed routes resolved at runtime from which relation the task is linked to
+                        onClick={() => navigate(target as any)}
+                      >
+                        {row}
+                      </li>
+                    ) : (
+                      <li key={t.id} className="px-1">
+                        {row}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </Card>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-[16px] font-semibold text-foreground">Recent Buyer Activity</h3>
               <Link to="/leads">
@@ -380,21 +480,15 @@ function OverviewPage() {
                 ? recentLeads.map((l) => (
                     <tr key={l.id} className={dataRowCls}>
                       <td className="px-4 py-3 text-sm font-medium">
-                        <Link
-                          to="/leads/$leadId"
-                          params={{ leadId: l.id }}
-                          className="hover:underline"
-                        >
+                        <Link to="/leads/$leadId" params={{ leadId: l.id }} className="hover:underline">
                           {l.full_name}
                         </Link>
                       </td>
                       <td className="px-4 py-3">
                         <PipelineStageBadge stage={stageLabel(l.pipeline_stage)} />
                       </td>
-                      <td className="px-4 py-3 text-xs">{fmtMoney(l.budget_max, l.currency)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {fmtDate(l.updated_at)}
-                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums">{fmtMoney(l.budget_max, l.currency)}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(l.updated_at)}</td>
                       <td className="px-4 py-3">
                         <Link to="/leads/$leadId" params={{ leadId: l.id }}>
                           <Button variant="outline" size="sm">
@@ -412,21 +506,12 @@ function OverviewPage() {
                 <h3 className="mb-3 text-[16px] font-semibold">Recent interactions</h3>
                 <div className="space-y-2">
                   {recentInteractions.map((i) => (
-                    <div
-                      key={i.id}
-                      className="rounded-xl border border-border bg-canvas px-4 py-3 text-sm shadow-card"
-                    >
+                    <div key={i.id} className="rounded-xl border border-border bg-canvas px-4 py-3 text-sm shadow-card">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium capitalize">
-                          {i.interaction_type.replace(/_/g, " ")}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {fmtDate(i.interaction_date)}
-                        </span>
+                        <span className="font-medium capitalize">{i.interaction_type.replace(/_/g, " ")}</span>
+                        <span className="text-xs text-muted-foreground">{fmtDate(i.interaction_date)}</span>
                       </div>
-                      {i.subject && (
-                        <p className="mt-1 text-xs text-muted-foreground">{i.subject}</p>
-                      )}
+                      {i.subject && <p className="mt-1 text-xs text-muted-foreground">{i.subject}</p>}
                     </div>
                   ))}
                 </div>
@@ -437,18 +522,12 @@ function OverviewPage() {
           <div className="relative overflow-hidden rounded-xl bg-sidebar p-6 text-white shadow-raised lg:self-start">
             <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border border-white/10" />
             <div className="absolute -bottom-16 -right-16 h-56 w-56 rounded-full border border-white/10" />
-            <h3 className="relative text-[20px] font-semibold leading-snug">
-              Turn buyer behaviour into decisions
-            </h3>
+            <h3 className="relative text-[20px] font-semibold leading-snug">Turn buyer behaviour into decisions</h3>
             <p className="relative mt-3 max-w-xs text-sm text-white/65">
               Analyse conversations, preferences and objections before the next follow-up.
             </p>
             <Link to="/ai-insights">
-              <Button
-                variant="outline"
-                className="relative mt-6 border-white/15 bg-white text-foreground hover:bg-white/90"
-                size="sm"
-              >
+              <Button variant="outline" className="relative mt-6 border-white/15 bg-white text-foreground hover:bg-white/90" size="sm">
                 Review AI Insights
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
@@ -458,58 +537,27 @@ function OverviewPage() {
 
         {/* Follow-ups */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold">Overdue follow-ups</h3>
-              <span className="rounded-full bg-[#FADCDA] px-2 py-0.5 text-[11px]">
-                {overdueTasks.length}
-              </span>
-            </div>
-            {overdueTasks.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Nothing overdue - you're on top of it.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-xs">
-                {overdueTasks.slice(0, 6).map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0"
-                  >
-                    <span className="truncate">{t.title}</span>
-                    <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-          <Card>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold">Upcoming follow-ups</h3>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
-                {upcomingTasks.length}
-              </span>
-            </div>
-            {upcomingTasks.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No upcoming follow-ups scheduled.</p>
-            ) : (
-              <ul className="space-y-2 text-xs">
-                {upcomingTasks.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 border-b border-border pb-1.5 last:border-0"
-                  >
-                    <span className="truncate">{t.title}</span>
-                    <span className="flex-shrink-0 text-muted-foreground">{fmtDate(t.due_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          <FollowUps
+            title="Overdue follow-ups"
+            tasks={overdueTasks.slice(0, 6)}
+            total={overdueTasks.length}
+            chipClass="bg-[#FADCDA]"
+            empty="Nothing overdue - you're on top of it."
+            onOpen={(t) => setTaskDrawer({ open: true, task: t })}
+          />
+          <FollowUps
+            title="Upcoming follow-ups"
+            tasks={upcomingTasks}
+            total={upcomingTasks.length}
+            chipClass="bg-muted"
+            empty="No upcoming follow-ups scheduled."
+            onOpen={(t) => setTaskDrawer({ open: true, task: t })}
+          />
         </div>
 
-        {/* Demand & Marketing signals */}
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Demand & Marketing signals: company-wide intelligence, not personal metrics */}
+        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-muted-foreground">Company-wide signals</p>
+        <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -525,36 +573,25 @@ function OverviewPage() {
             </div>
             {events.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No property activity yet. Open property pages or import conversations to start
-                tracking.
+                No property activity yet. Open property pages or import conversations to start tracking.
               </p>
             ) : (
               <ul className="space-y-1.5 text-xs">
                 <SignalRow
                   label="Most viewed"
-                  value={
-                    demandAgg.topViewed ? propertyById.get(demandAgg.topViewed[0])?.title : null
-                  }
+                  value={demandAgg.topViewed ? propertyById.get(demandAgg.topViewed[0])?.title : null}
                   extra={demandAgg.topViewed ? `${demandAgg.topViewed[1].views} views` : ""}
                 />
                 <SignalRow
                   label="Most mentioned"
-                  value={
-                    demandAgg.topMentioned
-                      ? propertyById.get(demandAgg.topMentioned[0])?.title
-                      : null
-                  }
-                  extra={
-                    demandAgg.topMentioned ? `${demandAgg.topMentioned[1].mentions} mentions` : ""
-                  }
+                  value={demandAgg.topMentioned ? propertyById.get(demandAgg.topMentioned[0])?.title : null}
+                  extra={demandAgg.topMentioned ? `${demandAgg.topMentioned[1].mentions} mentions` : ""}
                 />
                 <SignalRow label="Top location" value={demandAgg.topLoc?.[0] ?? null} />
                 <SignalRow label="Top property type" value={demandAgg.topType?.[0] ?? null} />
                 <SignalRow
                   label="Strongest pricing opportunity"
-                  value={
-                    demandAgg.topPriceOp ? propertyById.get(demandAgg.topPriceOp.pid)?.title : null
-                  }
+                  value={demandAgg.topPriceOp ? propertyById.get(demandAgg.topPriceOp.pid)?.title : null}
                 />
               </ul>
             )}
@@ -574,33 +611,75 @@ function OverviewPage() {
               </Link>
             </div>
             {!reportOut ? (
-              <p className="text-xs text-muted-foreground">
-                No marketing intelligence report yet. Generate one to see patterns here.
-              </p>
+              <p className="text-xs text-muted-foreground">No marketing intelligence report yet. Generate one to see patterns here.</p>
             ) : (
               <ul className="space-y-1.5 text-xs">
-                <SignalRow
-                  label="Top buyer signal"
-                  value={(reportOut as any).buyer_language?.[0]?.finding ?? null}
-                />
-                <SignalRow
-                  label="Brand gap"
-                  value={(reportOut as any).brand_gaps?.[0]?.gap ?? null}
-                />
-                <SignalRow
-                  label="Recommended direction"
-                  value={(reportOut as any).recommended_direction ?? null}
-                />
-                <SignalRow
-                  label="Top campaign idea"
-                  value={(reportOut as any).campaign_ideas?.[0]?.angle ?? null}
-                />
+                <SignalRow label="Top buyer signal" value={(reportOut as any).buyer_language?.[0]?.finding ?? null} />
+                <SignalRow label="Brand gap" value={(reportOut as any).brand_gaps?.[0]?.gap ?? null} />
+                <SignalRow label="Recommended direction" value={(reportOut as any).recommended_direction ?? null} />
+                <SignalRow label="Top campaign idea" value={(reportOut as any).campaign_ideas?.[0]?.angle ?? null} />
               </ul>
             )}
           </Card>
         </div>
+
+        <TaskDrawer
+          open={taskDrawer.open}
+          onOpenChange={(v) => !v && setTaskDrawer({ open: false, task: null })}
+          task={taskDrawer.task}
+        />
       </PermissionGate>
     </AppShell>
+  );
+}
+
+function FollowUps({
+  title,
+  tasks,
+  total,
+  chipClass,
+  empty,
+  onOpen,
+}: {
+  title: string;
+  tasks: TaskWithRelations[];
+  total: number;
+  chipClass: string;
+  empty: string;
+  onOpen: (t: Task) => void;
+}) {
+  return (
+    <Card className="min-w-0">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[15px] font-semibold">{title}</h3>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] tabular-nums ${chipClass}`}>{total}</span>
+      </div>
+      {tasks.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <ul className="space-y-1 text-xs">
+          {tasks.map((t) => (
+            <li key={t.id}>
+              <button
+                type="button"
+                onClick={() => onOpen(t)}
+                className="flex w-full items-center justify-between gap-2 rounded-md border-b border-border px-1 pb-1.5 pt-1 text-left transition-colors last:border-0 hover:bg-qbay-tint/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate">{t.title}</span>
+                  {(t.leads?.full_name ?? t.owners?.name ?? t.properties?.title) && (
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {t.leads?.full_name ?? t.owners?.name ?? t.properties?.title}
+                    </span>
+                  )}
+                </span>
+                <span className="flex-shrink-0 text-muted-foreground">{t.due_at ? fmtQatarDateTime(t.due_at) : ""}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 

@@ -7,7 +7,7 @@ import type { Owner, PropertySubmission } from "@/lib/db";
  * explicitly (select("*") is rejected) and obtain private fields through the RPCs below.
  */
 export const OWNER_COLUMNS =
-  "id, name, company, company_id, email, notes, created_at, updated_at, code, is_developer, address, assigned_agent_id, source_lead_id, is_demo";
+  "id, name, company, company_id, email, notes, created_at, updated_at, code, is_developer, address, assigned_agent_id, source_lead_id, is_demo, status, archived_at, archived_by";
 
 export const OWNER_PHONE_HIDDEN_LABEL = "Hidden";
 

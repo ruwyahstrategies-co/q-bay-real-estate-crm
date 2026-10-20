@@ -63,12 +63,7 @@ export function useCreateLead() {
       const id = input.id ?? crypto.randomUUID();
       const { error } = await sb.from("leads").insert({ ...input, id });
       if (error) throw error;
-      // Pipeline history entry
-      await sb.from("pipeline_history").insert({
-        lead_id: id,
-        previous_stage: null,
-        new_stage: input.pipeline_stage ?? "new_lead",
-      });
+      // The first pipeline_history row is written by the database when the lead is inserted.
       const { data } = await sb.from("leads").select("*").eq("id", id).maybeSingle();
       return data ?? ({ ...input, id } as Lead);
     },
@@ -91,21 +86,23 @@ export function useUpdateLead() {
   });
 }
 
+/**
+ * Moves a lead to another pipeline stage. The database enforces the forward-only rule and records the
+ * pipeline_history row itself, so a refused move surfaces here as an error and a successful one is
+ * recorded exactly once, whichever screen made it.
+ */
 export function useChangePipelineStage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, newStage, previousStage }: { id: string; newStage: string; previousStage: string }) => {
+    mutationFn: async ({ id, newStage }: { id: string; newStage: string; previousStage?: string }) => {
       const { data, error } = await sb.from("leads").update({ pipeline_stage: newStage }).eq("id", id).select().single();
       if (error) throw error;
-      const { error: histErr } = await sb.from("pipeline_history").insert({
-        lead_id: id,
-        previous_stage: previousStage,
-        new_stage: newStage,
-      });
-      if (histErr) throw histErr;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: leadsKeys.all }),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: leadsKeys.all });
+      qc.invalidateQueries({ queryKey: ["pipeline_history", vars.id] });
+    },
   });
 }
 
@@ -147,15 +144,35 @@ export function useMarkLeadRentedFromOutside() {
   });
 }
 
+/**
+ * Permanently deletes one lead through the same safe database function the bulk Delete uses. A lead that
+ * still has conversations, tasks, viewings, offers or other linked history is refused (archive it
+ * instead), so nothing is cascade-deleted by accident.
+ */
 export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("leads").delete().eq("id", id);
+      const { data, error } = await sb.rpc("bulk_delete_leads", { _ids: [id] });
       if (error) throw error;
+      const result = data as unknown as { deleted: number; blocked: { name: string; linked: Record<string, number> }[] };
+      if (result.deleted === 0) {
+        const blocked = result.blocked?.[0];
+        throw new Error(
+          blocked
+            ? `${blocked.name} cannot be deleted because it still has linked records (${describeLinks(blocked.linked)}). Archive it instead.`
+            : "This lead could not be deleted. You may not have access to it.",
+        );
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: leadsKeys.all }),
   });
+}
+
+/** "3 tasks, 2 viewings" for the records that block a delete. */
+export function describeLinks(linked: Record<string, number> | null | undefined): string {
+  const parts = Object.entries(linked ?? {}).map(([k, n]) => `${n} ${k.replace(/_/g, " ")}`);
+  return parts.length ? parts.join(", ") : "other records";
 }
 
 /** Converts a Won lead into an Owner, idempotently (returns the existing Owner if already converted). Links back via owners.source_lead_id / leads.converted_owner_id. */

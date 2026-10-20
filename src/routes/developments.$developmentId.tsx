@@ -92,6 +92,10 @@ function DevelopmentDetailPage() {
           <h3 className="mb-2 text-sm font-semibold">Overview</h3>
           <dl className="space-y-1.5 text-xs">
             <div className="flex justify-between"><dt className="text-muted-foreground">Status</dt><dd>{developmentStatusLabel(development.status)}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground" title="Used in the reference code of developer-owned properties. It never changes.">Development code</dt>
+              <dd className="font-mono">{development.code ?? "-"}</dd>
+            </div>
             <div className="flex justify-between"><dt className="text-muted-foreground">Developer</dt><dd>{development.developer ?? "-"}</dd></div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Owner</dt>

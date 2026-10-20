@@ -8,8 +8,9 @@ import { cn, titleCase } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { useProperties } from "@/hooks/use-properties";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { PropertyMultiPicker } from "./property-picker";
+import { selectableStages } from "@/lib/pipeline";
 import { useLeadPropertyInterests, useSyncLeadPropertyInterests } from "@/hooks/use-references";
 import { useDevelopments } from "@/hooks/use-developments";
 import { CountryAreaPlaceFields } from "./location-fields";
@@ -85,11 +86,10 @@ export function AddLeadDrawer({
   const update = useUpdateLead();
   const { data: team = [] } = useTeamMembers();
   const { teamMember: me } = useCurrentUser();
-  const { data: properties = [] } = useProperties({ status: "active" });
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: channels = [] } = useLeadChannels({ activeOnly: true });
-  const { data: currentInterests = [] } = useLeadPropertyInterests(lead?.id);
+  const { data: currentInterests = [], isLoading: interestsLoading } = useLeadPropertyInterests(lead?.id);
   const syncInterests = useSyncLeadPropertyInterests();
   const isEdit = !!lead?.id;
 
@@ -272,7 +272,8 @@ export function AddLeadDrawer({
           await syncInterests.mutateAsync({ leadId, propertyIds: interestedPropertyIds });
         } catch (err) {
           toast.error(
-            `Lead saved, but property interests failed to sync: ${(err as Error).message}`,
+            `Lead saved, but its property interests were NOT saved: ${(err as Error).message}. Open the lead and add them again.`,
+            { duration: 12000 },
           );
         }
       }
@@ -438,38 +439,31 @@ export function AddLeadDrawer({
           <SelectField
             value={form.pipeline_stage ?? "new_lead"}
             onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
-            options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
+            options={(isEdit ? selectableStages(stages, lead?.pipeline_stage) : stages).map((s) => ({
+              value: s.stage_key,
+              label: s.name,
+            }))}
+            disabled={isEdit && selectableStages(stages, lead?.pipeline_stage).length <= 1}
             allowClear={false}
           />
+          {isEdit && (
+            <span className="text-[11px] text-muted-foreground">
+              Leads move forward only. Earlier stages are not offered.
+            </span>
+          )}
         </Field>
-        <Field label={`Property interests (${interestedPropertyIds.length} selected)`} full>
-          <div className="max-h-32 overflow-y-auto rounded-lg border border-border bg-canvas p-2">
-            {properties.length === 0 ? (
-              <p className="px-1 py-2 text-xs text-muted-foreground">No active properties yet.</p>
-            ) : (
-              properties.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked={interestedPropertyIds.includes(p.id)}
-                    onChange={(e) =>
-                      setInterestedPropertyIds((prev) =>
-                        e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
-                      )
-                    }
-                  />
-                  <span className="truncate">
-                    {p.reference_code ? `${p.reference_code} · ` : ""}
-                    {p.title}
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
-        </Field>
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Property interests
+          </span>
+          {isEdit && interestsLoading ? (
+            <p className="rounded-lg border border-border px-3 py-6 text-center text-xs text-muted-foreground">
+              Loading this lead's properties...
+            </p>
+          ) : (
+            <PropertyMultiPicker value={interestedPropertyIds} onChange={setInterestedPropertyIds} />
+          )}
+        </div>
         <Field label="Notes / follow-up" full>
           <textarea
             className={cn(inputCls, "h-20 py-2")}

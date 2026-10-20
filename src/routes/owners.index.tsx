@@ -24,6 +24,13 @@ import {
 import { useTeamMembers } from "@/hooks/use-team";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useRowSelection } from "@/hooks/use-row-selection";
+import { SegmentedControl } from "@/components/segmented-control";
+import {
+  BulkActionBar,
+  BulkArchiveDialog,
+  BulkDeleteDialog,
+  BulkReassignDialog,
+} from "@/components/bulk-actions";
 import { SearchableSelectField } from "@/components/select-field";
 import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton } from "@/components/filter-toolbar";
 import { StaffAvatar } from "@/components/staff-avatar";
@@ -52,6 +59,10 @@ function OwnersPage() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Owner | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Owner | null>(null);
+  const [archivedView, setArchivedView] = useState(false);
+  const [bulk, setBulk] = useState<null | "reassign" | "archive" | "restore" | "delete">(null);
+  // The ids a bulk dialog acts on are frozen when it opens, so its wording stays correct as rows change.
+  const [bulkIds, setBulkIds] = useState<string[]>([]);
   const debouncedSearch = useDebounced(search, 250);
   // Type, Company and Assigned agent filter the matching owners columns in the database. The text
   // search stays the secure server-side search (phones only count where the viewer may see them),
@@ -61,6 +72,7 @@ function OwnersPage() {
     isDeveloper: ownerType === null ? null : ownerType === "developer",
     companyId,
     agentId,
+    status: archivedView ? "archived" : "active",
   });
   const { data: companyValues = [] } = useMasterData("company");
   const { data: team = [] } = useTeamMembers();
@@ -87,6 +99,12 @@ function OwnersPage() {
   const canCreate = can("owners", "create");
   const canEdit = can("owners", "edit");
   const canDelete = can("owners", "delete");
+  // Super Administrator override, checked again by the database on every record.
+  const canReassign = can("owners", "reassign");
+  function openBulk(kind: "reassign" | "archive" | "restore" | "delete") {
+    setBulkIds([...selection.selected]);
+    setBulk(kind);
+  }
 
   return (
     <AppShell>
@@ -109,6 +127,21 @@ function OwnersPage() {
             ) : undefined
           }
         />
+        <div className="mb-3">
+          <SegmentedControl<"active" | "archived">
+            ariaLabel="Owner status"
+            size="md"
+            value={archivedView ? "archived" : "active"}
+            onChange={(v) => {
+              setArchivedView(v === "archived");
+              selection.clear();
+            }}
+            options={[
+              { value: "active", label: "Active" },
+              { value: "archived", label: "Archived" },
+            ]}
+          />
+        </div>
         <FilterToolbar ariaLabel="Owner filters" className="mb-2" activeCount={activeFilterCount}>
           <FilterSearch
             value={search}
@@ -147,14 +180,19 @@ function OwnersPage() {
           {isLoading ? "Loading..." : `${owners.length} ${owners.length === 1 ? "owner" : "owners"}${activeFilterCount ? " match the filters" : ""}. `}
           Phone numbers are searchable only for owners whose phone you are allowed to see.
         </p>
-        {selection.count > 0 && (
-          <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-canvas px-3 py-2 text-xs">
-            <span>{selection.count} selected</span>
-            <button className="ml-auto text-muted-foreground hover:underline" onClick={selection.clear}>
-              Clear
-            </button>
-          </div>
-        )}
+        <BulkActionBar
+          count={selection.count}
+          noun="owner"
+          canReassign={canReassign}
+          canArchive={canEdit}
+          canDelete={canDelete}
+          showingArchived={archivedView}
+          onReassign={() => openBulk("reassign")}
+          onArchive={() => openBulk("archive")}
+          onRestore={() => openBulk("restore")}
+          onDelete={() => openBulk("delete")}
+          onClear={selection.clear}
+        />
         <DataTable
           leadingHeader={
             <input
@@ -204,10 +242,34 @@ function OwnersPage() {
         </DataTable>
 
         <OwnerDrawer open={open} onOpenChange={setOpen} owner={edit} />
+        <BulkReassignDialog
+          open={bulk === "reassign"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="owners"
+          noun="owner"
+          ids={bulkIds}
+          onFinished={selection.clear}
+        />
+        <BulkArchiveDialog
+          open={bulk === "archive" || bulk === "restore"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="owners"
+          noun="owner"
+          ids={bulkIds}
+          restore={bulk === "restore"}
+          onFinished={selection.clear}
+        />
+        <BulkDeleteDialog
+          open={bulk === "delete"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="owners"
+          noun="owner"
+          ids={bulkIds}
+        />
         <ConfirmDialog
           open={!!confirmDelete}
           title="Delete owner?"
-          description={`Delete ${confirmDelete?.name}? Linked properties/developments will keep their owner_id cleared.`}
+          description={`Delete ${confirmDelete?.name}? An owner that still has properties, developments, contracts or conversations cannot be deleted. Archive it instead.`}
           confirmLabel="Delete"
           destructive
           pending={del.isPending}

@@ -35,6 +35,12 @@ import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { useRowSelection } from "@/hooks/use-row-selection";
+import {
+  BulkActionBar,
+  BulkArchiveDialog,
+  BulkDeleteDialog,
+  BulkReassignDialog,
+} from "@/components/bulk-actions";
 import { cn, titleCase } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
@@ -80,8 +86,13 @@ function LeadsPage() {
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Lead | null>(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [archivedView, setArchivedView] = useState(false);
+  const [bulk, setBulk] = useState<null | "reassign" | "archive" | "restore" | "delete">(null);
+  // The ids a bulk dialog acts on are frozen when it opens, so its wording stays correct as rows change.
+  const [bulkIds, setBulkIds] = useState<string[]>([]);
 
   const { data: leads = [], isLoading } = useLeads({
+    status: archivedView ? "archived" : "active",
     search,
     stage,
     agent,
@@ -144,6 +155,10 @@ function LeadsPage() {
     setCustomFieldFilterKey(null);
     setCustomFieldFilterValue(null);
   }
+  function openBulk(kind: "reassign" | "archive" | "restore" | "delete") {
+    setBulkIds([...selection.selected]);
+    setBulk(kind);
+  }
   const archive = useArchiveLead();
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
@@ -153,6 +168,8 @@ function LeadsPage() {
   const canEdit = can("leads", "edit");
   const canDelete = can("leads", "delete");
   const canAssign = can("leads", "assign");
+  // Super Administrator override, checked again by the database on every record.
+  const canReassign = can("leads", "reassign");
 
   // Latest completed analysis per lead, powering the Intent Score column.
   const intentByLead = useMemo(() => {
@@ -249,9 +266,24 @@ function LeadsPage() {
             }}
             options={LEAD_INTENTS.map((i) => ({ value: i, label: LEAD_INTENT_LABELS[i] }))}
           />
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            {isLoading ? "Loading..." : `${visibleLeads.length} ${visibleLeads.length === 1 ? "lead" : "leads"} shown`}
-          </p>
+          <div className="flex items-center gap-3">
+            <SegmentedControl<"active" | "archived">
+              ariaLabel="Lead status"
+              size="md"
+              value={archivedView ? "archived" : "active"}
+              onChange={(v) => {
+                setArchivedView(v === "archived");
+                selection.clear();
+              }}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "archived", label: "Archived" },
+              ]}
+            />
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {isLoading ? "Loading..." : `${visibleLeads.length} ${visibleLeads.length === 1 ? "lead" : "leads"} shown`}
+            </p>
+          </div>
         </div>
 
         <FilterToolbar ariaLabel="Lead filters" activeCount={activeFilterCount}>
@@ -363,20 +395,25 @@ function LeadsPage() {
           </ToolbarAlways>
         </FilterToolbar>
 
-        {selection.count > 0 && (
-          <div className="mb-3 flex items-center gap-3 rounded-xl border border-qbay/20 bg-qbay-tint px-4 py-2.5 text-xs shadow-card">
-            <span className="font-medium text-qbay">{selection.count} selected</span>
+        <BulkActionBar
+          count={selection.count}
+          noun="lead"
+          canReassign={canReassign}
+          canArchive={canEdit}
+          canDelete={canDelete}
+          showingArchived={archivedView}
+          onReassign={() => openBulk("reassign")}
+          onArchive={() => openBulk("archive")}
+          onRestore={() => openBulk("restore")}
+          onDelete={() => openBulk("delete")}
+          onClear={selection.clear}
+        >
+          {!archivedView && (
             <Button size="sm" variant="outline" onClick={() => setBroadcastOpen(true)}>
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Broadcast
             </Button>
-            <button
-              className="ml-auto text-muted-foreground hover:underline"
-              onClick={selection.clear}
-            >
-              Clear
-            </button>
-          </div>
-        )}
+          )}
+        </BulkActionBar>
 
         {view === "table" ? (
           <DataTable
@@ -542,7 +579,7 @@ function LeadsPage() {
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                         )}
-                        {canEdit && (
+                        {canEdit && !archivedView && (
                           <button
                             className="rounded-md p-1.5 hover:bg-muted"
                             title="Archive"
@@ -636,6 +673,30 @@ function LeadsPage() {
           onOpenChange={setBroadcastOpen}
           leads={visibleLeads.filter((l) => selection.selected.has(l.id))}
           onDone={selection.clear}
+        />
+        <BulkReassignDialog
+          open={bulk === "reassign"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="leads"
+          noun="lead"
+          ids={bulkIds}
+          onFinished={selection.clear}
+        />
+        <BulkArchiveDialog
+          open={bulk === "archive" || bulk === "restore"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="leads"
+          noun="lead"
+          ids={bulkIds}
+          restore={bulk === "restore"}
+          onFinished={selection.clear}
+        />
+        <BulkDeleteDialog
+          open={bulk === "delete"}
+          onOpenChange={(v) => !v && setBulk(null)}
+          entity="leads"
+          noun="lead"
+          ids={bulkIds}
         />
         <ConfirmDialog
           open={!!confirmArchive}

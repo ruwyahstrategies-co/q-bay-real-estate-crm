@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   LayoutGrid,
@@ -18,6 +18,9 @@ import {
   Bath,
   Ruler,
   Globe,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -32,13 +35,23 @@ import { PermissionGate } from "@/components/permission-gate";
 import { SegmentedControl } from "@/components/segmented-control";
 import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
 import { StaffAvatar } from "@/components/staff-avatar";
+import { MultiSelectField } from "@/components/multi-select-field";
+import { ApprovalBadge } from "@/components/approval-badge";
+import { useCountries, useAreas, usePlaces } from "@/hooks/use-locations";
+import { useDebounced } from "@/hooks/use-debounced";
 import { AvailabilityRing, PurposeBadge } from "@/components/status-badge";
 import { PropertyWebsiteLinkIcon } from "@/components/property-website-link";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers } from "@/hooks/use-team";
 import { cn } from "@/lib/utils";
 import {
-  useProperties,
+  usePropertiesPage,
+  fetchPropertiesForExport,
+  usePendingApprovalCount,
+  APPROVAL_LABELS,
+  PROPERTY_PAGE_SIZE,
+  type ApprovalStatus,
+  type PropertyFilters,
   useArchiveProperty,
   useRestoreProperty,
   useDeleteProperty,
@@ -81,31 +94,92 @@ function PropertiesPage() {
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
   const [availability, setAvailability] = useState<string | null>(null);
+  const [minPriceText, setMinPriceText] = useState("");
+  const [maxPriceText, setMaxPriceText] = useState("");
+  const [agentIds, setAgentIds] = useState<string[]>([]);
+  const [countryId, setCountryId] = useState<string | null>(null);
+  const [areaIds, setAreaIds] = useState<string[]>([]);
+  const [placeId, setPlaceId] = useState<string | null>(null);
+  const [approval, setApproval] = useState<ApprovalStatus | null>(null);
+  const [page, setPage] = useState(0);
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
   const [importerOpen, setImporterOpen] = useState(false);
-  // Sale | Rent, the archive state, availability, type and search are independent filters; all of
-  // them reach the database query (see applyPropertyFilters in use-properties).
-  const { data: properties = [], isLoading } = useProperties({
+
+  const debouncedMin = useDebounced(minPriceText, 400);
+  const debouncedMax = useDebounced(maxPriceText, 400);
+  const toNumber = (t: string) => (t.trim() !== "" && Number.isFinite(Number(t)) ? Number(t) : null);
+  const minPrice = toNumber(debouncedMin);
+  const maxPrice = toNumber(debouncedMax);
+  const priceRangeInvalid = minPrice != null && maxPrice != null && minPrice > maxPrice;
+
+  const { data: countries = [] } = useCountries();
+  const { data: allAreas = [] } = useAreas();
+  const { data: allPlaces = [] } = usePlaces();
+  const areaOptions = useMemo(
+    () =>
+      allAreas
+        .filter((a) => !countryId || a.country_id === countryId)
+        .map((a) => ({ value: a.id, label: a.is_active ? a.name : `${a.name} (inactive)` })),
+    [allAreas, countryId],
+  );
+  const placeOptions = useMemo(
+    () =>
+      allPlaces
+        .filter((pl) => areaIds.length === 1 && pl.area_id === areaIds[0])
+        .map((pl) => ({ value: pl.id, label: pl.is_active ? pl.name : `${pl.name} (inactive)` })),
+    [allPlaces, areaIds],
+  );
+
+  // Every filter is applied in the database. Sale | Rent, archive state, availability, type, search, price
+  // range, agents, location and approval all combine, and the list and its counts share one definition.
+  const baseFilters: Omit<PropertyFilters, "purpose"> = {
     search,
     type,
     status: statusFilter,
     availability,
-    purpose,
-  });
-  const { data: purposeCounts } = usePropertyPurposeCounts({
-    search,
-    type,
-    status: statusFilter,
-    availability,
-  });
+    minPrice: priceRangeInvalid ? null : minPrice,
+    maxPrice: priceRangeInvalid ? null : maxPrice,
+    agentIds,
+    countryId,
+    areaIds,
+    placeId,
+    approval,
+  };
+  const filterSignature = JSON.stringify([baseFilters, purpose]);
+  useEffect(() => setPage(0), [filterSignature]);
+
+  const { data: pageData, isLoading } = usePropertiesPage({ ...baseFilters, purpose }, page);
+  const properties = pageData?.rows ?? [];
+  const total = pageData?.total ?? 0;
+  const lastPage = Math.max(0, Math.ceil(total / PROPERTY_PAGE_SIZE) - 1);
+  const showingFrom = total === 0 ? 0 : page * PROPERTY_PAGE_SIZE + 1;
+  const showingTo = Math.min(total, (page + 1) * PROPERTY_PAGE_SIZE);
+  const { data: purposeCounts } = usePropertyPurposeCounts(baseFilters);
   const activeFilterCount =
-    (search.trim() ? 1 : 0) + (type ? 1 : 0) + (availability ? 1 : 0) + (statusFilter !== "active" ? 1 : 0);
+    (search.trim() ? 1 : 0) +
+    (type ? 1 : 0) +
+    (availability ? 1 : 0) +
+    (statusFilter !== "active" ? 1 : 0) +
+    (minPrice != null ? 1 : 0) +
+    (maxPrice != null ? 1 : 0) +
+    (agentIds.length ? 1 : 0) +
+    (countryId ? 1 : 0) +
+    (areaIds.length ? 1 : 0) +
+    (placeId ? 1 : 0) +
+    (approval ? 1 : 0);
   function clearFilters() {
     setSearch("");
     setType(null);
     setAvailability(null);
     setStatusFilter("active");
+    setMinPriceText("");
+    setMaxPriceText("");
+    setAgentIds([]);
+    setCountryId(null);
+    setAreaIds([]);
+    setPlaceId(null);
+    setApproval(null);
   }
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
   const { data: propertyFieldDefs = [] } = useFieldDefinitions("property", { activeOnly: true });
@@ -118,6 +192,8 @@ function PropertiesPage() {
   const canCreate = can("properties", "create");
   const canEdit = can("properties", "edit");
   const canHardDelete = can("properties", "hard_delete");
+  const canApprove = can("properties", "approve");
+  const { data: pendingCount = 0 } = usePendingApprovalCount(canApprove);
 
   async function handleShare(p: Property) {
     const agent = team.find((m) => m.id === p.assigned_agent_id);
@@ -145,10 +221,12 @@ function PropertiesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  downloadCsv(
+                onClick={async () => {
+                  try {
+                    const rows = await fetchPropertiesForExport({ ...baseFilters, purpose });
+                    downloadCsv(
                     `properties-${new Date().toISOString().slice(0, 10)}.csv`,
-                    properties,
+                    rows,
                     [
                       { key: "title", label: "Title" },
                       { key: "reference_code", label: "Reference code" },
@@ -173,8 +251,11 @@ function PropertiesPage() {
                           (row.custom_fields as Record<string, unknown> | null)?.[d.key],
                       })),
                     ],
-                  )
-                }
+                  );
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
               >
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
@@ -213,9 +294,26 @@ function PropertiesPage() {
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {isLoading
               ? "Loading..."
-              : `${properties.length} ${purpose === "sale" ? "sale" : "rental"} ${properties.length === 1 ? "property" : "properties"} shown`}
+              : total === 0
+                ? `No ${purpose === "sale" ? "sale" : "rental"} properties`
+                : `Showing ${showingFrom}-${showingTo} of ${total} ${purpose === "sale" ? "sale" : "rental"} ${total === 1 ? "property" : "properties"}`}
           </p>
         </div>
+
+        {canApprove && pendingCount > 0 && approval !== "pending" && (
+          <div
+            role="status"
+            className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 text-xs shadow-card"
+          >
+            <ShieldCheck className="h-4 w-4 text-amber-700" />
+            <span className="font-medium text-amber-900">
+              {pendingCount} {pendingCount === 1 ? "property is" : "properties are"} waiting for your approval.
+            </span>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setApproval("pending")}>
+              Review pending
+            </Button>
+          </div>
+        )}
 
         <FilterToolbar ariaLabel="Property filters" activeCount={activeFilterCount}>
           <FilterSearch
@@ -241,6 +339,80 @@ function PropertiesPage() {
             allLabel="All availability"
             className="w-48"
           />
+          <div className="flex items-center gap-1.5" role="group" aria-label="Price range">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={minPriceText}
+              onChange={(e) => setMinPriceText(e.target.value)}
+              placeholder="Min price"
+              aria-label="Minimum price"
+              aria-invalid={priceRangeInvalid || undefined}
+              className={`h-9 w-28 rounded-lg border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25 ${
+                priceRangeInvalid ? "border-destructive" : minPrice != null ? "border-qbay/40 bg-qbay-tint" : "border-border"
+              }`}
+            />
+            <span className="text-xs text-muted-foreground" aria-hidden="true">
+              to
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={maxPriceText}
+              onChange={(e) => setMaxPriceText(e.target.value)}
+              placeholder="Max price"
+              aria-label="Maximum price"
+              aria-invalid={priceRangeInvalid || undefined}
+              className={`h-9 w-28 rounded-lg border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25 ${
+                priceRangeInvalid ? "border-destructive" : maxPrice != null ? "border-qbay/40 bg-qbay-tint" : "border-border"
+              }`}
+            />
+          </div>
+          <MultiSelectField
+            label="Agents"
+            values={agentIds}
+            onChange={setAgentIds}
+            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+            allLabel="All agents"
+          />
+          <FilterSelect
+            label="Country"
+            value={countryId}
+            onChange={(v) => {
+              setCountryId(v);
+              setAreaIds([]);
+              setPlaceId(null);
+            }}
+            options={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
+            allLabel="All countries"
+          />
+          <MultiSelectField
+            label="Areas"
+            values={areaIds}
+            onChange={(v) => {
+              setAreaIds(v);
+              setPlaceId(null);
+            }}
+            options={areaOptions}
+            allLabel="All areas"
+          />
+          <FilterSelect
+            label="Place"
+            value={placeId}
+            onChange={setPlaceId}
+            options={placeOptions}
+            allLabel={areaIds.length === 1 ? "All places" : "Place (pick one area)"}
+            disabled={areaIds.length !== 1 || placeOptions.length === 0}
+          />
+          <FilterSelect
+            label="Approval"
+            value={approval}
+            onChange={(v) => setApproval(v as ApprovalStatus | null)}
+            options={(Object.keys(APPROVAL_LABELS) as ApprovalStatus[]).map((k) => ({ value: k, label: APPROVAL_LABELS[k] }))}
+            allLabel="Any approval"
+          />
           <SegmentedControl
             ariaLabel="Archive state"
             size="md"
@@ -263,6 +435,11 @@ function PropertiesPage() {
             />
           </ToolbarAlways>
         </FilterToolbar>
+        {priceRangeInvalid && (
+          <p role="alert" className="-mt-2 mb-3 text-xs text-destructive">
+            The minimum price is higher than the maximum, so the price filter is not applied.
+          </p>
+        )}
 
         {view === "table" ? (
           <DataTable
@@ -322,6 +499,11 @@ function PropertiesPage() {
                         </span>
                         {p.title}
                       </Link>
+                      {p.approval_status !== "approved" && (
+                        <div className="mt-1 pl-12">
+                          <ApprovalBadge status={p.approval_status} />
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs">{p.reference_code ?? "-"}</td>
                     <td className="px-4 py-3 text-xs">{p.property_type ?? "-"}</td>
@@ -458,7 +640,8 @@ function PropertiesPage() {
                       )}
                       <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
                         <PurposeBadge purpose={p.purpose} className="shadow-card" />
-                        {p.is_published && (
+                        {p.approval_status !== "approved" && <ApprovalBadge status={p.approval_status} className="shadow-card" />}
+                        {p.is_published && p.approval_status === "approved" && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-foreground/75 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
                             <Globe className="h-3 w-3" /> Published
                           </span>
@@ -504,6 +687,22 @@ function PropertiesPage() {
               })
             )}
           </div>
+        )}
+
+        {total > PROPERTY_PAGE_SIZE && (
+          <nav aria-label="Pagination" className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span className="tabular-nums" aria-live="polite">
+              Page {page + 1} of {lastPage + 1}
+            </span>
+            <span className="flex items-center gap-2">
+              <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((n) => Math.max(0, n - 1))}>
+                <ChevronLeft className="h-3.5 w-3.5" /> Previous
+              </Button>
+              <Button size="sm" variant="outline" disabled={page >= lastPage} onClick={() => setPage((n) => Math.min(lastPage, n + 1))}>
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </span>
+          </nav>
         )}
 
         <PropertyImporter open={importerOpen} onOpenChange={setImporterOpen} />

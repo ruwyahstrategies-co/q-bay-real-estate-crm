@@ -20,6 +20,7 @@ export function MetricCard({
   icon,
   tone = "green",
   delta,
+  title,
   className,
 }: {
   label: string;
@@ -28,10 +29,13 @@ export function MetricCard({
   tone?: Tone;
   /** Optional period-comparison line rendered under the value, e.g. "+12% vs previous period". */
   delta?: ReactNode;
+  /** The full, exact value, shown on hover when the displayed value is shortened. */
+  title?: string;
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-xl border border-border bg-canvas p-4 shadow-card", className)}>
+    // min-w-0 + overflow-hidden: a long figure can never push the card wider or spill out of it.
+    <div className={cn("min-w-0 overflow-hidden rounded-xl border border-border bg-canvas p-4 shadow-card", className)}>
       <div className="flex items-center gap-2.5">
         {icon ? (
           <span
@@ -45,7 +49,10 @@ export function MetricCard({
         ) : null}
         <span className="truncate text-[13px] font-medium text-muted-foreground">{label}</span>
       </div>
-      <div className="mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
+      <div
+        title={title}
+        className="mt-3 min-w-0 text-[22px] font-semibold leading-tight tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-[26px]"
+      >
         {value}
       </div>
       {delta ? <p className="mt-1.5 text-xs text-muted-foreground">{delta}</p> : null}

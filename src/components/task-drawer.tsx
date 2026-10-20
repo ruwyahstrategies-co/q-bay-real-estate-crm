@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ExternalLink, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SelectField, SearchableSelectField } from "./select-field";
+import { LeadSearchSelect } from "./lead-picker";
+import { PropertySearchSelect } from "./property-picker";
 import { cn, titleCase } from "@/lib/utils";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
-import { useLeads } from "@/hooks/use-leads";
-import { useProperties } from "@/hooks/use-properties";
-import { useOwners } from "@/hooks/use-owners";
+import { useOwnerOptions } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { fromQatarInputValue, toQatarInputValue } from "@/lib/qatar-time";
 import type { Task } from "@/lib/db";
 import { PRIORITIES, TASK_STATUSES } from "@/lib/db";
 
@@ -25,50 +28,88 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
-function initialForm(task: Task | null | undefined, defaultLeadId: string | null | undefined, defaultOwnerId: string | null | undefined): Partial<Task> {
+type Form = {
+  title: string;
+  description: string;
+  task_type: string;
+  dueLocal: string;
+  priority: string;
+  status: string;
+  lead_id: string | null;
+  property_id: string | null;
+  owner_id: string | null;
+  assigned_to: string | null;
+};
+
+export type TaskContext = {
+  defaultLeadId?: string | null;
+  defaultOwnerId?: string | null;
+  defaultPropertyId?: string | null;
+  /** Pre-filled title, for example "Follow up after viewing". */
+  defaultTitle?: string;
+  /** Who the task is for. When omitted, a new task is assigned to the person creating it. */
+  defaultAssignedTo?: string | null;
+  /** Pre-filled due date and time as a Qatar-time form value ("2026-10-20T09:00"), for example from a calendar day. */
+  defaultDueLocal?: string;
+  /** Where the task was created from (for example "interaction"), kept on the task. */
+  source?: string;
+  sourceRef?: string;
+};
+
+function initialForm(task: Task | null | undefined, ctx: TaskContext, meId: string | null): Form {
   return {
-    title: task?.title ?? "",
+    title: task?.title ?? ctx.defaultTitle ?? "",
     description: task?.description ?? "",
     task_type: task?.task_type ?? "",
-    due_at: task?.due_at ?? null,
+    dueLocal: task ? toQatarInputValue(task.due_at) : (ctx.defaultDueLocal ?? ""),
     priority: task?.priority ?? "medium",
     status: task?.status ?? "pending",
-    lead_id: task?.lead_id ?? defaultLeadId ?? null,
-    property_id: task?.property_id ?? null,
-    assigned_to: task?.assigned_to ?? null,
-    owner_id: task?.owner_id ?? defaultOwnerId ?? null,
+    lead_id: task?.lead_id ?? ctx.defaultLeadId ?? null,
+    property_id: task?.property_id ?? ctx.defaultPropertyId ?? null,
+    owner_id: task?.owner_id ?? ctx.defaultOwnerId ?? null,
+    // A new task belongs to whoever creates it unless they deliberately pick someone else. Editing
+    // never changes the assignee on its own.
+    assigned_to: task ? task.assigned_to : (ctx.defaultAssignedTo ?? meId),
   };
 }
 
+/**
+ * The one task form, used everywhere a task can be created or edited (lead, owner, property, viewing,
+ * conversation, calendar). Context passed in (lead / owner / property) is pre-filled and linked back.
+ */
 export function TaskDrawer({
   open,
   onOpenChange,
   task,
   defaultLeadId,
   defaultOwnerId,
+  defaultPropertyId,
+  defaultTitle,
+  defaultAssignedTo,
+  defaultDueLocal,
+  source,
+  sourceRef,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   task?: Task | null;
-  defaultLeadId?: string | null;
-  defaultOwnerId?: string | null;
-}) {
+} & TaskContext) {
   const create = useCreateTask();
   const update = useUpdateTask();
-  const { data: leads = [] } = useLeads({ status: "all" });
-  const { data: properties = [] } = useProperties({ status: "all" });
-  const { data: owners = [] } = useOwners();
+  const { data: owners = [] } = useOwnerOptions();
   const { data: team = [] } = useTeamMembers();
+  const { teamMember: me } = useCurrentUser();
   const isEdit = !!task?.id;
+  const ctx: TaskContext = { defaultLeadId, defaultOwnerId, defaultPropertyId, defaultTitle, defaultAssignedTo, defaultDueLocal };
 
-  const [form, setForm] = useState<Partial<Task>>(() => initialForm(task, defaultLeadId, defaultOwnerId));
+  const [form, setForm] = useState<Form>(() => initialForm(task, ctx, me?.id ?? null));
 
   useEffect(() => {
-    if (open) setForm(initialForm(task, defaultLeadId, defaultOwnerId));
+    if (open) setForm(initialForm(task, ctx, me?.id ?? null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, task?.id, defaultLeadId, defaultOwnerId]);
+  }, [open, task?.id, defaultLeadId, defaultOwnerId, defaultPropertyId, defaultTitle, defaultAssignedTo, defaultDueLocal, me?.id]);
 
-  function set<K extends keyof Task>(k: K, v: Task[K]) {
+  function set<K extends keyof Form>(k: K, v: Form[K]) {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
@@ -77,13 +118,15 @@ export function TaskDrawer({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (pending) return;
-    const title = (form.title ?? "").trim();
+    const title = form.title.trim();
     if (!title) return toast.error("Title is required");
+    const dueAt = fromQatarInputValue(form.dueLocal);
+    if (form.dueLocal && !dueAt) return toast.error("That due date is not valid");
     const payload = {
       title,
-      description: form.description || null,
+      description: form.description.trim() || null,
       task_type: form.task_type || null,
-      due_at: form.due_at ? new Date(form.due_at).toISOString() : null,
+      due_at: dueAt,
       priority: form.priority || "medium",
       status: form.status || "pending",
       lead_id: form.lead_id || null,
@@ -96,16 +139,22 @@ export function TaskDrawer({
         await update.mutateAsync({ id: task.id, patch: payload });
         toast.success("Task updated");
       } else {
-        await create.mutateAsync(payload);
-        toast.success("Task created");
+        await create.mutateAsync({
+          ...payload,
+          ...(source ? { source } : {}),
+          ...(sourceRef ? { source_ref: sourceRef } : {}),
+        });
+        toast.success(
+          form.assigned_to && form.assigned_to !== me?.id
+            ? `Task created for ${team.find((m) => m.id === form.assigned_to)?.full_name ?? "the selected agent"}`
+            : "Task created",
+        );
       }
       onOpenChange(false);
     } catch (err) {
       toast.error((err as Error).message);
     }
   }
-
-  const dueValue = form.due_at ? new Date(form.due_at).toISOString().slice(0, 16) : "";
 
   return (
     <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel={isEdit ? "Edit task" : "Add task"}>
@@ -117,15 +166,15 @@ export function TaskDrawer({
       </div>
       <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
         <Field label="Title *" full>
-          <input className={inputCls} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} required />
+          <input className={inputCls} value={form.title} onChange={(e) => set("title", e.target.value)} required />
         </Field>
-        <Field label="Due date">
-          <input className={inputCls} type="datetime-local" value={dueValue} onChange={(e) => set("due_at", e.target.value || null)} />
+        <Field label="Due date and time (Qatar)">
+          <input className={inputCls} type="datetime-local" value={form.dueLocal} onChange={(e) => set("dueLocal", e.target.value)} />
         </Field>
         <Field label="Priority">
           <SelectField
-            value={form.priority ?? "medium"}
-            onChange={(v) => set("priority", (v ?? "medium") as Task["priority"])}
+            value={form.priority}
+            onChange={(v) => set("priority", v ?? "medium")}
             options={PRIORITIES.map((p) => ({ value: p, label: titleCase(p) }))}
             allowClear={false}
           />
@@ -134,31 +183,25 @@ export function TaskDrawer({
           <SearchableSelectField
             value={form.assigned_to}
             onChange={(v) => set("assigned_to", v)}
-            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+            options={team.filter((m) => m.is_active !== false || m.id === form.assigned_to).map((m) => ({ value: m.id, label: m.full_name }))}
             placeholder="Select team member"
             emptyLabel="Unassigned"
             searchPlaceholder="Search team..."
           />
         </Field>
-        <Field label="Lead">
-          <SearchableSelectField
-            value={form.lead_id}
-            onChange={(v) => set("lead_id", v)}
-            options={leads.map((l) => ({ value: l.id, label: l.full_name }))}
-            placeholder="Select lead"
-            emptyLabel="- None -"
-            searchPlaceholder="Search leads..."
+        <Field label="Status">
+          <SelectField
+            value={form.status}
+            onChange={(v) => set("status", v ?? "pending")}
+            options={TASK_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
+            allowClear={false}
           />
         </Field>
+        <Field label="Lead">
+          <LeadSearchSelect value={form.lead_id} onChange={(v) => set("lead_id", v)} />
+        </Field>
         <Field label="Property">
-          <SearchableSelectField
-            value={form.property_id}
-            onChange={(v) => set("property_id", v)}
-            options={properties.map((p) => ({ value: p.id, label: p.title }))}
-            placeholder="Select property"
-            emptyLabel="- None -"
-            searchPlaceholder="Search properties..."
-          />
+          <PropertySearchSelect value={form.property_id} onChange={(v) => set("property_id", v)} allowClear placeholder="Search and select a property" />
         </Field>
         <Field label="Owner">
           <SearchableSelectField
@@ -170,16 +213,28 @@ export function TaskDrawer({
             searchPlaceholder="Search owners..."
           />
         </Field>
-        <Field label="Status">
-          <SelectField
-            value={form.status ?? "pending"}
-            onChange={(v) => set("status", (v ?? "pending") as Task["status"])}
-            options={TASK_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
-            allowClear={false}
-          />
-        </Field>
+        {(form.lead_id || form.property_id || form.owner_id) && (
+          <div className="sm:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="text-muted-foreground">Open related record:</span>
+            {form.lead_id && (
+              <Link to="/leads/$leadId" params={{ leadId: form.lead_id }} className="inline-flex items-center gap-1 text-qbay hover:underline" onClick={() => onOpenChange(false)}>
+                Lead <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+            {form.property_id && (
+              <Link to="/properties/$propertyId" params={{ propertyId: form.property_id }} className="inline-flex items-center gap-1 text-qbay hover:underline" onClick={() => onOpenChange(false)}>
+                Property <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+            {form.owner_id && (
+              <Link to="/owners/$ownerId" params={{ ownerId: form.owner_id }} className="inline-flex items-center gap-1 text-qbay hover:underline" onClick={() => onOpenChange(false)}>
+                Owner <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        )}
         <Field label="Description" full>
-          <textarea className={cn(inputCls, "h-24 py-2")} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+          <textarea className={cn(inputCls, "h-24 py-2")} value={form.description} onChange={(e) => set("description", e.target.value)} />
         </Field>
         <div className="sm:col-span-2 flex items-center justify-end gap-2 sticky bottom-0 z-10 -mx-5 -mb-5 border-t border-border bg-canvas/95 px-5 py-3 backdrop-blur">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>

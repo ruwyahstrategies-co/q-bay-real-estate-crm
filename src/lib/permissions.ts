@@ -18,10 +18,13 @@
 
 export const MODULES = {
   overview: ["view"],
-  leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign"],
-  properties: ["view", "create", "edit", "delete", "publish", "hard_delete"],
+  // "assign" lets an agent hand over a single lead; "reassign" is the Super Administrator override
+  // used for bulk reassignment (enforced by the bulk_reassign_* database functions).
+  leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign", "reassign"],
+  // "approve" lets an Administrator review properties that agents submit (review_property()).
+  properties: ["view", "create", "edit", "delete", "publish", "approve", "hard_delete"],
   developments: ["view", "create", "edit", "delete", "publish"],
-  owners: ["view", "create", "edit", "delete"],
+  owners: ["view", "create", "edit", "delete", "reassign"],
   locations: ["view", "manage"],
   viewings: ["view", "view_team", "view_all", "create", "edit", "complete"],
   offers: ["view", "view_team", "view_all", "create", "edit", "delete"],
@@ -91,6 +94,8 @@ export const ACTION_LABELS: Record<string, string> = {
   delete: "Delete",
   hard_delete: "Permanently delete",
   assign: "Assign",
+  reassign: "Reassign (Super Admin)",
+  approve: "Approve",
   move: "Move stage",
   upload: "Upload",
   complete: "Complete",
@@ -102,13 +107,15 @@ export const ACTION_LABELS: Record<string, string> = {
   manage_templates: "Manage templates",
 };
 
-// "hard_delete" (permanent property delete) is reserved for Super
-// Administrator specifically - it is deliberately excluded from the general
-// full-access closure so that granting every other action list (Administrator
-// and below) never silently includes it. Only ROLE_PRESETS.super_administrator
-// adds it back.
+// "hard_delete" (permanent property delete) and "reassign" (bulk lead / owner
+// reassignment) are reserved for Super Administrator specifically - they are
+// deliberately excluded from the general full-access closure so that granting
+// every other action list (Administrator and below) never silently includes
+// them. Only ROLE_PRESETS.super_administrator adds them back.
 const RESTRICTED_FULL_ACCESS_ACTIONS: Partial<Record<ModuleKey, string[]>> = {
   properties: ["hard_delete"],
+  leads: ["reassign"],
+  owners: ["reassign"],
 };
 
 export function fullAccessPermissions(): PermissionSet {
@@ -132,10 +139,12 @@ export const ROLE_PRESETS = {
   super_administrator: {
     label: "Super Administrator",
     description:
-      "Everything an Administrator has, plus the sole ability to permanently delete properties. Everyone else sees Share instead of Delete.",
+      "Everything an Administrator has, plus the sole ability to permanently delete properties and to reassign leads and owners in bulk. Everyone else sees Share instead of Delete.",
     permissions: (): PermissionSet => ({
       ...fullAccessPermissions(),
       properties: [...MODULES.properties],
+      leads: [...MODULES.leads],
+      owners: [...MODULES.owners],
     }),
   },
   administrator: {

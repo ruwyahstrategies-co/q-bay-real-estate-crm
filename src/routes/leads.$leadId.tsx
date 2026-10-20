@@ -12,6 +12,7 @@ import {
   UserPlus,
   SpellCheck,
   Undo2,
+  ClipboardPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -22,6 +23,7 @@ import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { LeadOutcomeBadge, LeadOutcomeCard, LeadOutcomeMenu } from "@/components/lead-outcome";
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
+import { AssignmentHistory } from "@/components/assignment-history";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
@@ -52,7 +54,9 @@ import {
 } from "@/hooks/use-lead-notes";
 import { useCorrectNoteSpelling } from "@/hooks/use-note-spelling";
 import { usePropertyMatchesForLead } from "@/hooks/use-matching";
-import { useLeadViewings, useCreateViewing, useCompleteViewing } from "@/hooks/use-viewings";
+import { useLeadViewings } from "@/hooks/use-viewings";
+import { ScheduleViewingDrawer, ViewingDetailDrawer, ViewingStatusBadge } from "@/components/viewing-drawers";
+import { fmtQatarDateTime } from "@/lib/qatar-time";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
@@ -84,6 +88,8 @@ function LeadProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [interactionOpen, setInteractionOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  // A task started from one conversation keeps that conversation as its source.
+  const [interactionTask, setInteractionTask] = useState<{ id: string; subject: string | null } | null>(null);
 
   const { data: lead, isLoading } = useLead(leadId);
   const { data: team = [] } = useTeamMembers();
@@ -348,6 +354,7 @@ function LeadProfilePage() {
               <LeadSharedPropertiesSection leadId={lead.id} />
             </div>
             <LeadPropertyMatches leadId={lead.id} />
+            <AssignmentHistory entity="lead" id={lead.id} />
           </div>
         )}
 
@@ -401,6 +408,17 @@ function LeadProfilePage() {
                           </p>
                         )}
                       </div>
+                      {canCreateTask && (
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 hover:bg-muted"
+                          title="Add a task from this conversation"
+                          aria-label="Add a task from this conversation"
+                          onClick={() => setInteractionTask(i)}
+                        >
+                          <ClipboardPlus className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {canDeleteInteraction && (
                         <button
                           className="rounded-md p-1.5 hover:bg-muted text-destructive"
@@ -427,7 +445,9 @@ function LeadProfilePage() {
         {tab === "Viewings" && <ViewingsTab leadId={lead.id} />}
         {tab === "Offers" && <OffersTab leadId={lead.id} developmentId={lead.development_id} />}
 
-        {tab === "Property Interests" && <PropertyInterestsTab leadId={lead.id} />}
+        {tab === "Property Interests" && (
+          <PropertyInterestsTab leadId={lead.id} onEdit={canEdit ? () => setEditOpen(true) : undefined} />
+        )}
 
         {tab === "Buyer Intelligence" && <BuyerIntelligencePanel lead={lead} />}
 
@@ -571,6 +591,14 @@ function LeadProfilePage() {
           defaultLeadId={lead.id}
         />
         <TaskDrawer open={taskOpen} onOpenChange={setTaskOpen} defaultLeadId={lead.id} />
+        <TaskDrawer
+          open={!!interactionTask}
+          onOpenChange={(v) => !v && setInteractionTask(null)}
+          defaultLeadId={lead.id}
+          defaultTitle={interactionTask?.subject ? `Follow up: ${interactionTask.subject}` : `Follow up: ${lead.full_name}`}
+          source="interaction"
+          sourceRef={interactionTask?.id}
+        />
         <ConfirmDialog open={false} title="" onConfirm={() => {}} onCancel={() => {}} />
       </PermissionGate>
     </AppShell>
@@ -940,84 +968,56 @@ function NoteCard({
 }
 
 function ViewingsTab({ leadId }: { leadId: string }) {
-  const { data: viewings = [] } = useLeadViewings(leadId);
-  const create = useCreateViewing();
-  const complete = useCompleteViewing();
-  const { can } = usePermissions();
+  const { data: viewings = [], isLoading } = useLeadViewings(leadId);
   const { data: team = [] } = useTeamMembers();
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [agentId, setAgentId] = useState("");
+  const { can } = usePermissions();
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const canCreate = can("viewings", "create");
+  const agentName = (id: string | null) => team.find((m) => m.id === id)?.full_name ?? "Unassigned";
 
   return (
     <div className="space-y-3">
-      {canCreate && (
-        <Card>
-          <h4 className="text-sm font-semibold">Schedule a viewing</h4>
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-              Date & time
-              <input
-                type="datetime-local"
-                className="h-9 rounded-lg border border-border bg-canvas px-3 text-sm"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-              Agent
-              <SearchableSelectField
-                value={agentId || null}
-                onChange={(v) => setAgentId(v ?? "")}
-                options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-                placeholder="Select agent"
-                searchPlaceholder="Search agents..."
-              />
-            </label>
-            <Button
-              size="sm"
-              disabled={!scheduledAt || create.isPending}
-              onClick={async () => {
-                try {
-                  await create.mutateAsync({
-                    lead_id: leadId,
-                    scheduled_at: new Date(scheduledAt).toISOString(),
-                    assigned_agent_id: agentId || null,
-                  });
-                  setScheduledAt("");
-                  setAgentId("");
-                  toast.success("Viewing scheduled");
-                } catch (e) {
-                  toast.error((e as Error).message);
-                }
-              }}
-            >
-              Schedule
-            </Button>
-          </div>
-        </Card>
-      )}
-      {viewings.length === 0 ? (
-        <EmptyState compact title="No viewings scheduled" />
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold">Viewings ({viewings.length})</h4>
+        {canCreate && (
+          <Button size="sm" onClick={() => setScheduleOpen(true)}>
+            Schedule viewing
+          </Button>
+        )}
+      </div>
+      {isLoading ? (
+        <EmptyState compact title="Loading..." />
+      ) : viewings.length === 0 ? (
+        <EmptyState compact title="No viewings scheduled" description="Scheduling a viewing also moves this lead to Viewing Scheduled." />
       ) : (
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {viewings.map((v) => (
-            <Card key={v.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <p className="text-sm font-medium">{fmtDateTime(v.scheduled_at)}</p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {v.status.replace(/_/g, " ")}
-                </p>
-              </div>
-              {v.status !== "completed" && v.status !== "cancelled" && (
-                <Button size="sm" variant="outline" onClick={() => complete.mutate({ id: v.id })}>
-                  Mark completed
-                </Button>
-              )}
-            </Card>
+            <li key={v.id}>
+              <button
+                type="button"
+                onClick={() => setDetailId(v.id)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-canvas px-4 py-3 text-left shadow-card transition-colors hover:bg-qbay-tint/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label={`Open viewing on ${fmtQatarDateTime(v.scheduled_at)}`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium tabular-nums">{fmtQatarDateTime(v.scheduled_at)}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    {v.properties
+                      ? `${v.properties.reference_code ? `${v.properties.reference_code} · ` : ""}${v.properties.title}`
+                      : "No property linked"}
+                    {" · "}
+                    {agentName(v.assigned_agent_id)}
+                  </span>
+                </span>
+                <ViewingStatusBadge status={v.status} />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
+      <ScheduleViewingDrawer open={scheduleOpen} onOpenChange={setScheduleOpen} defaultLeadId={leadId} />
+      <ViewingDetailDrawer viewingId={detailId} open={!!detailId} onOpenChange={(v) => !v && setDetailId(null)} />
     </div>
   );
 }
@@ -1197,9 +1197,23 @@ function OfferAttachments({ offerId, canUpload }: { offerId: string; canUpload: 
   );
 }
 
-function PropertyInterestsTab({ leadId }: { leadId: string }) {
-  const { data, isLoading } = useLeadReferences(leadId);
+function PropertyInterestsTab({ leadId, onEdit }: { leadId: string; onEdit?: () => void }) {
+  const { data, isLoading, isError, error, refetch } = useLeadReferences(leadId);
   if (isLoading) return <EmptyState compact title="Loading..." />;
+  if (isError) {
+    return (
+      <EmptyState
+        compact
+        title="Property interests could not be loaded"
+        description={(error as Error)?.message ?? "Try again."}
+        action={
+          <Button size="sm" variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  }
   const interests = (data?.interests ?? []) as any[];
   const mentioned = (data?.mentioned ?? []) as any[];
   const seen = new Set(interests.map((i) => i.property_id));
@@ -1210,6 +1224,13 @@ function PropertyInterestsTab({ leadId }: { leadId: string }) {
         compact
         title="No property interests yet"
         description="Properties this lead views, mentions or shortlists will appear here."
+        action={
+          onEdit ? (
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              Add property interests
+            </Button>
+          ) : undefined
+        }
       />
     );
   }
@@ -1217,11 +1238,28 @@ function PropertyInterestsTab({ leadId }: { leadId: string }) {
     <div className="space-y-3">
       {interests.length > 0 && (
         <Card>
-          <h4 className="text-sm font-semibold">Linked properties</h4>
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-sm font-semibold">Linked properties ({interests.length})</h4>
+            {onEdit && (
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                Edit interests
+              </Button>
+            )}
+          </div>
           <ul className="mt-3 space-y-2">
             {interests.map((it) => {
               const p = it.properties;
-              if (!p) return null;
+              if (!p) {
+                // The link exists but the property record cannot be shown. Say so rather than hiding it.
+                return (
+                  <li
+                    key={it.id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border p-2 text-xs text-muted-foreground"
+                  >
+                    <span>A linked property is no longer available</span>
+                  </li>
+                );
+              }
               return (
                 <li
                   key={it.id}

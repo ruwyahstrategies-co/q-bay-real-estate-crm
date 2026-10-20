@@ -128,16 +128,34 @@ function isActivePath(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(to + "/");
 }
 
-/** Resolves each group's own-page + permission-filtered children, dropping groups nobody can see. */
+/**
+ * Resolves each group's own-page + permission-filtered children, dropping groups nobody can see.
+ *
+ * A group with its own page (Accounting, Team, Leads...) is shown only to people who can open that page.
+ * Someone who can open a sub-page but not the parent (for example Analytics without Accounting) sees that
+ * sub-page on its own, never under a heading they have not been given. Pure parents with no page of their
+ * own (Website) stay visible through their children.
+ */
 function useVisibleGroups() {
   const { can } = usePermissions();
-  return navGroups
-    .map((group) => {
-      const ownPageVisible = !!group.module && can(group.module, "view");
-      const children = (group.children ?? []).filter((c) => can(c.module, "view"));
-      return { group, ownPageVisible, children };
-    })
-    .filter(({ ownPageVisible, children }) => ownPageVisible || children.length > 0);
+  return navGroups.flatMap((group) => {
+    const ownPageVisible = !!group.module && can(group.module, "view");
+    const children = (group.children ?? []).filter((c) => can(c.module, "view"));
+    if (ownPageVisible || (!group.module && children.length > 0)) {
+      return [{ group, ownPageVisible, children }];
+    }
+    return children.map((child) => ({
+      group: {
+        key: `${group.key}:${child.to}`,
+        to: child.to,
+        label: child.label,
+        icon: child.icon,
+        module: child.module,
+      } as NavGroup,
+      ownPageVisible: true,
+      children: [] as NavLeaf[],
+    }));
+  });
 }
 
 /**

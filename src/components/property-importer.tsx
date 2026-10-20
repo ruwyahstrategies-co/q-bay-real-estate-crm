@@ -10,6 +10,7 @@ import { sb } from "@/lib/db";
 import { masterDataNorm } from "@/lib/master-data";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
+import { usePermissions } from "@/hooks/use-auth";
 
 // Reuses the same CSV/XLSX import wizard shape as LeadImporter, adapted for
 // properties: reference_code is the dedup key (matches spec's "reference-code
@@ -60,6 +61,7 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
   const [mapping, setMapping] = useState<Record<FieldKey, string>>({} as Record<FieldKey, string>);
   const [duplicateAction, setDuplicateAction] = useState<"skip" | "update" | "new">("update");
   const [busy, setBusy] = useState(false);
+  const { can } = usePermissions();
   const [summary, setSummary] = useState<{ total: number; imported: number; updated: number; skipped: number; failed: number; errors: string[] } | null>(null);
 
   function reset() {
@@ -262,6 +264,12 @@ export function PropertyImporter({ open, onOpenChange }: { open: boolean; onOpen
                 <Stat label="Skipped" value={summary.skipped} />
                 <Stat label="Failed" value={summary.failed} />
               </div>
+              {!can("properties", "approve") && (summary.imported > 0 || summary.updated > 0) && (
+                <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                  Imported properties are sent to an Administrator for approval and stay off the public website until approved. Changes to the
+                  price, currency, purpose, owner, development or type of an approved property are reviewed again before it returns to the website.
+                </p>
+              )}
               {summary.errors.length > 0 && (
                 <details className="rounded-lg border border-border bg-background p-3 text-xs">
                   <summary className="cursor-pointer font-medium">Errors ({summary.errors.length})</summary>

@@ -9,7 +9,7 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
-import { Plus, LayoutGrid, Rows3, ArrowUpRight, Users } from "lucide-react";
+import { Plus, LayoutGrid, Rows3, ArrowUpRight, Users, ClipboardPlus, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -27,6 +27,9 @@ import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { MaskedPhone } from "@/components/masked-phone";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { TaskDrawer } from "@/components/task-drawer";
+import { blockedMoveReason, isClosedStage } from "@/lib/pipeline";
 import { fmtMoney, type Lead } from "@/lib/db";
 
 export const Route = createFileRoute("/pipeline")({
@@ -47,6 +50,10 @@ function PipelinePage() {
   const { can } = usePermissions();
   const canMove = can("pipeline", "move");
   const canCreateLead = can("leads", "create");
+  const canCreateTask = can("tasks", "create");
+  // A move into Won or Lost closes the lead for good, so it is confirmed first.
+  const [pendingClose, setPendingClose] = useState<{ lead: Lead; target: string } | null>(null);
+  const [taskLead, setTaskLead] = useState<Lead | null>(null);
 
   // Local optimistic copy of leads' stages
   const [localStage, setLocalStage] = useState<Record<string, string>>({});
@@ -55,24 +62,38 @@ function PipelinePage() {
     [leads, localStage],
   );
 
+  async function moveLead(lead: Lead, targetStage: string) {
+    const prev = lead.pipeline_stage;
+    setLocalStage((m) => ({ ...m, [lead.id]: targetStage }));
+    try {
+      await changeStage.mutateAsync({ id: lead.id, newStage: targetStage, previousStage: prev });
+    } catch (err) {
+      // The database is the final judge of the forward-only rule, so a refusal puts the card back.
+      setLocalStage((m) => {
+        const c = { ...m };
+        delete c[lead.id];
+        return c;
+      });
+      toast.error((err as Error).message);
+    }
+  }
+
   async function onDragEnd(e: DragEndEvent) {
     if (!canMove || !e.over) return;
     const leadId = String(e.active.id);
     const targetStage = String(e.over.id);
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.pipeline_stage === targetStage) return;
-    const prev = lead.pipeline_stage;
-    setLocalStage((m) => ({ ...m, [leadId]: targetStage }));
-    try {
-      await changeStage.mutateAsync({ id: leadId, newStage: targetStage, previousStage: prev });
-    } catch (err) {
-      setLocalStage((m) => {
-        const c = { ...m };
-        delete c[leadId];
-        return c;
-      });
-      toast.error((err as Error).message);
+    const reason = blockedMoveReason(pipelineStages, lead.pipeline_stage, targetStage);
+    if (reason) {
+      toast.error(reason);
+      return;
     }
+    if (isClosedStage(pipelineStages, targetStage)) {
+      setPendingClose({ lead, target: targetStage });
+      return;
+    }
+    await moveLead(lead, targetStage);
   }
 
   return (
@@ -139,6 +160,8 @@ function PipelinePage() {
                   total={total}
                   droppable={canMove}
                   team={team}
+                  stages={pipelineStages}
+                  onAddTask={canCreateTask ? setTaskLead : undefined}
                 />
               );
             })}
@@ -166,6 +189,29 @@ function PipelinePage() {
       )}
 
       <AddLeadDrawer open={addOpen} onOpenChange={setAddOpen} />
+      <ConfirmDialog
+        open={!!pendingClose}
+        title={`Close ${pendingClose?.lead.full_name ?? "this lead"} as ${pipelineStages.find((x) => x.stage_key === pendingClose?.target)?.name ?? "closed"}?`}
+        description="A closed lead cannot be moved back into the pipeline. Check the stage before you confirm."
+        confirmLabel="Close lead"
+        destructive={!!pipelineStages.find((x) => x.stage_key === pendingClose?.target)?.is_lost}
+        pending={changeStage.isPending}
+        onCancel={() => setPendingClose(null)}
+        onConfirm={async () => {
+          if (!pendingClose) return;
+          const { lead, target } = pendingClose;
+          setPendingClose(null);
+          await moveLead(lead, target);
+        }}
+      />
+      <TaskDrawer
+        open={!!taskLead}
+        onOpenChange={(v) => !v && setTaskLead(null)}
+        defaultLeadId={taskLead?.id}
+        defaultTitle={taskLead ? `Follow up: ${taskLead.full_name}` : undefined}
+        source="pipeline"
+        sourceRef={taskLead?.id}
+      />
       </PermissionGate>
     </AppShell>
   );
@@ -181,6 +227,8 @@ function StageColumn({
   total,
   droppable,
   team,
+  stages,
+  onAddTask,
 }: {
   stageKey: string;
   label: string;
@@ -190,6 +238,8 @@ function StageColumn({
   total: number;
   droppable: boolean;
   team: StaffLite[];
+  stages: { stage_key: string; position: number; is_won: boolean; is_lost: boolean }[];
+  onAddTask?: (lead: Lead) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey, disabled: !droppable });
   return (
@@ -228,8 +278,11 @@ function StageColumn({
             <DraggableCard
               key={l.id}
               lead={l}
-              draggable={droppable}
+              // Closed (Won / Lost) leads are locked: they cannot be moved again.
+              draggable={droppable && !isClosedStage(stages, l.pipeline_stage)}
+              closed={isClosedStage(stages, l.pipeline_stage)}
               agent={team.find((t) => t.id === l.assigned_agent_id) ?? null}
+              onAddTask={onAddTask}
             />
           ))
         )}
@@ -244,7 +297,19 @@ function StageColumn({
   );
 }
 
-function DraggableCard({ lead, draggable, agent }: { lead: Lead; draggable: boolean; agent: StaffLite | null }) {
+function DraggableCard({
+  lead,
+  draggable,
+  closed,
+  agent,
+  onAddTask,
+}: {
+  lead: Lead;
+  draggable: boolean;
+  closed: boolean;
+  agent: StaffLite | null;
+  onAddTask?: (lead: Lead) => void;
+}) {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
@@ -270,11 +335,32 @@ function DraggableCard({ lead, draggable, agent }: { lead: Lead; draggable: bool
         isDragging && "z-10 opacity-90 shadow-pop",
       )}
     >
-      <ArrowUpRight className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      {closed ? (
+        <Lock aria-label="Closed lead" className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+      ) : (
+        <ArrowUpRight className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
       <p className="truncate pr-5 text-sm font-medium">{lead.full_name}</p>
       <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.phone ? <MaskedPhone value={lead.phone} /> : (lead.email ?? "")}</p>
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <span className="text-xs font-medium tabular-nums">{fmtMoney(lead.budget_max, lead.currency)}</span>
+        {onAddTask && (
+          <button
+            type="button"
+            aria-label={`Add task for ${lead.full_name}`}
+            title="Add task"
+            // Do not start a drag or open the lead when this button is used.
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddTask(lead);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <ClipboardPlus className="h-3.5 w-3.5" />
+          </button>
+        )}
         {agent ? (
           <StaffAvatar name={agent.full_name} url={agent.avatar_url} size="xs" />
         ) : (

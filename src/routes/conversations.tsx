@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, MessageCircle, Trash2, Pencil } from "lucide-react";
+import { Plus, MessageCircle, Trash2, Pencil, ClipboardPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button, Card } from "@/components/ui-primitives";
 import { InteractionDrawer } from "@/components/interaction-drawer";
+import { TaskDrawer } from "@/components/task-drawer";
 import { SelectField } from "@/components/select-field";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
 import { fmtDateTime, INTERACTION_TYPES, type Interaction } from "@/lib/db";
@@ -25,6 +26,7 @@ function ConversationsPage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [taskOpen, setTaskOpen] = useState(false);
 
   const { data: interactions = [] } = useInteractions({ search, type });
   const del = useDeleteInteraction();
@@ -33,6 +35,7 @@ function ConversationsPage() {
   const canCreate = can("conversations", "create");
   const canEdit = can("conversations", "edit");
   const canDelete = can("conversations", "delete");
+  const canCreateTask = can("tasks", "create");
 
   if (!can("conversations", "view")) return <AppShell><AccessDenied /></AppShell>;
 
@@ -107,6 +110,16 @@ function ConversationsPage() {
                   <p className="text-xs text-muted-foreground">{fmtDateTime(selected.interaction_date)}</p>
                 </div>
                 <div className="flex items-center gap-1">
+                  {canCreateTask && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs hover:bg-muted"
+                      title="Add a task from this conversation"
+                      onClick={() => setTaskOpen(true)}
+                    >
+                      <ClipboardPlus className="h-3.5 w-3.5" /> Add task
+                    </button>
+                  )}
                   {canEdit && <button className="rounded-md p-1.5 hover:bg-muted" onClick={() => { setEdit(selected); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>}
                   {canDelete && (
                     <button
@@ -135,6 +148,18 @@ function ConversationsPage() {
       </div>
 
       <InteractionDrawer open={open} onOpenChange={setOpen} interaction={edit} />
+      {selected && (
+        <TaskDrawer
+          open={taskOpen}
+          onOpenChange={setTaskOpen}
+          defaultLeadId={selected.lead_id}
+          defaultOwnerId={selected.owner_id}
+          defaultPropertyId={selected.property_id}
+          defaultTitle={selected.subject ? `Follow up: ${selected.subject}` : undefined}
+          source="interaction"
+          sourceRef={selected.id}
+        />
+      )}
     </AppShell>
   );
 }

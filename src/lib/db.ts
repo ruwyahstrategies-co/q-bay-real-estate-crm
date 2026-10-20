@@ -448,6 +448,25 @@ export function fmtMoney(
   }
 }
 
+/** A short money figure for tight spaces: "QAR 101.7M". Use fmtMoney where the exact amount matters. */
+export function fmtMoneyCompact(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+): string {
+  if (amount == null) return "-";
+  const cur = currency || "QAR";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: cur,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } catch {
+    return `${cur} ${Math.round(amount).toLocaleString()}`;
+  }
+}
+
 export function fmtDate(d: string | null | undefined): string {
   if (!d) return "-";
   return new Date(d).toLocaleDateString(undefined, {

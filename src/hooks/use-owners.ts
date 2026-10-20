@@ -19,6 +19,8 @@ export type OwnerFilters = {
   companyId?: string | null;
   /** owners.assigned_agent_id. */
   agentId?: string | null;
+  /** Archive state. Defaults to active owners only. */
+  status?: "active" | "archived" | "all";
 };
 
 /** How many owners a search returns at most (the rest are found by typing more). */
@@ -34,11 +36,12 @@ export function useOwners(searchOrFilters: string | OwnerFilters = "") {
   const filters: OwnerFilters =
     typeof searchOrFilters === "string" ? { search: searchOrFilters } : searchOrFilters;
   const term = (filters.search ?? "").trim();
-  const { isDeveloper = null, companyId = null, agentId = null } = filters;
+  const { isDeveloper = null, companyId = null, agentId = null, status = "active" } = filters;
   return useQuery({
-    queryKey: ownerKeys.list({ search: term, isDeveloper, companyId, agentId }),
+    queryKey: ownerKeys.list({ search: term, isDeveloper, companyId, agentId, status }),
     queryFn: async (): Promise<SafeOwner[]> => {
       let q = sb.from("owners").select(OWNER_COLUMNS).order("name", { ascending: true });
+      if (status !== "all") q = q.eq("status", status);
       if (isDeveloper !== null) q = q.eq("is_developer", isDeveloper);
       if (companyId) q = q.eq("company_id", companyId);
       if (agentId) q = q.eq("assigned_agent_id", agentId);
@@ -68,7 +71,11 @@ export function useOwnerOptions() {
     queryKey: ownerKeys.options,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await sb.from("owners").select("id, name, company").order("name", { ascending: true });
+      const { data, error } = await sb
+        .from("owners")
+        .select("id, name, company")
+        .eq("status", "active")
+        .order("name", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -169,12 +176,28 @@ export function useUpdateOwner() {
   });
 }
 
+/**
+ * Permanently deletes one owner through the same safe database function the bulk Delete uses. An owner that
+ * still has properties, developments, contracts, conversations or other linked records is refused (archive it
+ * instead), so a property is never silently detached from its owner.
+ */
 export function useDeleteOwner() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("owners").delete().eq("id", id);
+      const { data, error } = await sb.rpc("bulk_delete_owners", { _ids: [id] });
       if (error) throw error;
+      const result = data as unknown as { deleted: number; blocked: { name: string; linked: Record<string, number> }[] };
+      if (result.deleted === 0) {
+        const blocked = result.blocked?.[0];
+        throw new Error(
+          blocked
+            ? `${blocked.name} cannot be deleted because it still has linked records (${Object.entries(blocked.linked)
+                .map(([k, n]) => `${n} ${k.replace(/_/g, " ")}`)
+                .join(", ")}). Archive the owner instead.`
+            : "This owner could not be deleted.",
+        );
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ownerKeys.all }),
   });

@@ -21,6 +21,8 @@ import { PropertySalesSection } from "@/components/property-sales-section";
 import { SharePropertyDrawer } from "@/components/share-property-drawer";
 import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
 import { PropertySharesSection } from "@/components/share-history";
+import { PropertyApprovalPanel } from "@/components/property-approval-panel";
+import { PropertyViewingsSection, PropertyTasksSection } from "@/components/property-related";
 import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
 import { sb, fmtMoney, isConfirmationOverdue } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
@@ -136,6 +138,8 @@ function PropertyDetailPage() {
         >
           <ChevronLeft className="h-3.5 w-3.5" /> All properties
         </Link>
+
+        <PropertyApprovalPanel property={property} />
 
         <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-5">
           <Card className="p-3 lg:col-span-3">
@@ -427,6 +431,8 @@ function PropertyDetailPage() {
           <PropertySalesSection property={property} />
         </div>
 
+        <PropertyViewingsSection propertyId={propertyId} />
+        <PropertyTasksSection propertyId={propertyId} propertyTitle={property.title} />
         <PropertyLeadsSection propertyId={propertyId} />
         <PropertySharesSection propertyId={propertyId} />
         <PropertyReferences propertyId={propertyId} />

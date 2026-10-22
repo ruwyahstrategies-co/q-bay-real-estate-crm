@@ -21,15 +21,16 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { SegmentedControl } from "@/components/segmented-control";
-import { FilterToolbar, FilterSearch, FilterSelect, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
+import { FilterToolbar, FilterSearch, ClearFiltersButton, ToolbarAlways } from "@/components/filter-toolbar";
+import { ActiveFilterChips, FiltersButton, type FilterChip } from "@/components/filters-drawer";
+import { LeadFiltersDrawer } from "@/components/lead-filters-drawer";
 import {
-  ActiveFilterChips,
-  FilterField,
-  FilterGroup,
-  FiltersButton,
-  FiltersDrawer,
-  type FilterChip,
-} from "@/components/filters-drawer";
+  EMPTY_LEAD_FILTERS,
+  leadFilterCount,
+  leadFilterProblems,
+  leadQueryFrom,
+  type LeadFilterState,
+} from "@/lib/list-filters";
 import { StaffAvatar } from "@/components/staff-avatar";
 import { DataTable, dataRowCls } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
@@ -51,7 +52,6 @@ import { usePendingReassignments } from "@/hooks/use-lead-reassignment";
 import { cn, titleCase } from "@/lib/utils";
 import { UNASSIGNED_AGENT, useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useLeadChannels } from "@/hooks/use-channels";
-import { useDebounced } from "@/hooks/use-debounced";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useDevelopments } from "@/hooks/use-developments";
@@ -61,6 +61,7 @@ import {
   LEAD_CLASSIFICATION_LABELS,
   LEAD_INTENTS,
   LEAD_INTENT_LABELS,
+  LEAD_OUTCOME_LABELS,
   LEAD_WORKFLOWS,
   classificationsForIntent,
   type Lead,
@@ -69,9 +70,6 @@ import {
 import { effectiveIntentScore } from "@/lib/intent";
 import { useAreas, useCountries } from "@/hooks/use-locations";
 import { MaskedPhone } from "@/components/masked-phone";
-
-const drawerInputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
@@ -89,19 +87,8 @@ function LeadsPage() {
   const [importerOpen, setImporterOpen] = useState(false);
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState<string | null>(null);
-  const [agent, setAgent] = useState<string | null>(null);
   const [intent, setIntent] = useState<LeadIntent>("sale");
-  const [classification, setClassification] = useState<string | null>(null);
-  const [workflow, setWorkflow] = useState<string | null>(null);
-  const [developmentId, setDevelopmentId] = useState<string | null>(null);
-  const [source, setSource] = useState<string | null>(null);
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [budgetMinText, setBudgetMinText] = useState("");
-  const [budgetMaxText, setBudgetMaxText] = useState("");
-  const [countryId, setCountryId] = useState<string | null>(null);
-  const [areaId, setAreaId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<LeadFilterState>(EMPTY_LEAD_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<Lead | null>(null);
@@ -115,43 +102,20 @@ function LeadsPage() {
   const { data: pendingHandovers = [] } = usePendingReassignments();
   const handoverByLead = useMemo(() => new Map(pendingHandovers.map((r) => [r.lead_id, r])), [pendingHandovers]);
 
-  const debouncedBudgetMin = useDebounced(budgetMinText, 400);
-  const debouncedBudgetMax = useDebounced(budgetMaxText, 400);
-  const toAmount = (t: string) => (t.trim() !== "" && Number.isFinite(Number(t)) ? Number(t) : null);
-  const budgetMin = toAmount(debouncedBudgetMin);
-  const budgetMax = toAmount(debouncedBudgetMax);
-  const budgetInvalid = budgetMin != null && budgetMax != null && budgetMin > budgetMax;
-  const dateRangeInvalid = !!createdFrom && !!createdTo && createdFrom > createdTo;
-  const [customFieldFilterKey, setCustomFieldFilterKey] = useState<string | null>(null);
-  const [customFieldFilterValue, setCustomFieldFilterValue] = useState<string | null>(null);
   const { data: leadFieldDefs = [] } = useFieldDefinitions("lead", { activeOnly: true });
   const filterableFieldDefs = useMemo(
     () => leadFieldDefs.filter((d) => d.is_filterable),
     [leadFieldDefs],
   );
-  const activeCustomFieldDef = filterableFieldDefs.find((d) => d.key === customFieldFilterKey) ?? null;
+  const activeCustomFieldDef = filterableFieldDefs.find((d) => d.key === filters.customKey) ?? null;
+  const filterProblems = leadFilterProblems(filters);
 
   // Every filter is applied in the database, custom fields included.
   const { data: leads = [], isLoading } = useLeads({
     status: archivedView ? "archived" : "active",
     search,
-    stage,
-    agent,
-    classification,
-    workflow,
-    developmentId,
     intent,
-    source,
-    createdFrom: dateRangeInvalid ? null : createdFrom || null,
-    createdTo: dateRangeInvalid ? null : createdTo || null,
-    budgetMin: budgetInvalid ? null : budgetMin,
-    budgetMax: budgetInvalid ? null : budgetMax,
-    countryId,
-    areaId,
-    customField:
-      activeCustomFieldDef && customFieldFilterValue
-        ? { key: activeCustomFieldDef.key, type: activeCustomFieldDef.field_type, value: customFieldFilterValue }
-        : null,
+    ...leadQueryFrom(filters, activeCustomFieldDef?.field_type ?? null),
   });
   const { data: team = [] } = useTeamMembers();
   const { data: developments = [] } = useDevelopments();
@@ -174,76 +138,86 @@ function LeadsPage() {
   }, [selection.someSelected]);
 
   const stageName = (key: string) => stages.find((s) => s.stage_key === key)?.name ?? titleCase(key);
-  const customValueLabel = (v: string) =>
-    v === "true" ? "Yes" : v === "false" ? "No" : v;
-  // Every filter that is on, with how to turn it off. The drawer count, the chips and "Clear all" share this.
+  const nameList = (ids: string[], names: (id: string) => string) => ids.map(names).join(", ");
+  const clear = <K extends keyof LeadFilterState>(k: K, empty: LeadFilterState[K]) =>
+    () => setFilters((f) => ({ ...f, [k]: empty }));
+  // Every filter that is on, with how to turn it off. The Filters count and the chips come from the same object.
   const filterChips: FilterChip[] = [
-    stage && { key: "stage", label: `Stage: ${stageName(stage)}`, onRemove: () => setStage(null) },
-    agent && {
-      key: "agent",
-      label: `Agent: ${agent === UNASSIGNED_AGENT ? "Unassigned" : (team.find((t) => t.id === agent)?.full_name ?? "selected")}`,
-      onRemove: () => setAgent(null),
+    filters.stages.length > 0 && {
+      key: "stages",
+      label: `Stages: ${nameList(filters.stages, stageName)}`,
+      onRemove: clear("stages", []),
     },
-    classification && {
-      key: "classification",
-      label: `Type: ${LEAD_CLASSIFICATION_LABELS[classification] ?? titleCase(classification)}`,
-      onRemove: () => setClassification(null),
+    filters.agents.length > 0 && {
+      key: "agents",
+      label: `Agents: ${nameList(filters.agents, (id) =>
+        id === UNASSIGNED_AGENT ? "Unassigned" : (team.find((t) => t.id === id)?.full_name ?? "selected"),
+      )}`,
+      onRemove: clear("agents", []),
     },
-    workflow && { key: "workflow", label: `Workflow: ${titleCase(workflow)}`, onRemove: () => setWorkflow(null) },
-    developmentId && {
-      key: "development",
-      label: `Development: ${developments.find((d) => d.id === developmentId)?.name ?? "selected"}`,
-      onRemove: () => setDevelopmentId(null),
+    filters.classifications.length > 0 && {
+      key: "classifications",
+      label: `Type: ${nameList(filters.classifications, (c) => LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c))}`,
+      onRemove: clear("classifications", []),
     },
-    source && { key: "source", label: `Source: ${source}`, onRemove: () => setSource(null) },
-    countryId && {
+    filters.workflow && {
+      key: "workflow",
+      label: `Workflow: ${titleCase(filters.workflow)}`,
+      onRemove: clear("workflow", null),
+    },
+    filters.developmentIds.length > 0 && {
+      key: "developments",
+      label: `Developments: ${nameList(filters.developmentIds, (id) => developments.find((d) => d.id === id)?.name ?? "selected")}`,
+      onRemove: clear("developmentIds", []),
+    },
+    filters.sources.length > 0 && {
+      key: "sources",
+      label: `Sources: ${filters.sources.join(", ")}`,
+      onRemove: clear("sources", []),
+    },
+    filters.countryId && {
       key: "country",
-      label: `Country: ${countries.find((c) => c.id === countryId)?.name ?? "selected"}`,
-      onRemove: () => {
-        setCountryId(null);
-        setAreaId(null);
-      },
+      label: `Country: ${countries.find((c) => c.id === filters.countryId)?.name ?? "selected"}`,
+      onRemove: () => setFilters((f) => ({ ...f, countryId: null, areaIds: [] })),
     },
-    areaId && {
-      key: "area",
-      label: `Area: ${areaNameById.get(areaId) ?? "selected"}`,
-      onRemove: () => setAreaId(null),
+    filters.areaIds.length > 0 && {
+      key: "areas",
+      label: `Areas: ${nameList(filters.areaIds, (id) => areaNameById.get(id) ?? "selected")}`,
+      onRemove: clear("areaIds", []),
     },
-    createdFrom && { key: "from", label: `Created from ${createdFrom}`, onRemove: () => setCreatedFrom("") },
-    createdTo && { key: "to", label: `Created to ${createdTo}`, onRemove: () => setCreatedTo("") },
-    budgetMinText.trim() && { key: "bmin", label: `Budget from ${budgetMinText}`, onRemove: () => setBudgetMinText("") },
-    budgetMaxText.trim() && { key: "bmax", label: `Budget to ${budgetMaxText}`, onRemove: () => setBudgetMaxText("") },
+    filters.createdFrom && {
+      key: "from",
+      label: `Created from ${filters.createdFrom}`,
+      onRemove: clear("createdFrom", ""),
+    },
+    filters.createdTo && { key: "to", label: `Created to ${filters.createdTo}`, onRemove: clear("createdTo", "") },
+    filters.budgetMin.trim() && {
+      key: "bmin",
+      label: `Budget from ${filters.budgetMin}`,
+      onRemove: clear("budgetMin", ""),
+    },
+    filters.budgetMax.trim() && {
+      key: "bmax",
+      label: `Budget to ${filters.budgetMax}`,
+      onRemove: clear("budgetMax", ""),
+    },
+    filters.outcome && {
+      key: "outcome",
+      label: `Outcome: ${(LEAD_OUTCOME_LABELS as Record<string, string>)[filters.outcome] ?? titleCase(filters.outcome)}`,
+      onRemove: clear("outcome", null),
+    },
     activeCustomFieldDef &&
-      customFieldFilterValue && {
+      filters.customValue && {
         key: "custom",
-        label: `${activeCustomFieldDef.label}: ${customValueLabel(customFieldFilterValue)}`,
-        onRemove: () => {
-          setCustomFieldFilterKey(null);
-          setCustomFieldFilterValue(null);
-        },
+        label: `${activeCustomFieldDef.label}: ${filters.customValue === "true" ? "Yes" : filters.customValue === "false" ? "No" : filters.customValue}`,
+        onRemove: () => setFilters((f) => ({ ...f, customKey: null, customValue: null })),
       },
   ].filter(Boolean) as FilterChip[];
-  const drawerFilterCount = filterChips.length;
+  const drawerFilterCount = leadFilterCount(filters);
   const activeFilterCount = drawerFilterCount + (search.trim() ? 1 : 0);
-  function clearDrawerFilters() {
-    setStage(null);
-    setAgent(null);
-    setClassification(null);
-    setWorkflow(null);
-    setDevelopmentId(null);
-    setSource(null);
-    setCountryId(null);
-    setAreaId(null);
-    setCreatedFrom("");
-    setCreatedTo("");
-    setBudgetMinText("");
-    setBudgetMaxText("");
-    setCustomFieldFilterKey(null);
-    setCustomFieldFilterValue(null);
-  }
   function clearFilters() {
     setSearch("");
-    clearDrawerFilters();
+    setFilters(EMPTY_LEAD_FILTERS);
   }
   function openBulk(kind: "reassign" | "archive" | "restore" | "delete") {
     setBulkIds([...selection.selected]);
@@ -349,9 +323,11 @@ function LeadsPage() {
             value={intent}
             onChange={(i) => {
               setIntent(i);
-              if (classification && !classificationsForIntent(i).includes(classification)) {
-                setClassification(null);
-              }
+              // Types that do not belong to the new intent are dropped; the rest stay.
+              setFilters((f) => ({
+                ...f,
+                classifications: f.classifications.filter((c) => classificationsForIntent(i).includes(c)),
+              }));
               selection.clear();
             }}
             options={LEAD_INTENTS.map((i) => ({ value: i, label: LEAD_INTENT_LABELS[i] }))}
@@ -402,186 +378,33 @@ function LeadsPage() {
           </ToolbarAlways>
         </FilterToolbar>
         <ActiveFilterChips chips={filterChips} />
-        {(budgetInvalid || dateRangeInvalid) && (
+        {filterProblems.length > 0 && (
           <p role="alert" className="-mt-2 mb-3 text-xs text-destructive">
-            {budgetInvalid ? "The minimum budget is higher than the maximum, so the budget filter is not applied. " : ""}
-            {dateRangeInvalid ? "The start date is after the end date, so the date filter is not applied." : ""}
+            {filterProblems.join(" ")}
           </p>
         )}
-        <FiltersDrawer
+        <LeadFiltersDrawer
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
-          title="Lead filters"
-          activeCount={drawerFilterCount}
-          resultText={isLoading ? "Loading..." : `Show ${visibleLeads.length} ${visibleLeads.length === 1 ? "lead" : "leads"}`}
-          onClear={clearDrawerFilters}
-        >
-          <FilterGroup title="Pipeline">
-            <FilterField label="Stage">
-              <FilterSelect
-                label="Stage"
-                value={stage}
-                onChange={setStage}
-                options={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
-                allLabel="All stages"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Agent">
-              <FilterSelect
-                label="Agent"
-                value={agent}
-                onChange={setAgent}
-                options={[
-                  { value: UNASSIGNED_AGENT, label: "Unassigned" },
-                  ...team.map((m) => ({ value: m.id, label: m.full_name })),
-                ]}
-                allLabel="All agents"
-                searchable
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Workflow">
-              <FilterSelect
-                label="Workflow"
-                value={workflow}
-                onChange={setWorkflow}
-                options={LEAD_WORKFLOWS.map((w) => ({ value: w, label: titleCase(w) }))}
-                allLabel="Sales + Telesales"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Type">
-              <FilterSelect
-                label="Classification"
-                value={classification}
-                onChange={setClassification}
-                options={classificationsForIntent(intent).map((c) => ({
-                  value: c,
-                  label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
-                }))}
-                allLabel="All types"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-          </FilterGroup>
-
-          <FilterGroup title="Source and interest">
-            <FilterField label="Lead source">
-              <FilterSelect
-                label="Lead source"
-                value={source}
-                onChange={setSource}
-                options={channels.map((c) => ({ value: c.name, label: c.name }))}
-                allLabel="All sources"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Development">
-              <FilterSelect
-                label="Development"
-                value={developmentId}
-                onChange={setDevelopmentId}
-                options={developments.map((d) => ({ value: d.id, label: d.name }))}
-                allLabel="All developments"
-                searchable
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Preferred country">
-              <FilterSelect
-                label="Preferred country"
-                value={countryId}
-                onChange={(v) => {
-                  setCountryId(v);
-                  setAreaId(null);
-                }}
-                options={countries.map((c) => ({ value: c.id, label: c.name }))}
-                allLabel="Any country"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Preferred area">
-              <FilterSelect
-                label="Preferred area"
-                value={areaId}
-                onChange={setAreaId}
-                options={areas
-                  .filter((a) => !countryId || a.country_id === countryId)
-                  .map((a) => ({ value: a.id, label: a.name }))}
-                allLabel="Any area"
-                searchable
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-          </FilterGroup>
-
-          <FilterGroup title="Dates and budget">
-            <div className="grid grid-cols-2 gap-3">
-              <FilterField label="Created from">
-                <input type="date" value={createdFrom} onChange={(e) => setCreatedFrom(e.target.value)} className={drawerInputCls} />
-              </FilterField>
-              <FilterField label="Created to">
-                <input type="date" value={createdTo} onChange={(e) => setCreatedTo(e.target.value)} className={drawerInputCls} />
-              </FilterField>
-              <FilterField label="Budget from">
-                <input type="number" inputMode="numeric" min={0} value={budgetMinText} onChange={(e) => setBudgetMinText(e.target.value)} placeholder="Min" className={drawerInputCls} />
-              </FilterField>
-              <FilterField label="Budget to">
-                <input type="number" inputMode="numeric" min={0} value={budgetMaxText} onChange={(e) => setBudgetMaxText(e.target.value)} placeholder="Max" className={drawerInputCls} />
-              </FilterField>
-            </div>
-            <p className="text-[11px] text-muted-foreground">A lead matches when its budget range overlaps the one you enter.</p>
-          </FilterGroup>
-
-          {filterableFieldDefs.length > 0 && (
-            <FilterGroup title="Custom fields">
-              <FilterField label="Field">
-                <FilterSelect
-                  label="Custom field"
-                  value={customFieldFilterKey}
-                  onChange={(v) => {
-                    setCustomFieldFilterKey(v);
-                    setCustomFieldFilterValue(null);
-                  }}
-                  options={filterableFieldDefs.map((d) => ({ value: d.key, label: d.label }))}
-                  allLabel="Choose a field"
-                  className="w-full sm:w-full"
-                />
-              </FilterField>
-              {activeCustomFieldDef && (
-                <FilterField label={activeCustomFieldDef.label}>
-                  {["select", "multiselect", "boolean", "checkbox"].includes(activeCustomFieldDef.field_type) ? (
-                    <FilterSelect
-                      label={activeCustomFieldDef.label}
-                      value={customFieldFilterValue}
-                      onChange={setCustomFieldFilterValue}
-                      options={
-                        activeCustomFieldDef.field_type === "boolean" || activeCustomFieldDef.field_type === "checkbox"
-                          ? [
-                              { value: "true", label: "Yes" },
-                              { value: "false", label: "No" },
-                            ]
-                          : ((activeCustomFieldDef.options as string[] | null) ?? []).map((o) => ({ value: o, label: o }))
-                      }
-                      allLabel="Any value"
-                      className="w-full sm:w-full"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder="Contains..."
-                      aria-label={`${activeCustomFieldDef.label} contains`}
-                      value={customFieldFilterValue ?? ""}
-                      onChange={(e) => setCustomFieldFilterValue(e.target.value || null)}
-                      className={drawerInputCls}
-                    />
-                  )}
-                </FilterField>
-              )}
-            </FilterGroup>
-          )}
-        </FiltersDrawer>
+          applied={filters}
+          onApply={setFilters}
+          stages={stages.map((s) => ({ value: s.stage_key, label: s.name }))}
+          agents={team.map((m) => ({ value: m.id, label: m.full_name }))}
+          classifications={classificationsForIntent(intent).map((c) => ({
+            value: c,
+            label: LEAD_CLASSIFICATION_LABELS[c] ?? titleCase(c),
+          }))}
+          developments={developments.map((d) => ({ value: d.id, label: d.name }))}
+          sources={channels.map((c) => ({ value: c.name, label: c.name }))}
+          countries={countries.map((c) => ({ value: c.id, label: c.name }))}
+          areas={areas.map((a) => ({ value: a.id, label: a.name, countryId: a.country_id }))}
+          customFields={filterableFieldDefs.map((d) => ({
+            key: d.key,
+            label: d.label,
+            field_type: d.field_type,
+            options: (d.options as string[] | null) ?? null,
+          }))}
+        />
 
         <BulkActionBar
           count={selection.count}

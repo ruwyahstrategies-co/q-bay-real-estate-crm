@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 
 // The Filters button, drawer and active-filter chips shared by Leads and Properties.
 //
-// The drawer holds every filter. Filters apply as soon as they are changed, because each one is sent to the
-// database as part of the list query (nothing is filtered in the browser), and the footer shows the live
-// result count. Search stays in the toolbar so it is always one click away.
+// The drawer edits a draft. Nothing is sent to the database until Apply, and Reset clears every filter. The
+// filters themselves are database queries (nothing is filtered in the browser), so the lists stay fast as the
+// data grows.
 
 export function FiltersButton({
   count,
@@ -75,18 +75,21 @@ export function FiltersDrawer({
   open,
   onOpenChange,
   title,
-  activeCount,
-  resultText,
-  onClear,
+  draftCount,
+  problems,
+  onApply,
+  onReset,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  activeCount: number;
-  /** For example "37 leads match". */
-  resultText: string;
-  onClear: () => void;
+  /** How many filters the draft has on. */
+  draftCount: number;
+  /** Plain-words problems with the draft, for example a minimum above a maximum. */
+  problems?: string[];
+  onApply: () => void;
+  onReset: () => void;
   children: ReactNode;
 }) {
   return (
@@ -98,7 +101,14 @@ export function FiltersDrawer({
     >
       <div className="flex h-full w-full flex-col">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
-          <h3 className="text-base font-semibold">{title}</h3>
+          <div>
+            <h3 className="text-base font-semibold">{title}</h3>
+            <p className="text-[11px] text-muted-foreground" aria-live="polite">
+              {draftCount === 0
+                ? "No filters chosen"
+                : `${draftCount} ${draftCount === 1 ? "filter" : "filters"} chosen`}
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
@@ -108,13 +118,22 @@ export function FiltersDrawer({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {children}
+          {problems && problems.length > 0 && (
+            <ul role="alert" className="space-y-1 text-xs text-destructive">
+              {problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3 border-t border-border bg-background px-5 py-3">
-          <Button variant="outline" size="sm" onClick={onClear} disabled={activeCount === 0}>
-            Clear all{activeCount > 0 ? ` (${activeCount})` : ""}
+          <Button variant="outline" size="sm" onClick={onReset}>
+            Reset
           </Button>
-          <Button size="sm" onClick={() => onOpenChange(false)}>
-            {resultText}
+          <Button size="sm" onClick={onApply}>
+            Apply{draftCount > 0 ? ` (${draftCount})` : ""}
           </Button>
         </div>
       </div>

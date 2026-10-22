@@ -38,7 +38,6 @@ import { StaffAvatar } from "@/components/staff-avatar";
 import { MultiSelectField } from "@/components/multi-select-field";
 import { ApprovalBadge } from "@/components/approval-badge";
 import { useCountries, useAreas, usePlaces } from "@/hooks/use-locations";
-import { useDebounced } from "@/hooks/use-debounced";
 import { AvailabilityRing, PurposeBadge } from "@/components/status-badge";
 import { PropertyWebsiteLinkIcon } from "@/components/property-website-link";
 import { usePermissions } from "@/hooks/use-auth";
@@ -60,15 +59,15 @@ import {
   type PropertyListRow,
   type PropertyPurposeTab,
 } from "@/hooks/use-properties";
-import { PROPERTY_TYPE_FILTER_OPTIONS } from "@/lib/property-types";
+import { ActiveFilterChips, FiltersButton, type FilterChip } from "@/components/filters-drawer";
+import { PropertyFiltersDrawer } from "@/components/property-filters-drawer";
 import {
-  ActiveFilterChips,
-  FilterField,
-  FilterGroup,
-  FiltersButton,
-  FiltersDrawer,
-  type FilterChip,
-} from "@/components/filters-drawer";
+  EMPTY_PROPERTY_FILTERS,
+  propertyFilterCount,
+  propertyFilterProblems,
+  propertyQueryFrom,
+  type PropertyFilterState,
+} from "@/lib/list-filters";
 import { useDevelopments } from "@/hooks/use-developments";
 import { downloadCsv } from "@/lib/csv-export";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
@@ -92,11 +91,6 @@ const STATUS_FILTERS = [
   { value: "all", label: "All" },
 ] as const;
 
-const PROPERTY_TYPES = PROPERTY_TYPE_FILTER_OPTIONS;
-
-const drawerInputCls =
-  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25";
-
 function PropertiesPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<"table" | "grid">("table");
@@ -104,71 +98,19 @@ function PropertiesPage() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Property | null>(null);
   const [search, setSearch] = useState("");
-  const [type, setType] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof STATUS_FILTERS)[number]["value"]>("active");
-  const [availability, setAvailability] = useState<string | null>(null);
-  const [minPriceText, setMinPriceText] = useState("");
-  const [maxPriceText, setMaxPriceText] = useState("");
-  const [agentIds, setAgentIds] = useState<string[]>([]);
-  const [countryId, setCountryId] = useState<string | null>(null);
-  const [areaIds, setAreaIds] = useState<string[]>([]);
-  const [placeId, setPlaceId] = useState<string | null>(null);
-  const [approval, setApproval] = useState<ApprovalStatus | null>(null);
-  const [developmentId, setDevelopmentId] = useState<string | null>(null);
-  const [minBedroomsText, setMinBedroomsText] = useState<string | null>(null);
-  const [furnishing, setFurnishing] = useState<string | null>(null);
-  const [published, setPublished] = useState<string | null>(null);
+  const [filters, setFilters] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
   const [importerOpen, setImporterOpen] = useState(false);
 
-  const debouncedMin = useDebounced(minPriceText, 400);
-  const debouncedMax = useDebounced(maxPriceText, 400);
-  const toNumber = (t: string) => (t.trim() !== "" && Number.isFinite(Number(t)) ? Number(t) : null);
-  const minPrice = toNumber(debouncedMin);
-  const maxPrice = toNumber(debouncedMax);
-  const priceRangeInvalid = minPrice != null && maxPrice != null && minPrice > maxPrice;
-
   const { data: countries = [] } = useCountries();
   const { data: allAreas = [] } = useAreas();
   const { data: allPlaces = [] } = usePlaces();
-  const areaOptions = useMemo(
-    () =>
-      allAreas
-        .filter((a) => !countryId || a.country_id === countryId)
-        .map((a) => ({ value: a.id, label: a.is_active ? a.name : `${a.name} (inactive)` })),
-    [allAreas, countryId],
-  );
-  const placeOptions = useMemo(
-    () =>
-      allPlaces
-        .filter((pl) => areaIds.length === 1 && pl.area_id === areaIds[0])
-        .map((pl) => ({ value: pl.id, label: pl.is_active ? pl.name : `${pl.name} (inactive)` })),
-    [allPlaces, areaIds],
-  );
-
   // Every filter is applied in the database. Sale | Rent, archive state, availability, type, search, price
   // range, agents, location and approval all combine, and the list and its counts share one definition.
-  const baseFilters: Omit<PropertyFilters, "purpose"> = {
-    search,
-    type,
-    status: statusFilter,
-    availability,
-    minPrice: priceRangeInvalid ? null : minPrice,
-    maxPrice: priceRangeInvalid ? null : maxPrice,
-    agentIds,
-    countryId,
-    areaIds,
-    placeId,
-    approval,
-    developmentId,
-    minBedrooms: minBedroomsText ? Number(minBedroomsText) : null,
-    furnishing,
-    published: published === null ? null : published === "yes",
-  };
+  const baseFilters: Omit<PropertyFilters, "purpose"> = { search, ...propertyQueryFrom(filters) };
   const filterSignature = JSON.stringify([baseFilters, purpose]);
   useEffect(() => setPage(0), [filterSignature]);
 
@@ -185,83 +127,80 @@ function PropertiesPage() {
   const { data: team = [] } = useTeamMembers();
   const { data: developments = [] } = useDevelopments();
 
-  // Every filter that is on, with how to turn it off. The Filters count, the chips and "Clear all" share this.
+  const nameList = (ids: string[], names: (id: string) => string) => ids.map(names).join(", ");
+  const clear = <K extends keyof PropertyFilterState>(k: K, empty: PropertyFilterState[K]) =>
+    () => setFilters((f) => ({ ...f, [k]: empty }));
+  // Every filter that is on, with how to turn it off. The Filters count and the chips come from the same object.
   const filterChips: FilterChip[] = [
-    type && { key: "type", label: `Type: ${type}`, onRemove: () => setType(null) },
-    availability && {
+    filters.types.length > 0 && { key: "types", label: `Type: ${filters.types.join(", ")}`, onRemove: clear("types", []) },
+    filters.availabilities.length > 0 && {
       key: "availability",
-      label: `Availability: ${PROPERTY_AVAILABILITY_LABELS[availability] ?? availability}`,
-      onRemove: () => setAvailability(null),
+      label: `Availability: ${nameList(filters.availabilities, (a) => PROPERTY_AVAILABILITY_LABELS[a] ?? a)}`,
+      onRemove: clear("availabilities", []),
     },
-    statusFilter !== "active" && {
-      key: "status",
-      label: `Shown: ${statusFilter === "archived" ? "Archived" : "All"}`,
-      onRemove: () => setStatusFilter("active"),
+    filters.archive !== "active" && {
+      key: "archive",
+      label: `Shown: ${filters.archive === "archived" ? "Archived" : "All"}`,
+      onRemove: clear("archive", "active"),
     },
-    minPrice != null && { key: "minPrice", label: `Price from ${minPrice.toLocaleString("en-US")}`, onRemove: () => setMinPriceText("") },
-    maxPrice != null && { key: "maxPrice", label: `Price to ${maxPrice.toLocaleString("en-US")}`, onRemove: () => setMaxPriceText("") },
-    agentIds.length > 0 && {
+    filters.minPrice.trim() && {
+      key: "minPrice",
+      label: `Price from ${filters.minPrice}`,
+      onRemove: clear("minPrice", ""),
+    },
+    filters.maxPrice.trim() && { key: "maxPrice", label: `Price to ${filters.maxPrice}`, onRemove: clear("maxPrice", "") },
+    filters.agentIds.length > 0 && {
       key: "agents",
-      label: `Agents: ${agentIds.map((id) => team.find((m) => m.id === id)?.full_name ?? "selected").join(", ")}`,
-      onRemove: () => setAgentIds([]),
+      label: `Agents: ${nameList(filters.agentIds, (id) => team.find((m) => m.id === id)?.full_name ?? "selected")}`,
+      onRemove: clear("agentIds", []),
     },
-    countryId && {
+    filters.countryId && {
       key: "country",
-      label: `Country: ${countries.find((c) => c.id === countryId)?.name ?? "selected"}`,
-      onRemove: () => {
-        setCountryId(null);
-        setAreaIds([]);
-        setPlaceId(null);
-      },
+      label: `Country: ${countries.find((c) => c.id === filters.countryId)?.name ?? "selected"}`,
+      onRemove: () => setFilters((f) => ({ ...f, countryId: null, areaIds: [], placeId: null })),
     },
-    areaIds.length > 0 && {
+    filters.areaIds.length > 0 && {
       key: "areas",
-      label: `Areas: ${areaIds.map((id) => allAreas.find((a) => a.id === id)?.name ?? "selected").join(", ")}`,
-      onRemove: () => {
-        setAreaIds([]);
-        setPlaceId(null);
-      },
+      label: `Areas: ${nameList(filters.areaIds, (id) => allAreas.find((a) => a.id === id)?.name ?? "selected")}`,
+      onRemove: () => setFilters((f) => ({ ...f, areaIds: [], placeId: null })),
     },
-    placeId && {
+    filters.placeId && {
       key: "place",
-      label: `Place: ${allPlaces.find((pl) => pl.id === placeId)?.name ?? "selected"}`,
-      onRemove: () => setPlaceId(null),
+      label: `Place: ${allPlaces.find((pl) => pl.id === filters.placeId)?.name ?? "selected"}`,
+      onRemove: clear("placeId", null),
     },
-    approval && { key: "approval", label: `Approval: ${APPROVAL_LABELS[approval]}`, onRemove: () => setApproval(null) },
-    developmentId && {
-      key: "development",
-      label: `Development: ${developments.find((d) => d.id === developmentId)?.name ?? "selected"}`,
-      onRemove: () => setDevelopmentId(null),
+    filters.approvals.length > 0 && {
+      key: "approval",
+      label: `Approval: ${nameList(filters.approvals, (a) => APPROVAL_LABELS[a as ApprovalStatus])}`,
+      onRemove: clear("approvals", []),
     },
-    minBedroomsText && { key: "beds", label: `${minBedroomsText}+ bedrooms`, onRemove: () => setMinBedroomsText(null) },
-    furnishing && { key: "furnishing", label: `Furnishing: ${furnishing}`, onRemove: () => setFurnishing(null) },
-    published && {
+    filters.developmentIds.length > 0 && {
+      key: "developments",
+      label: `Developments: ${nameList(filters.developmentIds, (id) => developments.find((d) => d.id === id)?.name ?? "selected")}`,
+      onRemove: clear("developmentIds", []),
+    },
+    filters.minBedrooms && {
+      key: "beds",
+      label: `${filters.minBedrooms}+ bedrooms`,
+      onRemove: clear("minBedrooms", null),
+    },
+    filters.furnishing && {
+      key: "furnishing",
+      label: `Furnishing: ${filters.furnishing}`,
+      onRemove: clear("furnishing", null),
+    },
+    filters.published && {
       key: "published",
-      label: published === "yes" ? "On the website" : "Not on the website",
-      onRemove: () => setPublished(null),
+      label: filters.published === "yes" ? "On the website" : "Not on the website",
+      onRemove: clear("published", null),
     },
   ].filter(Boolean) as FilterChip[];
-  const drawerFilterCount = filterChips.length;
+  const drawerFilterCount = propertyFilterCount(filters);
   const activeFilterCount = drawerFilterCount + (search.trim() ? 1 : 0);
-  function clearDrawerFilters() {
-    setType(null);
-    setAvailability(null);
-    setStatusFilter("active");
-    setMinPriceText("");
-    setMaxPriceText("");
-    setAgentIds([]);
-    setCountryId(null);
-    setAreaIds([]);
-    setPlaceId(null);
-    setApproval(null);
-    setDevelopmentId(null);
-    setMinBedroomsText(null);
-    setFurnishing(null);
-    setPublished(null);
-  }
+  const filterProblems = propertyFilterProblems(filters);
   function clearFilters() {
     setSearch("");
-    clearDrawerFilters();
+    setFilters(EMPTY_PROPERTY_FILTERS);
   }
   const archive = useArchiveProperty();
   const restore = useRestoreProperty();
@@ -383,7 +322,7 @@ function PropertiesPage() {
           </p>
         </div>
 
-        {canApprove && pendingCount > 0 && approval !== "pending" && (
+        {canApprove && pendingCount > 0 && !filters.approvals.includes("pending") && (
           <div
             role="status"
             className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 text-xs shadow-card"
@@ -392,7 +331,7 @@ function PropertiesPage() {
             <span className="font-medium text-amber-900">
               {pendingCount} {pendingCount === 1 ? "property is" : "properties are"} waiting for your approval.
             </span>
-            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setApproval("pending")}>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setFilters((f) => ({ ...f, approvals: ["pending"] }))}>
               Review pending
             </Button>
           </div>
@@ -423,194 +362,30 @@ function PropertiesPage() {
           </ToolbarAlways>
         </FilterToolbar>
         <ActiveFilterChips chips={filterChips} />
-        <FiltersDrawer
-          open={filtersOpen}
-          onOpenChange={setFiltersOpen}
-          title="Property filters"
-          activeCount={drawerFilterCount}
-          resultText={
-            isLoading ? "Loading..." : `Show ${total} ${total === 1 ? "property" : "properties"}`
-          }
-          onClear={clearDrawerFilters}
-        >
-          <FilterGroup title="The property">
-            <FilterField label="Type">
-              <FilterSelect
-                label="Type"
-                value={type}
-                onChange={setType}
-                options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))}
-                allLabel="All types"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Availability">
-              <FilterSelect
-                label="Availability"
-                value={availability}
-                onChange={setAvailability}
-                options={[...PROPERTY_AVAILABILITIES, "needs_confirmation"].map((a) => ({
-                  value: a,
-                  label: PROPERTY_AVAILABILITY_LABELS[a] ?? a,
-                }))}
-                allLabel="All availability"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <div className="grid grid-cols-2 gap-3">
-              <FilterField label="Price from">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={minPriceText}
-                  onChange={(e) => setMinPriceText(e.target.value)}
-                  placeholder="Min price"
-                  aria-label="Minimum price"
-                  aria-invalid={priceRangeInvalid || undefined}
-                  className={`${drawerInputCls} ${priceRangeInvalid ? "border-destructive" : ""}`}
-                />
-              </FilterField>
-              <FilterField label="Price to">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={maxPriceText}
-                  onChange={(e) => setMaxPriceText(e.target.value)}
-                  placeholder="Max price"
-                  aria-label="Maximum price"
-                  aria-invalid={priceRangeInvalid || undefined}
-                  className={`${drawerInputCls} ${priceRangeInvalid ? "border-destructive" : ""}`}
-                />
-              </FilterField>
-            </div>
-            <FilterField label="Bedrooms">
-              <FilterSelect
-                label="Bedrooms"
-                value={minBedroomsText}
-                onChange={setMinBedroomsText}
-                options={["1", "2", "3", "4", "5", "6"].map((n) => ({ value: n, label: `${n}+ bedrooms` }))}
-                allLabel="Any number"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Furnishing">
-              <FilterSelect
-                label="Furnishing"
-                value={furnishing}
-                onChange={setFurnishing}
-                options={[
-                  { value: "FF", label: "FF - Fully furnished" },
-                  { value: "SF", label: "SF - Semi furnished" },
-                  { value: "UF", label: "UF - Unfurnished" },
-                ]}
-                allLabel="Any furnishing"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Development">
-              <FilterSelect
-                label="Development"
-                value={developmentId}
-                onChange={setDevelopmentId}
-                options={developments.map((d) => ({ value: d.id, label: d.name }))}
-                allLabel="All developments"
-                searchable
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-          </FilterGroup>
-
-          <FilterGroup title="Location">
-            <FilterField label="Country">
-              <FilterSelect
-                label="Country"
-                value={countryId}
-                onChange={(v) => {
-                  setCountryId(v);
-                  setAreaIds([]);
-                  setPlaceId(null);
-                }}
-                options={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
-                allLabel="All countries"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Areas">
-              <MultiSelectField
-                label="Areas"
-                values={areaIds}
-                onChange={(v) => {
-                  setAreaIds(v);
-                  setPlaceId(null);
-                }}
-                options={areaOptions}
-                allLabel="All areas"
-              />
-            </FilterField>
-            <FilterField label="Place" hint={areaIds.length === 1 ? undefined : "Pick exactly one area to choose a place."}>
-              <FilterSelect
-                label="Place"
-                value={placeId}
-                onChange={setPlaceId}
-                options={placeOptions}
-                allLabel={areaIds.length === 1 ? "All places" : "Place (pick one area)"}
-                disabled={areaIds.length !== 1 || placeOptions.length === 0}
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-          </FilterGroup>
-
-          <FilterGroup title="Team and status">
-            <FilterField label="Agents">
-              <MultiSelectField
-                label="Agents"
-                values={agentIds}
-                onChange={setAgentIds}
-                options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-                allLabel="All agents"
-              />
-            </FilterField>
-            <FilterField label="Approval">
-              <FilterSelect
-                label="Approval"
-                value={approval}
-                onChange={(v) => setApproval(v as ApprovalStatus | null)}
-                options={(Object.keys(APPROVAL_LABELS) as ApprovalStatus[]).map((k) => ({ value: k, label: APPROVAL_LABELS[k] }))}
-                allLabel="Any approval"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Public website">
-              <FilterSelect
-                label="Public website"
-                value={published}
-                onChange={setPublished}
-                options={[
-                  { value: "yes", label: "On the website" },
-                  { value: "no", label: "Not on the website" },
-                ]}
-                allLabel="Either"
-                className="w-full sm:w-full"
-              />
-            </FilterField>
-            <FilterField label="Archive state">
-              <SegmentedControl
-                ariaLabel="Archive state"
-                size="md"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                options={STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
-              />
-            </FilterField>
-          </FilterGroup>
-        </FiltersDrawer>
-        {priceRangeInvalid && (
+        {filterProblems.length > 0 && (
           <p role="alert" className="-mt-2 mb-3 text-xs text-destructive">
-            The minimum price is higher than the maximum, so the price filter is not applied.
+            {filterProblems.join(" ")}
           </p>
         )}
+        <PropertyFiltersDrawer
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          applied={filters}
+          onApply={setFilters}
+          agents={team.map((m) => ({ value: m.id, label: m.full_name }))}
+          developments={developments.map((d) => ({ value: d.id, label: d.name }))}
+          countries={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
+          areas={allAreas.map((a) => ({
+            value: a.id,
+            label: a.is_active ? a.name : `${a.name} (inactive)`,
+            countryId: a.country_id,
+          }))}
+          places={allPlaces.map((pl) => ({
+            value: pl.id,
+            label: pl.is_active ? pl.name : `${pl.name} (inactive)`,
+            areaId: pl.area_id,
+          }))}
+        />
 
         {view === "table" ? (
           <DataTable

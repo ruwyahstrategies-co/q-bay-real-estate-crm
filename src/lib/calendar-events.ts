@@ -8,7 +8,15 @@ import type { Task } from "./db";
 
 export type EventType = "viewing" | "task" | "event" | "reminder" | "contract" | "tenancy" | "rent";
 
-export const EVENT_TYPES: EventType[] = ["viewing", "task", "event", "reminder", "contract", "tenancy", "rent"];
+export const EVENT_TYPES: EventType[] = [
+  "viewing",
+  "task",
+  "event",
+  "reminder",
+  "contract",
+  "tenancy",
+  "rent",
+];
 
 export const EVENT_LABEL: Record<EventType, string> = {
   viewing: "Viewing",
@@ -70,8 +78,13 @@ export function isTaskCancelled(status: string | null | undefined): boolean {
 }
 
 /** What a task changes to when it is completed or reopened. */
-export function completionPatch(done: boolean, nowIso: string): Pick<Task, "status" | "completed_at"> {
-  return done ? { status: "completed", completed_at: nowIso } : { status: "pending", completed_at: null };
+export function completionPatch(
+  done: boolean,
+  nowIso: string,
+): Pick<Task, "status" | "completed_at"> {
+  return done
+    ? { status: "completed", completed_at: nowIso }
+    : { status: "pending", completed_at: null };
 }
 
 export type RelatedRecords = {
@@ -113,7 +126,13 @@ export type CalEvent = {
   assignedName: string | null;
   related: RelatedRecords;
 } & (
-  | { type: "viewing"; viewingId: string; scheduledAt: string; viewingStatus: string; canReschedule: boolean }
+  | {
+      type: "viewing";
+      viewingId: string;
+      scheduledAt: string;
+      viewingStatus: string;
+      canReschedule: boolean;
+    }
   | { type: "task" | "event" | "reminder"; task: Task }
   | {
       type: "contract";

@@ -60,15 +60,23 @@ export function EventPreviewCard({ e, id }: { e: CalEvent; id: string }) {
       <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         <span className="h-2 w-2 rounded-full" style={{ background: EVENT_TONE[e.type] }} />
         {EVENT_LABEL[e.type]}
-        {e.statusLabel && <span className="ml-auto normal-case tracking-normal">{e.statusLabel}</span>}
+        {e.statusLabel && (
+          <span className="ml-auto normal-case tracking-normal">{e.statusLabel}</span>
+        )}
       </p>
-      <p className={cn("mt-1 text-sm font-medium", e.done && "line-through opacity-70")}>{e.shortLabel}</p>
+      <p className={cn("mt-1 text-sm font-medium", e.done && "line-through opacity-70")}>
+        {e.shortLabel}
+      </p>
       <p className="mt-0.5 text-[11px] text-muted-foreground">
         {e.time ? fmtQatarDateTime(`${e.date}T${e.time}:00+03:00`) : `${e.date}, all day`}
       </p>
-      {e.assignedName && <p className="mt-0.5 text-[11px] text-muted-foreground">For {e.assignedName}</p>}
+      {e.assignedName && (
+        <p className="mt-0.5 text-[11px] text-muted-foreground">For {e.assignedName}</p>
+      )}
       <RelatedLinks e={e} />
-      <p className="mt-2 text-[10px] text-muted-foreground">Select for details, to complete or to reschedule.</p>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Select for details, to complete or to reschedule.
+      </p>
     </div>
   );
 }
@@ -111,7 +119,11 @@ export function EventChip({
   const label = `${EVENT_LABEL[e.type]}: ${e.time ?? "all day"} ${e.shortLabel}${e.done ? ", completed" : ""}${e.cancelled ? ", cancelled" : ""}, ${dayKey}`;
 
   return (
-    <div className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div
+      className="relative"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       <div className="flex items-start gap-1">
         {onToggleDone && (
           <button
@@ -138,7 +150,9 @@ export function EventChip({
           className={cn(
             "min-w-0 flex-1 rounded-md border-l-2 text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
             EVENT_COLOR[e.type],
-            variant === "month" ? "block truncate px-1.5 py-0.5 text-[10px]" : "flex items-start gap-2 px-2 py-1.5 text-xs",
+            variant === "month"
+              ? "block truncate px-1.5 py-0.5 text-[10px]"
+              : "flex items-start gap-2 px-2 py-1.5 text-xs",
             (e.done || e.cancelled) && "opacity-60",
           )}
           style={{ borderLeftColor: EVENT_TONE[e.type] }}
@@ -147,19 +161,27 @@ export function EventChip({
             <span className={cn(e.done && "line-through")}>{e.label}</span>
           ) : (
             <>
-              <span className="w-12 shrink-0 tabular-nums text-muted-foreground">{e.time ?? "All day"}</span>
+              <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
+                {e.time ?? "All day"}
+              </span>
               <span className="min-w-0 flex-1">
-                <span className={cn("block", e.done && "line-through", e.cancelled && "line-through")}>
+                <span
+                  className={cn("block", e.done && "line-through", e.cancelled && "line-through")}
+                >
                   {e.shortLabel}
                 </span>
-                <span className="block text-[10px] text-muted-foreground">{EVENT_LABEL[e.type]}</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  {EVENT_LABEL[e.type]}
+                </span>
               </span>
             </>
           )}
         </button>
       </div>
       {open && (
-        <div className={cn("absolute top-full z-30 pt-1", align === "right" ? "right-0" : "left-0")}>
+        <div
+          className={cn("absolute top-full z-30 pt-1", align === "right" ? "right-0" : "left-0")}
+        >
           <EventPreviewCard e={e} id={previewId} />
         </div>
       )}

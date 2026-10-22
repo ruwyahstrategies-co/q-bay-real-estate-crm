@@ -31,6 +31,15 @@ export type LeadFilters = {
   budgetMax?: number | null;
   countryId?: string | null;
   areaId?: string | null;
+  /** Any of these (empty = no filter). The singular options above stay for pages that filter on one value. */
+  stages?: string[];
+  /** Agent ids, plus UNASSIGNED_AGENT for leads nobody owns. */
+  agents?: string[];
+  classifications?: string[];
+  developmentIds?: string[];
+  sources?: string[];
+  areaIds?: string[];
+  outcome?: string | null;
   /** A filterable custom field. select/boolean match exactly, text contains. */
   customField?: { key: string; type: string; value: string } | null;
 };
@@ -53,12 +62,21 @@ export function useLeads(opts?: LeadFilters) {
     budgetMax = null,
     countryId = null,
     areaId = null,
+    stages = [],
+    agents = [],
+    classifications = [],
+    developmentIds = [],
+    sources = [],
+    areaIds = [],
+    outcome = null,
     customField = null,
   } = opts ?? {};
   return useQuery({
     queryKey: leadsKeys.list({
       search, stage, agent, status, classification, workflow, developmentId, intent,
       source, priority, createdFrom, createdTo, budgetMin, budgetMax, countryId, areaId, customField,
+      stages: [...stages].sort(), agents: [...agents].sort(), classifications: [...classifications].sort(),
+      developmentIds: [...developmentIds].sort(), sources: [...sources].sort(), areaIds: [...areaIds].sort(), outcome,
     }),
     queryFn: async (): Promise<Lead[]> => {
       let q = sb.from("leads").select("*").order("created_at", { ascending: false });
@@ -79,6 +97,19 @@ export function useLeads(opts?: LeadFilters) {
       if (budgetMax != null) q = q.lte("budget_min", budgetMax);
       if (countryId) q = q.eq("preferred_country_id", countryId);
       if (areaId) q = q.eq("preferred_area_id", areaId);
+      if (stages.length > 0) q = q.in("pipeline_stage", stages);
+      if (agents.length > 0) {
+        const ids = agents.filter((a) => a !== UNASSIGNED_AGENT);
+        const wantsNone = agents.includes(UNASSIGNED_AGENT);
+        if (wantsNone && ids.length > 0) q = q.or(`assigned_agent_id.is.null,assigned_agent_id.in.(${ids.join(",")})`);
+        else if (wantsNone) q = q.is("assigned_agent_id", null);
+        else q = q.in("assigned_agent_id", ids);
+      }
+      if (classifications.length > 0) q = q.in("classification", classifications);
+      if (developmentIds.length > 0) q = q.in("development_id", developmentIds);
+      if (sources.length > 0) q = q.in("lead_source", sources);
+      if (areaIds.length > 0) q = q.in("preferred_area_id", areaIds);
+      if (outcome) q = q.eq("outcome", outcome);
       if (customField && customField.value !== "") {
         const { key, type, value } = customField;
         if (type === "multiselect") q = q.contains("custom_fields", { [key]: [value] });

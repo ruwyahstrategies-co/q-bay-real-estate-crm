@@ -10,12 +10,7 @@ import { useUpdateTask } from "@/hooks/use-tasks";
 import { useCompleteViewing, useRescheduleViewing } from "@/hooks/use-viewings";
 import { fmtMoney, type Task } from "@/lib/db";
 import { fromQatarInputValue, toQatarInputValue } from "@/lib/qatar-time";
-import {
-  EVENT_LABEL,
-  completionPatch,
-  isTaskDone,
-  type CalEvent,
-} from "@/lib/calendar-events";
+import { EVENT_LABEL, completionPatch, isTaskDone, type CalEvent } from "@/lib/calendar-events";
 import { titleCase } from "@/lib/utils";
 
 const inputCls =
@@ -62,7 +57,10 @@ export function CalendarEventDialog({
 
   async function toggleTask(task: Task) {
     try {
-      await updateTask.mutateAsync({ id: task.id, patch: completionPatch(!isTaskDone(task.status), new Date().toISOString()) });
+      await updateTask.mutateAsync({
+        id: task.id,
+        patch: completionPatch(!isTaskDone(task.status), new Date().toISOString()),
+      });
       toast.success(isTaskDone(task.status) ? "Reopened" : "Marked complete");
       onClose();
     } catch (e) {
@@ -106,7 +104,9 @@ export function CalendarEventDialog({
 
   const rescheduleRow = (onSave: () => void) => (
     <div className="mt-4 rounded-lg border border-border bg-background p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Reschedule (Qatar time)</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Reschedule (Qatar time)
+      </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <input
           type="datetime-local"
@@ -123,7 +123,12 @@ export function CalendarEventDialog({
   );
 
   return (
-    <DialogShell open onOpenChange={(v) => !v && onClose()} widthClassName="max-w-md" ariaLabel="Calendar entry">
+    <DialogShell
+      open
+      onOpenChange={(v) => !v && onClose()}
+      widthClassName="max-w-md"
+      ariaLabel="Calendar entry"
+    >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -163,7 +168,11 @@ export function CalendarEventDialog({
             <div className="mt-4 flex flex-wrap gap-2">
               {can("tasks", "complete") && !event.cancelled && (
                 <Button size="sm" onClick={() => toggleTask(event.task)} disabled={busy}>
-                  {event.done ? <RotateCcw className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                  {event.done ? (
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
                   {event.done ? "Reopen" : "Mark complete"}
                 </Button>
               )}
@@ -196,13 +205,16 @@ export function CalendarEventDialog({
               )}
             </dl>
             <RelatedLinks e={event} onNavigate={onClose} />
-            {event.canReschedule && can("viewings", "edit") && rescheduleRow(() => moveViewing(event.viewingId))}
+            {event.canReschedule &&
+              can("viewings", "edit") &&
+              rescheduleRow(() => moveViewing(event.viewingId))}
             <div className="mt-4 flex flex-wrap gap-2">
-              {can("viewings", "complete") && (event.viewingStatus === "scheduled" || event.viewingStatus === "confirmed") && (
-                <Button size="sm" onClick={() => finishViewing(event.viewingId)} disabled={busy}>
-                  <Check className="h-3.5 w-3.5" /> Mark complete
-                </Button>
-              )}
+              {can("viewings", "complete") &&
+                (event.viewingStatus === "scheduled" || event.viewingStatus === "confirmed") && (
+                  <Button size="sm" onClick={() => finishViewing(event.viewingId)} disabled={busy}>
+                    <Check className="h-3.5 w-3.5" /> Mark complete
+                  </Button>
+                )}
               <Button
                 size="sm"
                 variant="outline"
@@ -232,7 +244,11 @@ export function CalendarEventDialog({
                 <Button size="sm">Open owner and contract</Button>
               </Link>
               {event.propertyId && (
-                <Link to="/properties/$propertyId" params={{ propertyId: event.propertyId }} onClick={onClose}>
+                <Link
+                  to="/properties/$propertyId"
+                  params={{ propertyId: event.propertyId }}
+                  onClick={onClose}
+                >
                   <Button size="sm" variant="outline">
                     Open property
                   </Button>
@@ -266,7 +282,11 @@ export function CalendarEventDialog({
               >
                 Open tenancy
               </Button>
-              <Link to="/properties/$propertyId" params={{ propertyId: event.propertyId }} onClick={onClose}>
+              <Link
+                to="/properties/$propertyId"
+                params={{ propertyId: event.propertyId }}
+                onClick={onClose}
+              >
                 <Button size="sm" variant="outline">
                   Open property
                 </Button>
@@ -298,7 +318,11 @@ export function CalendarEventDialog({
                 Open tenancy
               </Button>
               {event.propertyId && (
-                <Link to="/properties/$propertyId" params={{ propertyId: event.propertyId }} onClick={onClose}>
+                <Link
+                  to="/properties/$propertyId"
+                  params={{ propertyId: event.propertyId }}
+                  onClick={onClose}
+                >
                   <Button size="sm" variant="outline">
                     Open property
                   </Button>

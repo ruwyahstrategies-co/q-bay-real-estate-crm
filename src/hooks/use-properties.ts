@@ -57,6 +57,11 @@ export type PropertyFilters = {
   /** Approval state. null = every state. */
   approval?: ApprovalStatus | null;
   developmentId?: string | null;
+  /** Any of these (empty = no filter). The singular options stay for pages that filter on one value. */
+  types?: string[];
+  availabilities?: string[];
+  developmentIds?: string[];
+  approvals?: ApprovalStatus[];
   /** At least this many bedrooms. */
   minBedrooms?: number | null;
   furnishing?: string | null;
@@ -95,6 +100,10 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
     minBedrooms = null,
     furnishing = null,
     published = null,
+    types = [],
+    availabilities = [],
+    developmentIds = [],
+    approvals = [],
   } = f;
   if (status !== "all") q = q.eq("status", status);
   if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
@@ -113,6 +122,21 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   if (placeId) q = q.eq("place_id", placeId);
   if (approval) q = q.eq("approval_status", approval);
   if (developmentId) q = q.eq("development_id", developmentId);
+  if (types.length > 0) q = q.in("property_type", [...new Set(types.flatMap(typesForFilter))]);
+  if (developmentIds.length > 0) q = q.in("development_id", developmentIds);
+  if (approvals.length > 0) q = q.in("approval_status", approvals);
+  if (availabilities.length > 0) {
+    // "Needs confirmation" is a state, not a stored availability: the confirmation date has passed.
+    const stored = availabilities.filter((a) => a !== "needs_confirmation");
+    const overdue = availabilities.includes("needs_confirmation");
+    if (overdue && stored.length > 0) {
+      q = q.or(`availability.in.(${stored.join(",")}),availability_next_due_at.lt.${new Date().toISOString()}`);
+    } else if (overdue) {
+      q = q.lt("availability_next_due_at", new Date().toISOString());
+    } else {
+      q = q.in("availability", stored);
+    }
+  }
   if (minBedrooms != null) q = q.gte("bedrooms", minBedrooms);
   if (furnishing) q = q.eq("furnishing_status", furnishing);
   if (published != null) q = q.eq("is_published", published);

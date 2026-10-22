@@ -11,6 +11,7 @@ import { ChannelsManager } from "@/components/channels-manager";
 import { MasterDataManager } from "@/components/master-data-manager";
 import { FieldDefinitionsManager } from "@/components/field-definitions-manager";
 import { SelectField } from "@/components/select-field";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { cn, titleCase } from "@/lib/utils";
 import { sb, type Area, type AreaUpdate } from "@/lib/db";
@@ -31,6 +32,10 @@ import {
   usePlaces,
   useCreatePlace,
   useUpdatePlace,
+  useDeleteLocation,
+  fetchLocationUsage,
+  describeLocationUsage,
+  type LocationKind,
 } from "@/hooks/use-locations";
 import {
   useScheduledNotifications,
@@ -638,6 +643,7 @@ function LocationRow({
   onSelect,
   onToggleActive,
   onRename,
+  onDelete,
   extra,
 }: {
   label: string;
@@ -647,6 +653,7 @@ function LocationRow({
   onSelect?: () => void;
   onToggleActive: () => void;
   onRename?: (name: string) => void;
+  onDelete?: () => void;
   extra?: React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
@@ -705,6 +712,16 @@ function LocationRow({
               Rename
             </button>
           )}
+          {onDelete && canManage && !editing && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-[11px] text-muted-foreground hover:text-destructive"
+              aria-label={`Delete ${label}`}
+            >
+              Delete
+            </button>
+          )}
           <button
             type="button"
             disabled={!canManage}
@@ -743,6 +760,25 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
   const countryName = countries.find((c) => c.id === selectedCountry)?.name;
   const areaName = areas.find((a) => a.id === selectedArea)?.name;
 
+  const deleteLocation = useDeleteLocation();
+  const [pendingDelete, setPendingDelete] = useState<{ kind: LocationKind; id: string; name: string } | null>(null);
+
+  /** Asks the database what still uses the location. Only an unused one reaches the confirm dialog. */
+  async function askToDelete(kind: LocationKind, id: string, name: string) {
+    try {
+      const usage = await fetchLocationUsage(kind, id);
+      if (Object.keys(usage).length > 0) {
+        toast.error(
+          `"${name}" is still used by ${describeLocationUsage(usage)}. Deactivate it instead, or move those records first.`,
+        );
+        return;
+      }
+      setPendingDelete({ kind, id, name });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
   return (
     <div className="mt-4 max-w-2xl space-y-5 text-sm">
       <p className="text-xs text-muted-foreground">
@@ -772,6 +808,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                 updateCountry.mutate({ id: c.id, patch: { is_active: !c.is_active } })
               }
               onRename={(name) => updateCountry.mutate({ id: c.id, patch: { name } })}
+              onDelete={() => askToDelete("country", c.id, c.name)}
             />
           ))}
         </div>
@@ -825,6 +862,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                     updateArea.mutate({ id: a.id, patch: { is_active: !a.is_active } })
                   }
                   onRename={(name) => updateArea.mutate({ id: a.id, patch: { name } })}
+                  onDelete={() => askToDelete("area", a.id, a.name)}
                   extra={
                     canManage ? (
                       <button
@@ -899,6 +937,7 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
                   updatePlace.mutate({ id: p.id, patch: { is_active: !p.is_active } })
                 }
                 onRename={(name) => updatePlace.mutate({ id: p.id, patch: { name } })}
+                onDelete={() => askToDelete("place", p.id, p.name)}
               />
             ))}
           </div>
@@ -934,6 +973,32 @@ function LocationsSection({ canManage }: { canManage: boolean }) {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete ${pendingDelete?.kind ?? "location"}?`}
+        description={`"${pendingDelete?.name}" is not used by any property, lead, development or submission. Deleting it cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        pending={deleteLocation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          try {
+            await deleteLocation.mutateAsync({ kind: pendingDelete.kind, id: pendingDelete.id });
+            if (pendingDelete.id === selectedCountry) {
+              setSelectedCountry("");
+              setSelectedArea("");
+            }
+            if (pendingDelete.id === selectedArea) setSelectedArea("");
+            toast.success(`${pendingDelete.name} deleted`);
+          } catch (e) {
+            // The database re-checks at delete time, so a record added since the pre-check still blocks it.
+            toast.error((e as Error).message);
+          }
+          setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

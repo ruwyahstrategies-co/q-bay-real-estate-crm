@@ -5048,6 +5048,7 @@ export type Database = {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: number
       }
+      location_usage: { Args: { _id: string; _kind: string }; Returns: Json }
       mark_lead_rented_from_outside: {
         Args: { _lead_id: string; _note?: string }
         Returns: undefined

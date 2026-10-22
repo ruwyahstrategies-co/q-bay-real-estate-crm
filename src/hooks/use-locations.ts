@@ -70,6 +70,35 @@ export function usePlaces(areaId?: string) {
   });
 }
 
+export type LocationKind = "country" | "area" | "place";
+const LOCATION_TABLE = { country: "countries", area: "areas", place: "places" } as const;
+
+/** What still uses a location, as { "properties": 12, "leads": 3 }. Empty means it can be deleted. */
+export async function fetchLocationUsage(kind: LocationKind, id: string): Promise<Record<string, number>> {
+  const { data, error } = await sb.rpc("location_usage", { _kind: kind, _id: id });
+  if (error) throw error;
+  return (data ?? {}) as Record<string, number>;
+}
+
+/** "12 properties, 3 leads" for the things that block a delete. */
+export function describeLocationUsage(usage: Record<string, number>): string {
+  return Object.entries(usage)
+    .map(([what, n]) => `${n} ${what}`)
+    .join(", ");
+}
+
+/** Deletes a location. The database refuses while anything still uses it. */
+export function useDeleteLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kind, id }: { kind: LocationKind; id: string }) => {
+      const { error } = await sb.from(LOCATION_TABLE[kind]).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["locations"] }),
+  });
+}
+
 export function useCreateCountry() {
   const qc = useQueryClient();
   return useMutation({

@@ -2135,6 +2135,7 @@ export type Database = {
           company: string | null
           company_id: string | null
           created_at: string
+          created_by: string | null
           email: string | null
           id: string
           id_number: string | null
@@ -2157,6 +2158,7 @@ export type Database = {
           company?: string | null
           company_id?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           id?: string
           id_number?: string | null
@@ -2179,6 +2181,7 @@ export type Database = {
           company?: string | null
           company_id?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           id?: string
           id_number?: string | null
@@ -4911,6 +4914,33 @@ export type Database = {
         Returns: Json
       }
       can_access_lead: { Args: { _lead_id: string }; Returns: boolean }
+      can_access_upload: {
+        Args: {
+          _interaction_id: string
+          _lead_id: string
+          _lease_id: string
+          _offer_id: string
+          _owner_id: string
+          _submission_id: string
+          _tenant_id: string
+          _transaction_id: string
+          _uploaded_by: string
+        }
+        Returns: boolean
+      }
+      can_access_upload_links: {
+        Args: {
+          _interaction_id: string
+          _lead_id: string
+          _lease_id: string
+          _offer_id: string
+          _owner_id: string
+          _submission_id: string
+          _tenant_id: string
+          _transaction_id: string
+        }
+        Returns: boolean
+      }
       can_finalize_won: { Args: never; Returns: boolean }
       can_view_owner_phone: { Args: { _owner_id: string }; Returns: boolean }
       can_view_submission_id: {

@@ -4,7 +4,7 @@
 // RLS policy exactly.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { resolveActiveCaller, hasPermission } from "../_shared/auth.ts";
+import { resolveActiveCaller, hasPermission, callerScopedClient } from "../_shared/auth.ts";
 import { getR2Config, deleteObject } from "../_shared/r2.ts";
 
 const CORS = {
@@ -37,6 +37,15 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
   if (!body.uploadId) return json({ error: "uploadId is required" }, 400);
+
+  // Deleting follows the same row level rule as viewing: a file the caller cannot see cannot be deleted.
+  const { data: visible, error: visibleErr } = await callerScopedClient(req)
+    .from("uploads")
+    .select("id")
+    .eq("id", body.uploadId)
+    .maybeSingle();
+  if (visibleErr) return json({ error: "Failed to load upload" }, 500);
+  if (!visible) return json({ error: "Upload not found" }, 404);
 
   const { data: upload, error } = await service
     .from("uploads")

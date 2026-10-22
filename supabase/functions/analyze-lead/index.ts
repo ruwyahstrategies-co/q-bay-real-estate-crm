@@ -312,6 +312,16 @@ Deno.serve(async (req) => {
   const leadId: string | undefined = body?.lead_id;
   if (!leadId) return json({ error: "lead_id required" }, 400);
 
+  // This function reads with the service key, so first ask, as the caller, whether they may open this lead.
+  // Row level security answers: an agent can analyse their own leads, a team leader their team's, and so on.
+  const callerKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+  const callerClient = createClient(SUPABASE_URL, callerKey, {
+    global: { headers: { Authorization: req.headers.get("authorization") ?? "" } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: visibleLead } = await callerClient.from("leads").select("id").eq("id", leadId).maybeSingle();
+  if (!visibleLead) return json({ error: "Lead not found" }, 404);
+
   const { data: pending } = await supabase
     .from("ai_analyses").select("id,created_at").eq("lead_id", leadId)
     .eq("status", "processing").gte("created_at", new Date(Date.now() - 5 * 60_000).toISOString()).limit(1);

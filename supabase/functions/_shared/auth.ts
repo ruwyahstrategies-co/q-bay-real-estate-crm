@@ -59,6 +59,20 @@ export async function resolveActiveCaller(req: Request, serviceClient: SupabaseC
   return { ok: true, userId: user.id, email: user.email ?? null, teamMember: teamMember as TeamMemberRow };
 }
 
+/**
+ * A client that acts as the caller, not as the service role, so every query goes through the same row level
+ * security the app itself is subject to. Use it to ask "may this person see this record?" before a function
+ * that holds the service key does something with that record.
+ */
+export function callerScopedClient(req: Request): SupabaseClient {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+  return createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: req.headers.get("authorization") ?? "" } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export function hasPermission(teamMember: TeamMemberRow, moduleKey: string, action: string): boolean {
   const actions = teamMember.permissions?.[moduleKey];
   return Array.isArray(actions) && actions.includes(action);

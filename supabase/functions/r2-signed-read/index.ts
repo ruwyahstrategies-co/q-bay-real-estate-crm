@@ -5,7 +5,7 @@
 // permanent public URL is ever generated for private media.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { resolveActiveCaller, hasPermission } from "../_shared/auth.ts";
+import { resolveActiveCaller, hasPermission, callerScopedClient } from "../_shared/auth.ts";
 import { getR2Config, createSignedReadUrl } from "../_shared/r2.ts";
 
 const CORS = {
@@ -38,6 +38,16 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
   if (!body.uploadId) return json({ error: "uploadId is required" }, 400);
+
+  // The caller may only get a link for a file they are allowed to see. This lookup runs as the caller, so the
+  // uploads row level security decides (lead, offer, owner and the other record rules), not just the role.
+  const { data: visible, error: visibleErr } = await callerScopedClient(req)
+    .from("uploads")
+    .select("id")
+    .eq("id", body.uploadId)
+    .maybeSingle();
+  if (visibleErr) return json({ error: "Failed to load upload" }, 500);
+  if (!visible) return json({ error: "Upload not found" }, 404);
 
   const { data: upload, error } = await service
     .from("uploads")

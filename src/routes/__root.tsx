@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -39,12 +39,12 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error: raised, reset }: { error: unknown; reset: () => void }) {
   // Newer router versions hand over an unknown value; make it an Error either way.
-  const error = raised instanceof Error ? raised : new Error(String(raised));
+  const error = useMemo(() => (raised instanceof Error ? raised : new Error(String(raised))), [raised]);
   console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [raised]);
+  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

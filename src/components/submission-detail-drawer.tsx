@@ -257,7 +257,7 @@ export function SubmissionDetailDrawer({
   onOpenChange,
   canReview,
 }: {
-  submission: (PropertySubmission & { id_number_hidden?: boolean }) | null;
+  submission: (PropertySubmission & { id_number_hidden?: boolean; phone_hidden?: boolean }) | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   canReview: boolean;
@@ -295,9 +295,9 @@ export function SubmissionDetailDrawer({
         id: submission!.id,
         patch: {
           full_name: form.full_name,
-          phone: form.phone,
+          // A hidden phone or ID number is never written back, so an untouched form cannot wipe it.
+          ...(submission!.phone_hidden ? {} : { phone: form.phone }),
           email: form.email,
-          // A hidden ID number is never written back, so an untouched form cannot wipe it.
           ...(submission!.id_number_hidden ? {} : { owner_id_number: form.owner_id_number }),
           property_type: form.property_type,
           purpose: form.purpose,
@@ -376,11 +376,21 @@ export function SubmissionDetailDrawer({
               />
             </Field>
             <Field label="Mobile">
-              <input
-                className={inputCls}
-                value={form.phone ?? ""}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              />
+              {submission.phone_hidden ? (
+                <input
+                  className={inputCls}
+                  value="Hidden"
+                  disabled
+                  readOnly
+                  aria-label="Mobile number hidden"
+                />
+              ) : (
+                <input
+                  className={inputCls}
+                  value={form.phone ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                />
+              )}
             </Field>
             <Field label="Email">
               <input
@@ -609,7 +619,7 @@ export function SubmissionDetailDrawer({
           <>
             <section className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
               <Info label="Owner" value={submission.full_name} />
-              <Info label="Mobile" value={submission.phone} />
+              <Info label="Mobile" value={submission.phone_hidden ? "Hidden" : submission.phone} />
               <Info label="Email" value={submission.email} />
               <Info label="ID number" value={submission.id_number_hidden ? "Hidden" : submission.owner_id_number} />
               <Info

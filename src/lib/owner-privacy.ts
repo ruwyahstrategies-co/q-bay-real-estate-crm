@@ -50,29 +50,40 @@ export async function fetchOwnerPrivateFields(
 }
 
 /**
- * Every property_submissions column except owner_id_number, which is a second copy of the owner's
- * national ID and follows the same access rule. The database rejects select("*") on this table.
+ * Every property_submissions column except owner_id_number and phone, which are second copies of the owner's
+ * national ID and phone number and follow the same access rule. The database rejects select("*") on this table.
  */
 export const SUBMISSION_COLUMNS =
-  "id, website_profile_id, full_name, phone, email, country_id, area_id, location, property_type, purpose, price, currency, bedrooms, bathrooms, size, description, media, documents, status, reviewed_by, review_notes, converted_property_id, submitted_at, last_refreshed_at, created_at, updated_at, tower_name, floor_number, unit_number, parking_spaces, furnishing_status, owner_id, development_id, source, terms_accepted, custom_area, available_from, place_id";
+  "id, website_profile_id, full_name, email, country_id, area_id, location, property_type, purpose, price, currency, bedrooms, bathrooms, size, description, media, documents, status, reviewed_by, review_notes, converted_property_id, submitted_at, last_refreshed_at, created_at, updated_at, tower_name, floor_number, unit_number, parking_spaces, furnishing_status, owner_id, development_id, source, terms_accepted, custom_area, available_from, place_id";
 
-/** A submission where owner_id_number is only populated when the caller is entitled to it. */
-export type SafeSubmission = PropertySubmission & { id_number_hidden?: boolean };
+/**
+ * A submission where owner_id_number and phone are only populated when the caller is entitled to them.
+ * phone_hidden is true when the server withheld the phone, so a screen never saves a blank over it.
+ */
+export type SafeSubmission = PropertySubmission & { id_number_hidden?: boolean; phone_hidden?: boolean };
 
 export async function attachSubmissionIdNumbers(
-  rows: Omit<PropertySubmission, "owner_id_number">[],
+  rows: Omit<PropertySubmission, "owner_id_number" | "phone">[],
 ): Promise<SafeSubmission[]> {
   const ids = uniqueIds(rows.map((r) => r.id));
-  const visible = new Map<string, string | null>();
+  const visibleIds = new Map<string, string | null>();
+  const visiblePhones = new Map<string, string | null>();
   if (ids.length > 0) {
-    const { data, error } = await sb.rpc("get_submission_id_numbers", { _ids: ids });
-    if (error) throw error;
-    for (const row of data ?? []) visible.set(row.submission_id, row.owner_id_number);
+    const [idRes, phoneRes] = await Promise.all([
+      sb.rpc("get_submission_id_numbers", { _ids: ids }),
+      sb.rpc("get_submission_phones", { _ids: ids }),
+    ]);
+    if (idRes.error) throw idRes.error;
+    if (phoneRes.error) throw phoneRes.error;
+    for (const row of idRes.data ?? []) visibleIds.set(row.submission_id, row.owner_id_number);
+    for (const row of phoneRes.data ?? []) visiblePhones.set(row.submission_id, row.phone);
   }
   return rows.map((r) => ({
     ...r,
-    owner_id_number: visible.get(r.id) ?? null,
-    id_number_hidden: !visible.has(r.id),
+    owner_id_number: visibleIds.get(r.id) ?? null,
+    id_number_hidden: !visibleIds.has(r.id),
+    phone: visiblePhones.get(r.id) ?? null,
+    phone_hidden: !visiblePhones.has(r.id),
   }));
 }
 

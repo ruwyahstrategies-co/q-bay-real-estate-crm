@@ -5056,6 +5056,13 @@ export type Database = {
           submission_id: string
         }[]
       }
+      get_submission_phones: {
+        Args: { _ids: string[] }
+        Returns: {
+          phone: string
+          submission_id: string
+        }[]
+      }
       get_tenant_private_fields: {
         Args: { _tenant_ids: string[] }
         Returns: {

@@ -8,28 +8,84 @@ export const leadsKeys = {
   detail: (id: string) => ["leads", "detail", id] as const,
 };
 
-export function useLeads(opts?: {
+/** Marks "no agent" in the agent filter, so unassigned leads can be listed. */
+export const UNASSIGNED_AGENT = "__unassigned__";
+
+export type LeadFilters = {
   search?: string;
   stage?: string | null;
+  /** An agent id, or UNASSIGNED_AGENT for leads nobody owns. */
   agent?: string | null;
   status?: "active" | "archived" | "all";
   classification?: string | null;
   workflow?: string | null;
   developmentId?: string | null;
   intent?: "sale" | "rent" | null;
-}) {
-  const { search = "", stage = null, agent = null, status = "active", classification = null, workflow = null, developmentId = null, intent = null } = opts ?? {};
+  source?: string | null;
+  priority?: string | null;
+  /** yyyy-mm-dd, inclusive, on the day the lead was created. */
+  createdFrom?: string | null;
+  createdTo?: string | null;
+  /** Leads whose budget range overlaps this range. */
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  countryId?: string | null;
+  areaId?: string | null;
+  /** A filterable custom field. select/boolean match exactly, text contains. */
+  customField?: { key: string; type: string; value: string } | null;
+};
+
+export function useLeads(opts?: LeadFilters) {
+  const {
+    search = "",
+    stage = null,
+    agent = null,
+    status = "active",
+    classification = null,
+    workflow = null,
+    developmentId = null,
+    intent = null,
+    source = null,
+    priority = null,
+    createdFrom = null,
+    createdTo = null,
+    budgetMin = null,
+    budgetMax = null,
+    countryId = null,
+    areaId = null,
+    customField = null,
+  } = opts ?? {};
   return useQuery({
-    queryKey: leadsKeys.list({ search, stage, agent, status, classification, workflow, developmentId, intent }),
+    queryKey: leadsKeys.list({
+      search, stage, agent, status, classification, workflow, developmentId, intent,
+      source, priority, createdFrom, createdTo, budgetMin, budgetMax, countryId, areaId, customField,
+    }),
     queryFn: async (): Promise<Lead[]> => {
       let q = sb.from("leads").select("*").order("created_at", { ascending: false });
       if (status !== "all") q = q.eq("status", status);
       if (stage) q = q.eq("pipeline_stage", stage);
-      if (agent) q = q.eq("assigned_agent_id", agent);
+      if (agent === UNASSIGNED_AGENT) q = q.is("assigned_agent_id", null);
+      else if (agent) q = q.eq("assigned_agent_id", agent);
       if (classification) q = q.eq("classification", classification);
       if (workflow) q = q.eq("workflow", workflow);
       if (developmentId) q = q.eq("development_id", developmentId);
       if (intent) q = q.eq("transaction_intent", intent);
+      if (source) q = q.eq("lead_source", source);
+      if (priority) q = q.eq("priority", priority);
+      if (createdFrom) q = q.gte("created_at", localDayStart(createdFrom));
+      if (createdTo) q = q.lt("created_at", localDayStart(createdTo, 1));
+      // A lead's budget is a range. It matches when that range overlaps the one asked for.
+      if (budgetMin != null) q = q.gte("budget_max", budgetMin);
+      if (budgetMax != null) q = q.lte("budget_min", budgetMax);
+      if (countryId) q = q.eq("preferred_country_id", countryId);
+      if (areaId) q = q.eq("preferred_area_id", areaId);
+      if (customField && customField.value !== "") {
+        const { key, type, value } = customField;
+        if (type === "multiselect") q = q.contains("custom_fields", { [key]: [value] });
+        else if (type === "boolean" || type === "checkbox") q = q.contains("custom_fields", { [key]: value === "true" });
+        else if (type === "select") q = q.contains("custom_fields", { [key]: value });
+        else q = q.ilike(`custom_fields->>${key}`, `%${value.replace(/[%,()]/g, " ")}%`);
+      }
       if (search.trim()) {
         const term = `%${search.trim()}%`;
         q = q.or(`full_name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
@@ -39,6 +95,13 @@ export function useLeads(opts?: {
       return data ?? [];
     },
   });
+}
+
+/** Midnight (the user's own time zone) at the start of a yyyy-mm-dd date, plus optional whole days, as a UTC timestamp. */
+function localDayStart(iso: string, addDays = 0): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + addDays);
+  return d.toISOString();
 }
 
 export function useLead(id: string | undefined) {

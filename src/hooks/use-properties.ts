@@ -56,6 +56,12 @@ export type PropertyFilters = {
   placeId?: string | null;
   /** Approval state. null = every state. */
   approval?: ApprovalStatus | null;
+  developmentId?: string | null;
+  /** At least this many bedrooms. */
+  minBedrooms?: number | null;
+  furnishing?: string | null;
+  /** On the public website (true), not on it (false), or either (null). */
+  published?: boolean | null;
 };
 
 /** A property as the inventory list shows it: the row plus the name of the development it belongs to. */
@@ -85,6 +91,10 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
     areaIds = [],
     placeId = null,
     approval = null,
+    developmentId = null,
+    minBedrooms = null,
+    furnishing = null,
+    published = null,
   } = f;
   if (status !== "all") q = q.eq("status", status);
   if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
@@ -102,6 +112,10 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   if (areaIds.length > 0) q = q.in("area_id", areaIds);
   if (placeId) q = q.eq("place_id", placeId);
   if (approval) q = q.eq("approval_status", approval);
+  if (developmentId) q = q.eq("development_id", developmentId);
+  if (minBedrooms != null) q = q.gte("bedrooms", minBedrooms);
+  if (furnishing) q = q.eq("furnishing_status", furnishing);
+  if (published != null) q = q.eq("is_published", published);
   if (search.trim()) {
     const term = `%${search.trim().replace(/[,()]/g, " ")}%`;
     q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);

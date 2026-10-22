@@ -61,6 +61,15 @@ import {
   type PropertyPurposeTab,
 } from "@/hooks/use-properties";
 import { PROPERTY_TYPE_FILTER_OPTIONS } from "@/lib/property-types";
+import {
+  ActiveFilterChips,
+  FilterField,
+  FilterGroup,
+  FiltersButton,
+  FiltersDrawer,
+  type FilterChip,
+} from "@/components/filters-drawer";
+import { useDevelopments } from "@/hooks/use-developments";
 import { downloadCsv } from "@/lib/csv-export";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
@@ -85,6 +94,9 @@ const STATUS_FILTERS = [
 
 const PROPERTY_TYPES = PROPERTY_TYPE_FILTER_OPTIONS;
 
+const drawerInputCls =
+  "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25";
+
 function PropertiesPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<"table" | "grid">("table");
@@ -103,6 +115,11 @@ function PropertiesPage() {
   const [areaIds, setAreaIds] = useState<string[]>([]);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [approval, setApproval] = useState<ApprovalStatus | null>(null);
+  const [developmentId, setDevelopmentId] = useState<string | null>(null);
+  const [minBedroomsText, setMinBedroomsText] = useState<string | null>(null);
+  const [furnishing, setFurnishing] = useState<string | null>(null);
+  const [published, setPublished] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [confirmArchive, setConfirmArchive] = useState<Property | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Property | null>(null);
@@ -147,6 +164,10 @@ function PropertiesPage() {
     areaIds,
     placeId,
     approval,
+    developmentId,
+    minBedrooms: minBedroomsText ? Number(minBedroomsText) : null,
+    furnishing,
+    published: published === null ? null : published === "yes",
   };
   const filterSignature = JSON.stringify([baseFilters, purpose]);
   useEffect(() => setPage(0), [filterSignature]);
@@ -158,20 +179,71 @@ function PropertiesPage() {
   const showingFrom = total === 0 ? 0 : page * PROPERTY_PAGE_SIZE + 1;
   const showingTo = Math.min(total, (page + 1) * PROPERTY_PAGE_SIZE);
   const { data: purposeCounts } = usePropertyPurposeCounts(baseFilters);
-  const activeFilterCount =
-    (search.trim() ? 1 : 0) +
-    (type ? 1 : 0) +
-    (availability ? 1 : 0) +
-    (statusFilter !== "active" ? 1 : 0) +
-    (minPrice != null ? 1 : 0) +
-    (maxPrice != null ? 1 : 0) +
-    (agentIds.length ? 1 : 0) +
-    (countryId ? 1 : 0) +
-    (areaIds.length ? 1 : 0) +
-    (placeId ? 1 : 0) +
-    (approval ? 1 : 0);
-  function clearFilters() {
-    setSearch("");
+  const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
+  const { data: propertyFieldDefs = [] } = useFieldDefinitions("property", { activeOnly: true });
+  const exportablePropertyFieldDefs = propertyFieldDefs.filter((d) => d.is_exportable);
+  const { data: team = [] } = useTeamMembers();
+  const { data: developments = [] } = useDevelopments();
+
+  // Every filter that is on, with how to turn it off. The Filters count, the chips and "Clear all" share this.
+  const filterChips: FilterChip[] = [
+    type && { key: "type", label: `Type: ${type}`, onRemove: () => setType(null) },
+    availability && {
+      key: "availability",
+      label: `Availability: ${PROPERTY_AVAILABILITY_LABELS[availability] ?? availability}`,
+      onRemove: () => setAvailability(null),
+    },
+    statusFilter !== "active" && {
+      key: "status",
+      label: `Shown: ${statusFilter === "archived" ? "Archived" : "All"}`,
+      onRemove: () => setStatusFilter("active"),
+    },
+    minPrice != null && { key: "minPrice", label: `Price from ${minPrice.toLocaleString("en-US")}`, onRemove: () => setMinPriceText("") },
+    maxPrice != null && { key: "maxPrice", label: `Price to ${maxPrice.toLocaleString("en-US")}`, onRemove: () => setMaxPriceText("") },
+    agentIds.length > 0 && {
+      key: "agents",
+      label: `Agents: ${agentIds.map((id) => team.find((m) => m.id === id)?.full_name ?? "selected").join(", ")}`,
+      onRemove: () => setAgentIds([]),
+    },
+    countryId && {
+      key: "country",
+      label: `Country: ${countries.find((c) => c.id === countryId)?.name ?? "selected"}`,
+      onRemove: () => {
+        setCountryId(null);
+        setAreaIds([]);
+        setPlaceId(null);
+      },
+    },
+    areaIds.length > 0 && {
+      key: "areas",
+      label: `Areas: ${areaIds.map((id) => allAreas.find((a) => a.id === id)?.name ?? "selected").join(", ")}`,
+      onRemove: () => {
+        setAreaIds([]);
+        setPlaceId(null);
+      },
+    },
+    placeId && {
+      key: "place",
+      label: `Place: ${allPlaces.find((pl) => pl.id === placeId)?.name ?? "selected"}`,
+      onRemove: () => setPlaceId(null),
+    },
+    approval && { key: "approval", label: `Approval: ${APPROVAL_LABELS[approval]}`, onRemove: () => setApproval(null) },
+    developmentId && {
+      key: "development",
+      label: `Development: ${developments.find((d) => d.id === developmentId)?.name ?? "selected"}`,
+      onRemove: () => setDevelopmentId(null),
+    },
+    minBedroomsText && { key: "beds", label: `${minBedroomsText}+ bedrooms`, onRemove: () => setMinBedroomsText(null) },
+    furnishing && { key: "furnishing", label: `Furnishing: ${furnishing}`, onRemove: () => setFurnishing(null) },
+    published && {
+      key: "published",
+      label: published === "yes" ? "On the website" : "Not on the website",
+      onRemove: () => setPublished(null),
+    },
+  ].filter(Boolean) as FilterChip[];
+  const drawerFilterCount = filterChips.length;
+  const activeFilterCount = drawerFilterCount + (search.trim() ? 1 : 0);
+  function clearDrawerFilters() {
     setType(null);
     setAvailability(null);
     setStatusFilter("active");
@@ -182,11 +254,15 @@ function PropertiesPage() {
     setAreaIds([]);
     setPlaceId(null);
     setApproval(null);
+    setDevelopmentId(null);
+    setMinBedroomsText(null);
+    setFurnishing(null);
+    setPublished(null);
   }
-  const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
-  const { data: propertyFieldDefs = [] } = useFieldDefinitions("property", { activeOnly: true });
-  const exportablePropertyFieldDefs = propertyFieldDefs.filter((d) => d.is_exportable);
-  const { data: team = [] } = useTeamMembers();
+  function clearFilters() {
+    setSearch("");
+    clearDrawerFilters();
+  }
   const archive = useArchiveProperty();
   const restore = useRestoreProperty();
   const del = useDeleteProperty();
@@ -322,111 +398,15 @@ function PropertiesPage() {
           </div>
         )}
 
-        <FilterToolbar ariaLabel="Property filters" activeCount={activeFilterCount}>
+        <FilterToolbar ariaLabel="Property filters" activeCount={drawerFilterCount}>
           <FilterSearch
             value={search}
             onChange={setSearch}
             placeholder="Search by title, reference, location..."
           />
-          <FilterSelect
-            label="Type"
-            value={type}
-            onChange={setType}
-            options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))}
-            allLabel="All types"
-          />
-          <FilterSelect
-            label="Availability"
-            value={availability}
-            onChange={setAvailability}
-            options={[...PROPERTY_AVAILABILITIES, "needs_confirmation"].map((a) => ({
-              value: a,
-              label: PROPERTY_AVAILABILITY_LABELS[a] ?? a,
-            }))}
-            allLabel="All availability"
-            className="w-48"
-          />
-          <div className="flex items-center gap-1.5" role="group" aria-label="Price range">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={minPriceText}
-              onChange={(e) => setMinPriceText(e.target.value)}
-              placeholder="Min price"
-              aria-label="Minimum price"
-              aria-invalid={priceRangeInvalid || undefined}
-              className={`h-9 w-28 rounded-lg border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25 ${
-                priceRangeInvalid ? "border-destructive" : minPrice != null ? "border-qbay/40 bg-qbay-tint" : "border-border"
-              }`}
-            />
-            <span className="text-xs text-muted-foreground" aria-hidden="true">
-              to
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={maxPriceText}
-              onChange={(e) => setMaxPriceText(e.target.value)}
-              placeholder="Max price"
-              aria-label="Maximum price"
-              aria-invalid={priceRangeInvalid || undefined}
-              className={`h-9 w-28 rounded-lg border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25 ${
-                priceRangeInvalid ? "border-destructive" : maxPrice != null ? "border-qbay/40 bg-qbay-tint" : "border-border"
-              }`}
-            />
-          </div>
-          <MultiSelectField
-            label="Agents"
-            values={agentIds}
-            onChange={setAgentIds}
-            options={team.map((m) => ({ value: m.id, label: m.full_name }))}
-            allLabel="All agents"
-          />
-          <FilterSelect
-            label="Country"
-            value={countryId}
-            onChange={(v) => {
-              setCountryId(v);
-              setAreaIds([]);
-              setPlaceId(null);
-            }}
-            options={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
-            allLabel="All countries"
-          />
-          <MultiSelectField
-            label="Areas"
-            values={areaIds}
-            onChange={(v) => {
-              setAreaIds(v);
-              setPlaceId(null);
-            }}
-            options={areaOptions}
-            allLabel="All areas"
-          />
-          <FilterSelect
-            label="Place"
-            value={placeId}
-            onChange={setPlaceId}
-            options={placeOptions}
-            allLabel={areaIds.length === 1 ? "All places" : "Place (pick one area)"}
-            disabled={areaIds.length !== 1 || placeOptions.length === 0}
-          />
-          <FilterSelect
-            label="Approval"
-            value={approval}
-            onChange={(v) => setApproval(v as ApprovalStatus | null)}
-            options={(Object.keys(APPROVAL_LABELS) as ApprovalStatus[]).map((k) => ({ value: k, label: APPROVAL_LABELS[k] }))}
-            allLabel="Any approval"
-          />
-          <SegmentedControl
-            ariaLabel="Archive state"
-            size="md"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
-          />
+          <ToolbarAlways>
+            <FiltersButton count={drawerFilterCount} onClick={() => setFiltersOpen(true)} />
+          </ToolbarAlways>
           <ClearFiltersButton count={activeFilterCount} onClick={clearFilters} />
           <ToolbarAlways>
             <SegmentedControl
@@ -442,6 +422,190 @@ function PropertiesPage() {
             />
           </ToolbarAlways>
         </FilterToolbar>
+        <ActiveFilterChips chips={filterChips} />
+        <FiltersDrawer
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Property filters"
+          activeCount={drawerFilterCount}
+          resultText={
+            isLoading ? "Loading..." : `Show ${total} ${total === 1 ? "property" : "properties"}`
+          }
+          onClear={clearDrawerFilters}
+        >
+          <FilterGroup title="The property">
+            <FilterField label="Type">
+              <FilterSelect
+                label="Type"
+                value={type}
+                onChange={setType}
+                options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))}
+                allLabel="All types"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Availability">
+              <FilterSelect
+                label="Availability"
+                value={availability}
+                onChange={setAvailability}
+                options={[...PROPERTY_AVAILABILITIES, "needs_confirmation"].map((a) => ({
+                  value: a,
+                  label: PROPERTY_AVAILABILITY_LABELS[a] ?? a,
+                }))}
+                allLabel="All availability"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <div className="grid grid-cols-2 gap-3">
+              <FilterField label="Price from">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={minPriceText}
+                  onChange={(e) => setMinPriceText(e.target.value)}
+                  placeholder="Min price"
+                  aria-label="Minimum price"
+                  aria-invalid={priceRangeInvalid || undefined}
+                  className={`${drawerInputCls} ${priceRangeInvalid ? "border-destructive" : ""}`}
+                />
+              </FilterField>
+              <FilterField label="Price to">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={maxPriceText}
+                  onChange={(e) => setMaxPriceText(e.target.value)}
+                  placeholder="Max price"
+                  aria-label="Maximum price"
+                  aria-invalid={priceRangeInvalid || undefined}
+                  className={`${drawerInputCls} ${priceRangeInvalid ? "border-destructive" : ""}`}
+                />
+              </FilterField>
+            </div>
+            <FilterField label="Bedrooms">
+              <FilterSelect
+                label="Bedrooms"
+                value={minBedroomsText}
+                onChange={setMinBedroomsText}
+                options={["1", "2", "3", "4", "5", "6"].map((n) => ({ value: n, label: `${n}+ bedrooms` }))}
+                allLabel="Any number"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Furnishing">
+              <FilterSelect
+                label="Furnishing"
+                value={furnishing}
+                onChange={setFurnishing}
+                options={[
+                  { value: "FF", label: "FF - Fully furnished" },
+                  { value: "SF", label: "SF - Semi furnished" },
+                  { value: "UF", label: "UF - Unfurnished" },
+                ]}
+                allLabel="Any furnishing"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Development">
+              <FilterSelect
+                label="Development"
+                value={developmentId}
+                onChange={setDevelopmentId}
+                options={developments.map((d) => ({ value: d.id, label: d.name }))}
+                allLabel="All developments"
+                searchable
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+          </FilterGroup>
+
+          <FilterGroup title="Location">
+            <FilterField label="Country">
+              <FilterSelect
+                label="Country"
+                value={countryId}
+                onChange={(v) => {
+                  setCountryId(v);
+                  setAreaIds([]);
+                  setPlaceId(null);
+                }}
+                options={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
+                allLabel="All countries"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Areas">
+              <MultiSelectField
+                label="Areas"
+                values={areaIds}
+                onChange={(v) => {
+                  setAreaIds(v);
+                  setPlaceId(null);
+                }}
+                options={areaOptions}
+                allLabel="All areas"
+              />
+            </FilterField>
+            <FilterField label="Place" hint={areaIds.length === 1 ? undefined : "Pick exactly one area to choose a place."}>
+              <FilterSelect
+                label="Place"
+                value={placeId}
+                onChange={setPlaceId}
+                options={placeOptions}
+                allLabel={areaIds.length === 1 ? "All places" : "Place (pick one area)"}
+                disabled={areaIds.length !== 1 || placeOptions.length === 0}
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+          </FilterGroup>
+
+          <FilterGroup title="Team and status">
+            <FilterField label="Agents">
+              <MultiSelectField
+                label="Agents"
+                values={agentIds}
+                onChange={setAgentIds}
+                options={team.map((m) => ({ value: m.id, label: m.full_name }))}
+                allLabel="All agents"
+              />
+            </FilterField>
+            <FilterField label="Approval">
+              <FilterSelect
+                label="Approval"
+                value={approval}
+                onChange={(v) => setApproval(v as ApprovalStatus | null)}
+                options={(Object.keys(APPROVAL_LABELS) as ApprovalStatus[]).map((k) => ({ value: k, label: APPROVAL_LABELS[k] }))}
+                allLabel="Any approval"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Public website">
+              <FilterSelect
+                label="Public website"
+                value={published}
+                onChange={setPublished}
+                options={[
+                  { value: "yes", label: "On the website" },
+                  { value: "no", label: "Not on the website" },
+                ]}
+                allLabel="Either"
+                className="w-full sm:w-full"
+              />
+            </FilterField>
+            <FilterField label="Archive state">
+              <SegmentedControl
+                ariaLabel="Archive state"
+                size="md"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
+              />
+            </FilterField>
+          </FilterGroup>
+        </FiltersDrawer>
         {priceRangeInvalid && (
           <p role="alert" className="-mt-2 mb-3 text-xs text-destructive">
             The minimum price is higher than the maximum, so the price filter is not applied.

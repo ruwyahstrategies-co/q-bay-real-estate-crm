@@ -4,6 +4,7 @@ import { Button } from "./ui-primitives";
 import { EmptyState } from "./empty-state";
 import { DrawerShell } from "./overlay";
 import { UploadDropzone } from "./upload-dropzone";
+import { OfferFormsPanel } from "./offer-forms-panel";
 import { downloadUpload, useUploads, useDeleteUpload } from "@/hooks/use-uploads";
 import { usePermissions } from "@/hooks/use-auth";
 import type { Offer } from "@/hooks/use-offers";
@@ -24,10 +25,10 @@ export function OfferAttachmentsDrawer({
   const deleteUpload = useDeleteUpload();
 
   return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Offer attachments">
+    <DrawerShell open={open} onOpenChange={onOpenChange} ariaLabel="Offer documents">
       <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <div>
-          <h3 className="text-base font-semibold">Offer attachments</h3>
+          <h3 className="text-base font-semibold">Offer documents</h3>
           <p className="text-xs text-muted-foreground">{offer.leads?.full_name ?? "Lead"}</p>
         </div>
         <button
@@ -39,6 +40,7 @@ export function OfferAttachmentsDrawer({
         </button>
       </div>
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
+        <OfferFormsPanel offer={offer} />
         {canUpload && (
           <UploadDropzone
             title="Upload offer document"

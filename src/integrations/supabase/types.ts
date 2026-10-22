@@ -1648,6 +1648,117 @@ export type Database = {
         }
         Relationships: []
       }
+      offer_forms: {
+        Row: {
+          created_at: string
+          form_data: Json
+          form_type: string
+          generated_at: string
+          generated_by: string | null
+          generated_upload_id: string | null
+          id: string
+          lead_id: string | null
+          offer_id: string
+          property_id: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_upload_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_data?: Json
+          form_type: string
+          generated_at?: string
+          generated_by?: string | null
+          generated_upload_id?: string | null
+          id?: string
+          lead_id?: string | null
+          offer_id: string
+          property_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_upload_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_data?: Json
+          form_type?: string
+          generated_at?: string
+          generated_by?: string | null
+          generated_upload_id?: string | null
+          id?: string
+          lead_id?: string | null
+          offer_id?: string
+          property_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_upload_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_forms_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_generated_upload_id_fkey"
+            columns: ["generated_upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_demand_scores"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "offer_forms_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_signed_upload_id_fkey"
+            columns: ["signed_upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           agent_id: string | null

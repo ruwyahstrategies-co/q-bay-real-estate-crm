@@ -105,6 +105,7 @@ export function useUploadFile() {
       offerId,
       transactionId,
       uploadedBy,
+      metadata,
     }: {
       file: File;
       categoryKey: UploadCategoryKey;
@@ -116,6 +117,8 @@ export function useUploadFile() {
       offerId?: string | null;
       transactionId?: string | null;
       uploadedBy?: string | null;
+      /** Extra facts stored with the file, for example which generated form it belongs to. */
+      metadata?: Record<string, string | number | boolean | null>;
     }): Promise<Upload> => {
       const cat = UPLOAD_CATEGORIES[categoryKey];
       const ext = extOf(file.name);
@@ -171,7 +174,7 @@ export function useUploadFile() {
           uploaded_by: uploadedBy ?? null,
           processing_status,
           extracted_text,
-          metadata: { extension: ext },
+          metadata: { ...(metadata ?? {}), extension: ext },
         };
         const { data, error } = await sb.from("uploads").insert(insertRow).select().single();
         if (error) throw error;
@@ -217,7 +220,7 @@ export function useUploadFile() {
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,
-        metadata: { extension: ext },
+        metadata: { ...(metadata ?? {}), extension: ext },
       };
 
       const { data, error } = await sb.from("uploads").insert(insertRow).select().single();

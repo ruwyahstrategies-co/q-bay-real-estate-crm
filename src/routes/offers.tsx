@@ -102,7 +102,7 @@ function OffersPage() {
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
-                  <button className="rounded-md p-1.5 hover:bg-muted" title="Attachments" onClick={() => setAttachmentsTarget(o)}>
+                  <button className="rounded-md p-1.5 hover:bg-muted" title="Documents and forms" onClick={() => setAttachmentsTarget(o)}>
                     <Paperclip className="h-3.5 w-3.5" />
                   </button>
                   {canEdit && !["accepted", "rejected", "withdrawn", "expired"].includes(o.status) && (

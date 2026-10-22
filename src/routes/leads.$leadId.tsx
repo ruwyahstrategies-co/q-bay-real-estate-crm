@@ -58,6 +58,7 @@ import { useLeadViewings } from "@/hooks/use-viewings";
 import { ScheduleViewingDrawer, ViewingDetailDrawer, ViewingStatusBadge } from "@/components/viewing-drawers";
 import { fmtQatarDateTime } from "@/lib/qatar-time";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
+import { OfferFormsPanel } from "@/components/offer-forms-panel";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
 import { MaskedPhone } from "@/components/masked-phone";
@@ -1132,6 +1133,7 @@ function OffersTab({ leadId, developmentId }: { leadId: string; developmentId?: 
                     />
                   )}
               </div>
+              <OfferFormsPanel offer={o} />
               {expandedOfferId === o.id && (
                 <OfferAttachments offerId={o.id} canUpload={canCreate || canEdit} />
               )}

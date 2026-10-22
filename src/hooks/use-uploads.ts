@@ -20,9 +20,10 @@ export function useUploads(opts?: {
   propertyLeaseId?: string;
   offerId?: string;
   transactionId?: string;
+  interactionId?: string;
   category?: string | null;
 }) {
-  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, transactionId, category } = opts ?? {};
+  const { leadId, propertyId, ownerId, tenantId, propertyLeaseId, offerId, transactionId, interactionId, category } = opts ?? {};
   return useQuery({
     queryKey: uploadKeys.list({
       leadId,
@@ -32,6 +33,7 @@ export function useUploads(opts?: {
       propertyLeaseId,
       offerId,
       transactionId,
+      interactionId,
       category,
     }),
     queryFn: async (): Promise<Upload[]> => {
@@ -43,6 +45,7 @@ export function useUploads(opts?: {
       if (propertyLeaseId) q = q.eq("property_lease_id", propertyLeaseId);
       if (offerId) q = q.eq("offer_id", offerId);
       if (transactionId) q = q.eq("transaction_id", transactionId);
+      if (interactionId) q = q.eq("interaction_id", interactionId);
       if (category) q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
@@ -104,6 +107,7 @@ export function useUploadFile() {
       propertyLeaseId,
       offerId,
       transactionId,
+      interactionId,
       uploadedBy,
       metadata,
     }: {
@@ -116,6 +120,8 @@ export function useUploadFile() {
       propertyLeaseId?: string | null;
       offerId?: string | null;
       transactionId?: string | null;
+      /** The conversation this file is evidence for. */
+      interactionId?: string | null;
       uploadedBy?: string | null;
       /** Extra facts stored with the file, for example which generated form it belongs to. */
       metadata?: Record<string, string | number | boolean | null>;
@@ -171,6 +177,7 @@ export function useUploadFile() {
           property_lease_id: propertyLeaseId ?? null,
           offer_id: offerId ?? null,
           transaction_id: transactionId ?? null,
+          interaction_id: interactionId ?? null,
           uploaded_by: uploadedBy ?? null,
           processing_status,
           extracted_text,
@@ -217,6 +224,7 @@ export function useUploadFile() {
         property_lease_id: propertyLeaseId ?? null,
         offer_id: offerId ?? null,
         transaction_id: transactionId ?? null,
+        interaction_id: interactionId ?? null,
         uploaded_by: uploadedBy ?? null,
         processing_status,
         extracted_text,

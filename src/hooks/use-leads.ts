@@ -87,21 +87,30 @@ export function useUpdateLead() {
 }
 
 /**
- * Moves a lead to another pipeline stage. The database enforces the forward-only rule and records the
- * pipeline_history row itself, so a refused move surfaces here as an error and a successful one is
- * recorded exactly once, whichever screen made it.
+ * Moves a lead to another pipeline stage. The database enforces who may do it (forward-only for ordinary
+ * staff, any direction for a Super Administrator, Won only for people who can finalise a deal) and records
+ * the pipeline_history row itself, with the optional reason, so a refused move surfaces here as an error and
+ * a successful one is recorded exactly once, whichever screen made it.
  */
 export function useChangePipelineStage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, newStage }: { id: string; newStage: string; previousStage?: string }) => {
-      const { data, error } = await sb.from("leads").update({ pipeline_stage: newStage }).eq("id", id).select().single();
+    mutationFn: async ({ id, newStage, reason }: { id: string; newStage: string; previousStage?: string; reason?: string }) => {
+      const { error } = await sb.rpc("move_lead_stage", {
+        _lead_id: id,
+        _stage: newStage,
+        _reason: reason?.trim() || undefined,
+      });
       if (error) throw error;
-      return data;
+      return newStage;
     },
     onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: leadsKeys.all });
-      qc.invalidateQueries({ queryKey: ["pipeline_history", vars.id] });
+      qc.invalidateQueries({ queryKey: ["pipeline_history"] });
+      qc.invalidateQueries({ queryKey: ["refs"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["properties"] });
+      qc.invalidateQueries({ queryKey: leadsKeys.detail(vars.id) });
     },
   });
 }

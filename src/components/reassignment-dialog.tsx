@@ -5,6 +5,8 @@ import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
 import { SearchableSelectField } from "./select-field";
 import { useAssignedRecordCounts, useReassignTeamMemberRecords, type ReassignmentCategory } from "@/hooks/use-reassignment";
+import { useReassignMemberLeads } from "@/hooks/use-lead-reassignment";
+import { REASSIGN_MODES, type ReassignMode } from "@/lib/reassignment";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { exportTeamMemberData } from "@/lib/staff-export";
@@ -42,6 +44,9 @@ export function ReassignmentDialog({
   const { data: counts } = useAssignedRecordCounts(member?.id);
   const { data: team = [] } = useTeamMembers();
   const reassign = useReassignTeamMemberRecords();
+  const reassignLeads = useReassignMemberLeads();
+  // Leads keep the same two choices as any other handover: start the pipeline over, or carry on from the previous agent.
+  const [leadMode, setLeadMode] = useState<ReassignMode | null>(null);
   const [targets, setTargets] = useState<Partial<Record<ReassignmentCategory, string>>>({});
   const { teamMember: me, displayName } = useCurrentUser();
   const [exporting, setExporting] = useState(false);
@@ -68,14 +73,23 @@ export function ReassignmentDialog({
 
   async function handleReassignAndProceed(action: "deactivate" | "delete") {
     if (!member) return;
-    const chosen = Object.fromEntries(Object.entries(targets).filter(([, v]) => !!v));
+    const { leads: leadsTarget, ...chosen } = Object.fromEntries(Object.entries(targets).filter(([, v]) => !!v));
+    if (leadsTarget && !leadMode) {
+      toast.error("Choose Start all over or Continue from the previous agent for the leads.");
+      return;
+    }
     try {
+      if (leadsTarget && leadMode) {
+        const n = await reassignLeads.mutateAsync({ fromAgentId: member.id, toAgentId: leadsTarget, mode: leadMode });
+        toast.success(`${n} lead${n === 1 ? "" : "s"} reassigned`);
+      }
       if (Object.keys(chosen).length > 0) {
         await reassign.mutateAsync({ fromAgentId: member.id, targets: chosen });
         toast.success("Records reassigned");
       }
       onOpenChange(false);
       setTargets({});
+      setLeadMode(null);
       onProceed(action);
     } catch (e) {
       toast.error((e as Error).message);
@@ -131,6 +145,31 @@ export function ReassignmentDialog({
                 />
               </div>
             ))}
+            {categories.includes("leads") && targets.leads && (
+              <fieldset className="rounded-lg border border-qbay/25 bg-qbay-tint p-3">
+                <legend className="px-1 text-xs font-medium">What happens to each lead&apos;s pipeline?</legend>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  These leads move at once, because {member.full_name} is leaving. Every lead keeps its full history.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {REASSIGN_MODES.map((m) => (
+                    <label key={m.value} className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-canvas p-2 text-xs">
+                      <input
+                        type="radio"
+                        name="team-lead-mode"
+                        className="mt-0.5 accent-[var(--qbay-green)]"
+                        checked={leadMode === m.value}
+                        onChange={() => setLeadMode(m.value)}
+                      />
+                      <span>
+                        <span className="block font-semibold">{m.title}</span>
+                        <span className="text-muted-foreground">{m.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
           </>
         )}
       </div>
@@ -139,14 +178,14 @@ export function ReassignmentDialog({
         <Button
           variant="outline"
           size="sm"
-          disabled={reassign.isPending}
+          disabled={reassign.isPending || reassignLeads.isPending}
           onClick={() => handleReassignAndProceed("deactivate")}
         >
           <ArrowRightLeft className="h-3.5 w-3.5" /> {hasAssigned ? "Reassign & Deactivate" : "Deactivate"}
         </Button>
         <Button
           size="sm"
-          disabled={reassign.isPending}
+          disabled={reassign.isPending || reassignLeads.isPending}
           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           onClick={() => handleReassignAndProceed("delete")}
         >

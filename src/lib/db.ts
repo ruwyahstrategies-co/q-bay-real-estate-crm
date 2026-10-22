@@ -418,6 +418,14 @@ export const UPLOAD_CATEGORIES = {
     extensions: ["pdf", "docx", "jpg", "jpeg", "png", "webp"],
     maxMb: 200,
   },
+  // Screenshots, images and files recorded as evidence of a conversation. Private, tied to the interaction.
+  conversation_attachments: {
+    title: "Conversation attachments",
+    bucket: "conversation-files",
+    accept: ".jpg,.jpeg,.png,.webp,.pdf,.docx,.txt",
+    extensions: ["jpg", "jpeg", "png", "webp", "pdf", "docx", "txt"],
+    maxMb: 50,
+  },
   // Staff profile pictures live only in Cloudflare R2 (public media bucket). The Supabase
   // bucket below is a required placeholder: R2_REQUIRED_CATEGORIES prevents any fallback to it.
   staff_avatars: {

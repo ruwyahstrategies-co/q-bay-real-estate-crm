@@ -1,15 +1,28 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   DndContext,
-  PointerSensor,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
-import { Plus, LayoutGrid, Rows3, ArrowUpRight, Users, ClipboardPlus, Lock } from "lucide-react";
+import {
+  Plus,
+  LayoutGrid,
+  Rows3,
+  ArrowUpRight,
+  Users,
+  ClipboardPlus,
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+  Hourglass,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -23,13 +36,14 @@ import { AddLeadDrawer } from "@/components/add-lead-drawer";
 import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { useLeads, useChangePipelineStage } from "@/hooks/use-leads";
+import { useLeads } from "@/hooks/use-leads";
+import { usePendingReassignments } from "@/hooks/use-lead-reassignment";
+import { useStageMoveFlow } from "@/components/stage-move-flow";
 import { useTeamMembers } from "@/hooks/use-team";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { MaskedPhone } from "@/components/masked-phone";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TaskDrawer } from "@/components/task-drawer";
-import { blockedMoveReason, isClosedStage } from "@/lib/pipeline";
+import { isClosedStage } from "@/lib/pipeline";
 import { fmtMoney, type Lead } from "@/lib/db";
 
 export const Route = createFileRoute("/pipeline")({
@@ -45,15 +59,20 @@ function PipelinePage() {
   const { data: leads = [] } = useLeads({ search, agent });
   const { data: team = [] } = useTeamMembers();
   const { data: pipelineStages = [] } = usePipelineStages({ activeOnly: true });
-  const changeStage = useChangePipelineStage();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // Mouse drags start after a few pixels (so a click still opens the lead and empty space can pan the board),
+  // touch drags need a short press (so a swipe scrolls the board), and the keyboard can pick a card up too.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
   const { can } = usePermissions();
   const canMove = can("pipeline", "move");
   const canCreateLead = can("leads", "create");
   const canCreateTask = can("tasks", "create");
-  // A move into Won or Lost closes the lead for good, so it is confirmed first.
-  const [pendingClose, setPendingClose] = useState<{ lead: Lead; target: string } | null>(null);
   const [taskLead, setTaskLead] = useState<Lead | null>(null);
+  const { data: pendingHandovers = [] } = usePendingReassignments();
+  const handoverByLead = useMemo(() => new Map(pendingHandovers.map((r) => [r.lead_id, r])), [pendingHandovers]);
 
   // Local optimistic copy of leads' stages
   const [localStage, setLocalStage] = useState<Record<string, string>>({});
@@ -62,21 +81,17 @@ function PipelinePage() {
     [leads, localStage],
   );
 
-  async function moveLead(lead: Lead, targetStage: string) {
-    const prev = lead.pipeline_stage;
-    setLocalStage((m) => ({ ...m, [lead.id]: targetStage }));
-    try {
-      await changeStage.mutateAsync({ id: lead.id, newStage: targetStage, previousStage: prev });
-    } catch (err) {
-      // The database is the final judge of the forward-only rule, so a refusal puts the card back.
+  // One flow for every move: forward-only for agents, corrections for a Super Administrator, the closing form
+  // for Won, the negotiated-property question for Negotiation. The database judges each move again.
+  const flow = useStageMoveFlow({
+    optimistic: (id, stage) =>
       setLocalStage((m) => {
+        if (stage) return { ...m, [id]: stage };
         const c = { ...m };
-        delete c[lead.id];
+        delete c[id];
         return c;
-      });
-      toast.error((err as Error).message);
-    }
-  }
+      }),
+  });
 
   async function onDragEnd(e: DragEndEvent) {
     if (!canMove || !e.over) return;
@@ -84,17 +99,25 @@ function PipelinePage() {
     const targetStage = String(e.over.id);
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.pipeline_stage === targetStage) return;
-    const reason = blockedMoveReason(pipelineStages, lead.pipeline_stage, targetStage);
-    if (reason) {
-      toast.error(reason);
-      return;
-    }
-    if (isClosedStage(pipelineStages, targetStage)) {
-      setPendingClose({ lead, target: targetStage });
-      return;
-    }
-    await moveLead(lead, targetStage);
+    await flow.requestMove(lead, targetStage);
   }
+
+  // Horizontal scrolling of the board: buttons, grab-to-pan on empty space, edge fades.
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const updateEdges = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  }, []);
+  useEffect(() => {
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    return () => window.removeEventListener("resize", updateEdges);
+  }, [updateEdges, pipelineStages.length, view]);
+  const scrollByColumns = (dir: -1 | 1) => scroller.current?.scrollBy({ left: dir * 296 * 2, behavior: "smooth" });
+  const pan = useRef<{ x: number; left: number } | null>(null);
+  const [panning, setPanning] = useState(false);
 
   return (
     <AppShell>
@@ -146,7 +169,73 @@ function PipelinePage() {
 
       {view === "board" ? (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3">
+          <div className="relative">
+            {edges.left && (
+              <>
+                <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+                <button
+                  type="button"
+                  aria-label="Scroll the board left"
+                  onClick={() => scrollByColumns(-1)}
+                  className="absolute left-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-canvas shadow-raised transition-colors hover:bg-muted sm:flex"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            {edges.right && (
+              <>
+                <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+                <button
+                  type="button"
+                  aria-label="Scroll the board right"
+                  onClick={() => scrollByColumns(1)}
+                  className="absolute right-1 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-canvas shadow-raised transition-colors hover:bg-muted sm:flex"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            <div
+              ref={scroller}
+              tabIndex={0}
+              role="region"
+              aria-label="Pipeline board. Use the left and right arrow keys, the scroll buttons, or drag empty space to move sideways."
+              onScroll={updateEdges}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "ArrowRight") scrollByColumns(1);
+                if (e.key === "ArrowLeft") scrollByColumns(-1);
+              }}
+              onPointerDown={(e) => {
+                // Grab-to-pan only from empty space with a mouse, so cards and buttons keep their own behaviour.
+                if (e.pointerType !== "mouse" || e.button !== 0) return;
+                if ((e.target as HTMLElement).closest("[data-lead-card],button,a,input,select,textarea")) return;
+                const el = scroller.current;
+                if (!el) return;
+                pan.current = { x: e.clientX, left: el.scrollLeft };
+                setPanning(true);
+                el.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                if (!pan.current || !scroller.current) return;
+                scroller.current.scrollLeft = pan.current.left - (e.clientX - pan.current.x);
+              }}
+              onPointerUp={(e) => {
+                if (!pan.current) return;
+                pan.current = null;
+                setPanning(false);
+                scroller.current?.releasePointerCapture(e.pointerId);
+              }}
+              onPointerCancel={() => {
+                pan.current = null;
+                setPanning(false);
+              }}
+              className={cn(
+                "-mx-1 flex gap-3 overflow-x-auto scroll-smooth px-1 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+                panning ? "cursor-grabbing select-none [scroll-behavior:auto]" : "cursor-default",
+              )}
+            >
             {pipelineStages.map((stage) => {
               const items = merged.filter((l) => l.pipeline_stage === stage.stage_key);
               const total = items.reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
@@ -161,10 +250,13 @@ function PipelinePage() {
                   droppable={canMove}
                   team={team}
                   stages={pipelineStages}
+                  superAdmin={flow.rights.superAdmin}
+                  handoverByLead={handoverByLead}
                   onAddTask={canCreateTask ? setTaskLead : undefined}
                 />
               );
             })}
+            </div>
           </div>
         </DndContext>
       ) : (
@@ -189,21 +281,7 @@ function PipelinePage() {
       )}
 
       <AddLeadDrawer open={addOpen} onOpenChange={setAddOpen} />
-      <ConfirmDialog
-        open={!!pendingClose}
-        title={`Close ${pendingClose?.lead.full_name ?? "this lead"} as ${pipelineStages.find((x) => x.stage_key === pendingClose?.target)?.name ?? "closed"}?`}
-        description="A closed lead cannot be moved back into the pipeline. Check the stage before you confirm."
-        confirmLabel="Close lead"
-        destructive={!!pipelineStages.find((x) => x.stage_key === pendingClose?.target)?.is_lost}
-        pending={changeStage.isPending}
-        onCancel={() => setPendingClose(null)}
-        onConfirm={async () => {
-          if (!pendingClose) return;
-          const { lead, target } = pendingClose;
-          setPendingClose(null);
-          await moveLead(lead, target);
-        }}
-      />
+      {flow.host}
       <TaskDrawer
         open={!!taskLead}
         onOpenChange={(v) => !v && setTaskLead(null)}
@@ -228,6 +306,8 @@ function StageColumn({
   droppable,
   team,
   stages,
+  superAdmin,
+  handoverByLead,
   onAddTask,
 }: {
   stageKey: string;
@@ -239,6 +319,8 @@ function StageColumn({
   droppable: boolean;
   team: StaffLite[];
   stages: { stage_key: string; position: number; is_won: boolean; is_lost: boolean }[];
+  superAdmin: boolean;
+  handoverByLead: Map<string, { to_agent_id: string; mode: string; deadline_at: string }>;
   onAddTask?: (lead: Lead) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey, disabled: !droppable });
@@ -278,10 +360,15 @@ function StageColumn({
             <DraggableCard
               key={l.id}
               lead={l}
-              // Closed (Won / Lost) leads are locked: they cannot be moved again.
-              draggable={droppable && !isClosedStage(stages, l.pipeline_stage)}
+              // Closed (Won / Lost) leads are locked for everyone except a Super Administrator, who can correct them.
+              draggable={droppable && (superAdmin || !isClosedStage(stages, l.pipeline_stage))}
               closed={isClosedStage(stages, l.pipeline_stage)}
               agent={team.find((t) => t.id === l.assigned_agent_id) ?? null}
+              handover={
+                handoverByLead.get(l.id)
+                  ? (team.find((t) => t.id === handoverByLead.get(l.id)!.to_agent_id)?.full_name ?? "another agent")
+                  : null
+              }
               onAddTask={onAddTask}
             />
           ))
@@ -302,12 +389,15 @@ function DraggableCard({
   draggable,
   closed,
   agent,
+  handover,
   onAddTask,
 }: {
   lead: Lead;
   draggable: boolean;
   closed: boolean;
   agent: StaffLite | null;
+  /** Name of the agent a pending handover is waiting on, when there is one. */
+  handover: string | null;
   onAddTask?: (lead: Lead) => void;
 }) {
   const navigate = useNavigate();
@@ -322,6 +412,7 @@ function DraggableCard({
     <div
       ref={setNodeRef}
       style={style}
+      data-lead-card=""
       {...attributes}
       {...(draggable ? listeners : {})}
       onClick={open}
@@ -341,6 +432,12 @@ function DraggableCard({
         <ArrowUpRight className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       )}
       <p className="truncate pr-5 text-sm font-medium">{lead.full_name}</p>
+      {handover && (
+        <p className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-qbay-tint px-2 py-0.5 text-[10px] text-qbay">
+          <Hourglass className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">Handover pending: {handover}</span>
+        </p>
+      )}
       <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.phone ? <MaskedPhone value={lead.phone} /> : (lead.email ?? "")}</p>
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <span className="text-xs font-medium tabular-nums">{fmtMoney(lead.budget_max, lead.currency)}</span>

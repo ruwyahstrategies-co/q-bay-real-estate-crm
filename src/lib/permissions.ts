@@ -18,9 +18,10 @@
 
 export const MODULES = {
   overview: ["view"],
-  // "assign" lets an agent hand over a single lead; "reassign" is the Super Administrator override
-  // used for bulk reassignment (enforced by the bulk_reassign_* database functions).
-  leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign", "reassign"],
+  // "assign" lets an agent hand a lead over (the receiving agent must accept); "reassign" is the Super
+  // Administrator override. "finalize_won" lets someone mark a lead Won and record the closing details
+  // (Administrator and Accounting); agents can only advance a lead up to Documentation.
+  leads: ["view", "view_team", "view_all", "create", "edit", "delete", "assign", "reassign", "finalize_won"],
   // "approve" lets an Administrator review properties that agents submit (review_property()).
   properties: ["view", "create", "edit", "delete", "publish", "approve", "hard_delete"],
   developments: ["view", "create", "edit", "delete", "publish"],
@@ -95,6 +96,7 @@ export const ACTION_LABELS: Record<string, string> = {
   hard_delete: "Permanently delete",
   assign: "Assign",
   reassign: "Reassign (Super Admin)",
+  finalize_won: "Finalise Won deals",
   approve: "Approve",
   move: "Move stage",
   upload: "Upload",
@@ -274,7 +276,7 @@ export const ROLE_PRESETS = {
     description: "Financial visibility into pipeline value, transactions and closed deals.",
     permissions: (): PermissionSet => ({
       overview: ["view"],
-      leads: ["view"],
+      leads: ["view", "finalize_won"],
       properties: ["view"],
       pipeline: ["view"],
       offers: ["view_all"],

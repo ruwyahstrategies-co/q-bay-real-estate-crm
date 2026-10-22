@@ -890,7 +890,9 @@ export function planLeadImport(
       if (text("lead_source")) patch.lead_source = text("lead_source");
       if (text("notes")) patch.notes = text("notes");
       if (stage && mapped("pipeline_stage")) patch.pipeline_stage = stage;
-      if (agentFromFile && agentId) patch.assigned_agent_id = agentId;
+      // An existing lead is handed to another agent through Reassign (the new agent accepts), never from a file.
+      if (agentFromFile && agentId)
+        warnings.push("the agent in the file was not applied to this existing lead. Use Reassign on the lead to hand it over");
       return { ...base, status: "update", reasons: [], targetId, patch };
     }
 

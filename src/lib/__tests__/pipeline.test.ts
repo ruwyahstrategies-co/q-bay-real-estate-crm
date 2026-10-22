@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { blockedMoveReason, isClosedStage, selectableStages } from "../pipeline";
+import { blockedMoveReason, isBackwardMove, isClosedStage, selectableStages } from "../pipeline";
+
+const FINALISER = { canFinalizeWon: true };
+const SUPER_ADMIN = { superAdmin: true, canFinalizeWon: true };
 
 // Same configuration as the live pipeline_stages table.
 const stage = (stage_key: string, position: number, extra: { is_won?: boolean; is_lost?: boolean } = {}) => ({
@@ -47,7 +50,7 @@ describe("forward-only pipeline", () => {
   });
 
   it("an open lead can still be closed", () => {
-    assert.equal(blockedMoveReason(STAGES, "documentation", "won"), null);
+    assert.equal(blockedMoveReason(STAGES, "documentation", "won", FINALISER), null);
     assert.equal(blockedMoveReason(STAGES, "new_lead", "lost"), null);
   });
 
@@ -55,7 +58,7 @@ describe("forward-only pipeline", () => {
     const shuffled = [...STAGES].reverse();
     assert.notEqual(blockedMoveReason(shuffled, "qualified", "contacted"), null);
     assert.equal(blockedMoveReason(shuffled, "contacted", "qualified"), null);
-    assert.deepEqual(selectableStages(shuffled, "qualified").map((s) => s.stage_key), [
+    assert.deepEqual(selectableStages(shuffled, "qualified", FINALISER).map((s) => s.stage_key), [
       "qualified",
       "property_matching",
       "viewing_scheduled",
@@ -73,6 +76,48 @@ describe("forward-only pipeline", () => {
 
   it("a stage that is not configured is left to the database", () => {
     assert.equal(blockedMoveReason(STAGES, "legacy_stage", "qualified"), null);
-    assert.equal(selectableStages(STAGES, "legacy_stage").length, STAGES.length);
+    assert.equal(selectableStages(STAGES, "legacy_stage", FINALISER).length, STAGES.length);
+  });
+});
+
+describe("who may finalise Won", () => {
+  it("an ordinary agent can advance up to Documentation but not into Won", () => {
+    assert.equal(blockedMoveReason(STAGES, "negotiation", "documentation"), null);
+    assert.match(blockedMoveReason(STAGES, "documentation", "won") ?? "", /Only a Super Administrator/);
+    assert.match(blockedMoveReason(STAGES, "new_lead", "won") ?? "", /Only a Super Administrator/);
+    assert.deepEqual(
+      selectableStages(STAGES, "negotiation").map((s) => s.stage_key),
+      ["negotiation", "documentation", "lost"],
+    );
+  });
+
+  it("someone who can finalise deals may move into Won", () => {
+    assert.equal(blockedMoveReason(STAGES, "documentation", "won", FINALISER), null);
+    assert.ok(selectableStages(STAGES, "documentation", FINALISER).some((s) => s.stage_key === "won"));
+  });
+
+  it("a lead already Won keeps showing its own stage for an agent", () => {
+    assert.deepEqual(selectableStages(STAGES, "won").map((s) => s.stage_key), ["won"]);
+  });
+});
+
+describe("Super Administrator corrections", () => {
+  it("can move backwards and out of closed stages", () => {
+    assert.equal(blockedMoveReason(STAGES, "negotiation", "contacted", SUPER_ADMIN), null);
+    assert.equal(blockedMoveReason(STAGES, "won", "documentation", SUPER_ADMIN), null);
+    assert.equal(blockedMoveReason(STAGES, "lost", "new_lead", SUPER_ADMIN), null);
+  });
+
+  it("is offered every stage", () => {
+    assert.equal(selectableStages(STAGES, "won", SUPER_ADMIN).length, STAGES.length);
+    assert.equal(selectableStages(STAGES, "contacted", SUPER_ADMIN).length, STAGES.length);
+  });
+
+  it("isBackwardMove says which moves are corrections", () => {
+    assert.equal(isBackwardMove(STAGES, "negotiation", "contacted"), true);
+    assert.equal(isBackwardMove(STAGES, "won", "documentation"), true);
+    assert.equal(isBackwardMove(STAGES, "lost", "new_lead"), true);
+    assert.equal(isBackwardMove(STAGES, "contacted", "qualified"), false);
+    assert.equal(isBackwardMove(STAGES, "qualified", "qualified"), false);
   });
 });

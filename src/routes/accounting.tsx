@@ -12,7 +12,8 @@ import { PermissionGate } from "@/components/permission-gate";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DrawerShell } from "@/components/overlay";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
-import { usePermissions } from "@/hooks/use-auth";
+import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
+import { ClosingQueue } from "@/components/closing-queue";
 import { useTransactions, useCreateTransaction, useDeleteTransaction } from "@/hooks/use-transactions";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, usePayments, useRecordPayment } from "@/hooks/use-invoices";
 import { useProperties } from "@/hooks/use-properties";
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/accounting")({
 });
 
 const inputCls = "h-9 rounded-lg border border-border bg-canvas px-3 text-sm focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
-const tabs = ["Overview", "Transactions", "Invoices", "Receivables", "Payables", "Payments", "Commissions"] as const;
+const tabs = ["Overview", "Closing", "Transactions", "Invoices", "Receivables", "Payables", "Payments", "Commissions"] as const;
 
 function AccountingPage() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
@@ -36,7 +37,11 @@ function AccountingPage() {
   const { data: invoices = [] } = useInvoices();
   const { data: payments = [] } = usePayments();
   const { can } = usePermissions();
+  const { teamMember } = useCurrentUser();
   const canManage = can("accounting", "manage");
+  // The closing queue is for people who can finalise a deal (Super Administrator, Administrator, Accounts).
+  const canClose = teamMember?.role === "super_administrator" || can("leads", "finalize_won");
+  const visibleTabs = tabs.filter((t) => t !== "Closing" || canClose);
 
   const closed = transactions.filter((t) => t.status === "closed");
   const totalIncome = closed.reduce((a, t) => a + (t.income ?? 0), 0);
@@ -66,7 +71,7 @@ function AccountingPage() {
         />
 
         <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-          {tabs.map((t) => (
+          {visibleTabs.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -103,6 +108,7 @@ function AccountingPage() {
           </div>
         )}
 
+        {tab === "Closing" && canClose && <ClosingQueue />}
         {tab === "Transactions" && <TransactionsTab canManage={canManage} />}
         {tab === "Invoices" && <InvoicesTab canManage={canManage} kind={null} />}
         {tab === "Receivables" && <InvoicesTab canManage={canManage} kind="receivable" />}

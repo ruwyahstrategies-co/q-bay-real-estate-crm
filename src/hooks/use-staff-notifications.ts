@@ -11,6 +11,8 @@ export type StaffNotification = {
   body: string | null;
   href: string | null;
   kind: string;
+  related_table: string | null;
+  related_id: string | null;
   read_at: string | null;
   created_at: string;
 };

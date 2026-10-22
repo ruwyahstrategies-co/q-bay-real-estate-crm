@@ -11,6 +11,8 @@ import {
   Archive,
   Trash2,
   MessageCircle,
+  UserCog,
+  Hourglass,
 } from "lucide-react";
 import { downloadCsv } from "@/lib/csv-export";
 import { DialogShell } from "@/components/overlay";
@@ -35,12 +37,9 @@ import { usePermissions } from "@/hooks/use-auth";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { useRowSelection } from "@/hooks/use-row-selection";
-import {
-  BulkActionBar,
-  BulkArchiveDialog,
-  BulkDeleteDialog,
-  BulkReassignDialog,
-} from "@/components/bulk-actions";
+import { BulkActionBar, BulkArchiveDialog, BulkDeleteDialog } from "@/components/bulk-actions";
+import { LeadReassignDialog } from "@/components/lead-reassign-dialog";
+import { usePendingReassignments } from "@/hooks/use-lead-reassignment";
 import { cn, titleCase } from "@/lib/utils";
 import { useArchiveLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { useAllCompletedAnalyses } from "@/hooks/use-ai-analyses";
@@ -90,6 +89,10 @@ function LeadsPage() {
   const [bulk, setBulk] = useState<null | "reassign" | "archive" | "restore" | "delete">(null);
   // The ids a bulk dialog acts on are frozen when it opens, so its wording stays correct as rows change.
   const [bulkIds, setBulkIds] = useState<string[]>([]);
+  // Handing a lead to another agent always opens the Reassign popup (Start all over / Continue, deadline).
+  const [reassignLead, setReassignLead] = useState<Lead | null>(null);
+  const { data: pendingHandovers = [] } = usePendingReassignments();
+  const handoverByLead = useMemo(() => new Map(pendingHandovers.map((r) => [r.lead_id, r])), [pendingHandovers]);
 
   const { data: leads = [], isLoading } = useLeads({
     status: archivedView ? "archived" : "active",
@@ -537,7 +540,8 @@ function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      {canAssign ? (
+                      {canAssign && !l.assigned_agent_id ? (
+                        // Nobody holds the lead yet, so it can simply be assigned.
                         <SelectField
                           value={l.assigned_agent_id}
                           onChange={(v) => assignAgent(l.id, v)}
@@ -549,13 +553,33 @@ function LeadsPage() {
                           aria-label={`Assign agent for ${l.full_name}`}
                         />
                       ) : l.assigned_agent_id ? (
-                        <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex flex-wrap items-center gap-2">
                           <StaffAvatar
                             name={agentName(l.assigned_agent_id)}
                             url={team.find((t) => t.id === l.assigned_agent_id)?.avatar_url}
                             size="xs"
                           />
                           {agentName(l.assigned_agent_id)}
+                          {handoverByLead.get(l.id) && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-qbay-tint px-2 py-0.5 text-[10px] text-qbay"
+                              title="A handover is waiting for the receiving agent to accept"
+                            >
+                              <Hourglass className="h-2.5 w-2.5" />
+                              to {agentName(handoverByLead.get(l.id)!.to_agent_id)}
+                            </span>
+                          )}
+                          {canAssign && !handoverByLead.get(l.id) && (
+                            <button
+                              type="button"
+                              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              title="Reassign this lead"
+                              aria-label={`Reassign ${l.full_name}`}
+                              onClick={() => setReassignLead(l)}
+                            >
+                              <UserCog className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">Unassigned</span>
@@ -674,13 +698,16 @@ function LeadsPage() {
           leads={visibleLeads.filter((l) => selection.selected.has(l.id))}
           onDone={selection.clear}
         />
-        <BulkReassignDialog
+        <LeadReassignDialog
           open={bulk === "reassign"}
           onOpenChange={(v) => !v && setBulk(null)}
-          entity="leads"
-          noun="lead"
-          ids={bulkIds}
-          onFinished={selection.clear}
+          leads={leads.filter((l) => bulkIds.includes(l.id))}
+          onDone={selection.clear}
+        />
+        <LeadReassignDialog
+          open={!!reassignLead}
+          onOpenChange={(v) => !v && setReassignLead(null)}
+          leads={reassignLead ? [reassignLead] : []}
         />
         <BulkArchiveDialog
           open={bulk === "archive" || bulk === "restore"}

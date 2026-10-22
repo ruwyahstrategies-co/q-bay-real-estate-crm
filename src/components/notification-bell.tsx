@@ -11,6 +11,9 @@ import {
   useStaffNotifications,
 } from "@/hooks/use-staff-notifications";
 import { fmtDateTime } from "@/lib/db";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { ReassignmentRequestActions } from "@/components/reassignment-request-actions";
+import { useExpireOverdueReassignments, useMyReassignmentRequests } from "@/hooks/use-lead-reassignment";
 
 function permissionLabel(permission: NotificationPermission | "unsupported") {
   if (permission === "granted") return "Browser notifications enabled";
@@ -29,8 +32,12 @@ export function NotificationBell() {
   const { data: notifications = [], isLoading } = useStaffNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
+  const { authUser } = useCurrentUser();
+  const { data: myRequests = [] } = useMyReassignmentRequests();
 
   useStaffNotificationRealtime();
+  // Overdue handover requests are expired by the database every minute; this keeps an open session in step.
+  useExpireOverdueReassignments(!!authUser?.id);
 
   const unread = notifications.filter((n) => !n.read_at).length;
 
@@ -147,31 +154,40 @@ export function NotificationBell() {
             ) : notifications.length === 0 ? (
               <p className="p-5 text-center text-xs text-muted-foreground">No notifications yet.</p>
             ) : (
-              notifications.slice(0, 30).map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  onClick={() => openNotification(n.id, n.href)}
-                  className="block w-full border-b border-border px-4 py-3 text-left last:border-0 hover:bg-muted/60"
-                >
-                  <div className="flex items-start gap-2">
-                    <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? "bg-border" : "bg-qbay"}`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-medium text-foreground">{n.title}</span>
-                      {n.body && (
-                        <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-                          {n.body}
+              notifications.slice(0, 30).map((n) => {
+                // A handover offer carries Accept / Decline, so it is not a link that closes the panel.
+                const request =
+                  n.kind === "lead_reassignment_request" && n.related_id
+                    ? myRequests.find((r) => r.id === n.related_id)
+                    : undefined;
+                return (
+                  <div key={n.id} className="border-b border-border last:border-0">
+                    <button
+                      type="button"
+                      onClick={() => (request ? markRead.mutate(n.id) : openNotification(n.id, n.href))}
+                      className="block w-full px-4 py-3 text-left hover:bg-muted/60"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? "bg-border" : "bg-qbay"}`}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-medium text-foreground">{n.title}</span>
+                          {n.body && (
+                            <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                              {n.body}
+                            </span>
+                          )}
+                          <span className="mt-1 block text-[10px] text-muted-foreground">
+                            {fmtDateTime(n.created_at)}
+                          </span>
                         </span>
-                      )}
-                      <span className="mt-1 block text-[10px] text-muted-foreground">
-                        {fmtDateTime(n.created_at)}
-                      </span>
-                    </span>
+                      </div>
+                    </button>
+                    {request && <ReassignmentRequestActions request={request} />}
                   </div>
-                </button>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui-primitives";
 import { DrawerShell } from "./overlay";
@@ -7,7 +7,8 @@ import { SelectField, SearchableSelectField } from "./select-field";
 import { cn, titleCase } from "@/lib/utils";
 import { useCreateLead, useUpdateLead } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
-import { useCurrentUser } from "@/hooks/use-auth";
+import { useCurrentUser, usePermissions } from "@/hooks/use-auth";
+import { LeadReassignDialog } from "./lead-reassign-dialog";
 import { usePipelineStages } from "@/hooks/use-pipeline-stages";
 import { PropertyMultiPicker } from "./property-picker";
 import { selectableStages } from "@/lib/pipeline";
@@ -86,6 +87,11 @@ export function AddLeadDrawer({
   const update = useUpdateLead();
   const { data: team = [] } = useTeamMembers();
   const { teamMember: me } = useCurrentUser();
+  const { can } = usePermissions();
+  const canReassign = can("leads", "assign") || can("leads", "reassign");
+  const superAdmin = me?.role === "super_administrator";
+  const canFinalizeWon = superAdmin || can("leads", "finalize_won");
+  const [reassignOpen, setReassignOpen] = useState(false);
   const { data: developments = [] } = useDevelopments();
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const { data: channels = [] } = useLeadChannels({ activeOnly: true });
@@ -260,7 +266,12 @@ export function AddLeadDrawer({
     try {
       let leadId = lead?.id;
       if (isEdit && lead) {
-        await update.mutateAsync({ id: lead.id, patch: payload });
+        // The agent changes through Reassign (the new agent accepts) and the stage through the Move stage menu
+        // or the pipeline board, so neither is saved from this form.
+        const { assigned_agent_id: _agent, pipeline_stage: _stage, ...rest } = payload;
+        void _agent;
+        void _stage;
+        await update.mutateAsync({ id: lead.id, patch: rest });
         toast.success("Lead updated");
       } else {
         const created = await create.mutateAsync(payload);
@@ -364,19 +375,32 @@ export function AddLeadDrawer({
           />
         </Field>
         <Field label="Assigned agent" full>
-          <SearchableSelectField
-            value={form.assigned_agent_id}
-            onChange={(v) => set("assigned_agent_id", v)}
-            options={agentOptions}
-            placeholder="Search and select an agent"
-            emptyLabel="Unassigned"
-            searchPlaceholder="Search agents..."
-          />
-          {!isEdit && (
-            <span className="text-[11px] text-muted-foreground">
-              Leads you add are assigned to you unless you choose someone else.
-            </span>
+          {isEdit ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <span className="text-sm">
+                {team.find((m) => m.id === lead?.assigned_agent_id)?.full_name ?? "Unassigned"}
+              </span>
+              {canReassign && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setReassignOpen(true)}>
+                  <UserCog className="h-3.5 w-3.5" /> {lead?.assigned_agent_id ? "Reassign" : "Assign"}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <SearchableSelectField
+              value={form.assigned_agent_id}
+              onChange={(v) => set("assigned_agent_id", v)}
+              options={agentOptions}
+              placeholder="Search and select an agent"
+              emptyLabel="Unassigned"
+              searchPlaceholder="Search agents..."
+            />
           )}
+          <span className="text-[11px] text-muted-foreground">
+            {isEdit
+              ? "A lead is handed to another agent through Reassign: you choose Start all over or Continue, and the new agent accepts."
+              : "Leads you add are assigned to you unless you choose someone else."}
+          </span>
         </Field>
         <Field label="Workflow">
           <SelectField
@@ -436,20 +460,24 @@ export function AddLeadDrawer({
           </Field>
         </div>
         <Field label="Pipeline stage">
-          <SelectField
-            value={form.pipeline_stage ?? "new_lead"}
-            onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
-            options={(isEdit ? selectableStages(stages, lead?.pipeline_stage) : stages).map((s) => ({
-              value: s.stage_key,
-              label: s.name,
-            }))}
-            disabled={isEdit && selectableStages(stages, lead?.pipeline_stage).length <= 1}
-            allowClear={false}
-          />
-          {isEdit && (
-            <span className="text-[11px] text-muted-foreground">
-              Leads move forward only. Earlier stages are not offered.
-            </span>
+          {isEdit ? (
+            <>
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+                {stages.find((x) => x.stage_key === lead?.pipeline_stage)?.name ?? lead?.pipeline_stage}
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                Change the stage with Move to stage on the lead, or on the Pipeline board.
+              </span>
+            </>
+          ) : (
+            <SelectField
+              value={form.pipeline_stage ?? "new_lead"}
+              onChange={(v) => set("pipeline_stage", v ?? "new_lead")}
+              options={stages
+                .filter((s) => !s.is_won || canFinalizeWon)
+                .map((s) => ({ value: s.stage_key, label: s.name }))}
+              allowClear={false}
+            />
           )}
         </Field>
         <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -461,7 +489,19 @@ export function AddLeadDrawer({
               Loading this lead's properties...
             </p>
           ) : (
-            <PropertyMultiPicker value={interestedPropertyIds} onChange={setInterestedPropertyIds} />
+            <>
+              <PropertyMultiPicker
+                value={interestedPropertyIds}
+                onChange={setInterestedPropertyIds}
+                // A Sale lead is offered properties for sale, a Rent lead properties for rent. Properties already
+                // chosen stay selected whichever side they are on.
+                purpose={form.transaction_intent === "rent" ? "rent" : "sale"}
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Showing properties {form.transaction_intent === "rent" ? "for rent" : "for sale"}, because this is a{" "}
+                {form.transaction_intent === "rent" ? "Rent" : "Sale"} lead. Properties you already chose stay selected.
+              </span>
+            </>
           )}
         </div>
         <Field label="Notes / follow-up" full>
@@ -603,6 +643,9 @@ export function AddLeadDrawer({
           </Button>
         </div>
       </form>
+      {isEdit && lead && (
+        <LeadReassignDialog open={reassignOpen} onOpenChange={setReassignOpen} leads={[lead]} />
+      )}
     </DrawerShell>
   );
 }

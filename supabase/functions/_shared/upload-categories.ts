@@ -26,6 +26,8 @@ export const R2_CATEGORY_MAP: Record<string, R2CategoryRule> = {
   tenant_documents: { entityType: "tenancies", scope: "private", subpath: "documents", maxMb: 200, mimePrefixes: ["application/", "image/"] },
   blog_images: { entityType: "journal", scope: "public", subpath: "images", maxMb: 200, mimePrefixes: ["image/"] },
   offer_attachments: { entityType: "offers", scope: "private", subpath: "attachments", maxMb: 200, mimePrefixes: ["application/", "image/"] },
+  // Evidence for a conversation (screenshots, images, files). Private, kept with the lead.
+  conversation_attachments: { entityType: "leads", scope: "private", subpath: "conversation-attachments", maxMb: 50, mimePrefixes: ["image/", "application/", "text/"] },
   // Staff profile pictures. Public so they render in lists and on the website agent card.
   // Any active staff member may upload, but only into their own team-member folder (see r2-upload).
   staff_avatars: { entityType: "staff", scope: "public", subpath: "avatars", maxMb: 10, mimePrefixes: ["image/"] },

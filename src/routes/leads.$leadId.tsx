@@ -24,6 +24,10 @@ import { LeadOutcomeBadge, LeadOutcomeCard, LeadOutcomeMenu } from "@/components
 import { InteractionDrawer } from "@/components/interaction-drawer";
 import { TaskDrawer } from "@/components/task-drawer";
 import { AssignmentHistory } from "@/components/assignment-history";
+import { LeadHeaderActions, PendingHandoverBanner } from "@/components/lead-header-actions";
+import { LeadActivityTimeline } from "@/components/lead-activity-timeline";
+import { InteractionAttachments } from "@/components/interaction-attachments";
+import { outcomeLabel } from "@/lib/activity";
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SelectField, SearchableSelectField } from "@/components/select-field";
@@ -33,8 +37,7 @@ import { useTeamMembers } from "@/hooks/use-team";
 import { useInteractions, useDeleteInteraction } from "@/hooks/use-interactions";
 import { useTasks, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { useUploads, useDeleteUpload, downloadUpload } from "@/hooks/use-uploads";
-import { usePipelineHistory } from "@/hooks/use-pipeline-history";
-import { fmtDate, fmtDateTime, fmtMoney, stageLabel, TRANSACTION_TIMEFRAME_LABELS } from "@/lib/db";
+import { fmtDate, fmtDateTime, fmtMoney, TRANSACTION_TIMEFRAME_LABELS } from "@/lib/db";
 import { effectiveIntentScore } from "@/lib/intent";
 import { useAreas, usePlaces } from "@/hooks/use-locations";
 import { BuyerIntelligencePanel } from "@/components/buyer-intelligence-panel";
@@ -59,6 +62,7 @@ import { ScheduleViewingDrawer, ViewingDetailDrawer, ViewingStatusBadge } from "
 import { fmtQatarDateTime } from "@/lib/qatar-time";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { OfferFormsPanel } from "@/components/offer-forms-panel";
+import { useSetNegotiationProperty } from "@/hooks/use-closing";
 import { useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
 import { MaskedPhone } from "@/components/masked-phone";
@@ -99,7 +103,6 @@ function LeadProfilePage() {
   const { data: interactions = [] } = useInteractions({ leadId });
   const { data: tasks = [] } = useTasks({ leadId });
   const { data: files = [] } = useUploads({ leadId });
-  const { data: history = [] } = usePipelineHistory(leadId);
   const { data: analyses = [] } = useLeadAnalyses(leadId);
   const { data: stages = [] } = usePipelineStages({ activeOnly: true });
   const analyseMut = useAnalyseLead();
@@ -239,6 +242,7 @@ function LeadProfilePage() {
                 </Button>
               )}
               <LeadOutcomeMenu lead={lead} />
+              <LeadHeaderActions lead={lead} />
               {canRunAi && (
                 <Button size="sm" disabled={isAnalysing} onClick={handleAnalyse}>
                   <Sparkles className="h-3.5 w-3.5" />{" "}
@@ -266,6 +270,8 @@ function LeadProfilePage() {
             </div>
           </div>
         </Card>
+
+        <PendingHandoverBanner lead={lead} />
 
         <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
           {tabs.map((t) => (
@@ -396,6 +402,18 @@ function LeadProfilePage() {
                           <span className="text-xs text-muted-foreground">
                             {fmtDateTime(i.interaction_date)}
                           </span>
+                          {outcomeLabel(i.outcome) && (
+                            <span className="rounded-full bg-qbay-tint px-2 py-0.5 text-[10px] text-qbay">
+                              {outcomeLabel(i.outcome)}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            by{" "}
+                            {team.find((m) => m.id === i.actor_team_member_id)?.full_name ??
+                              team.find((m) => m.user_id === i.created_by)?.full_name ??
+                              "unknown"}
+                            {i.lead_stage ? ` · in ${stageLabelFrom(stages, i.lead_stage)}` : ""}
+                          </span>
                           {(i as any).transcript && (
                             <span className="rounded-full bg-pastel-green px-2 py-0.5 text-[10px]">
                               transcript
@@ -408,6 +426,7 @@ function LeadProfilePage() {
                             {i.content}
                           </p>
                         )}
+                        <InteractionAttachments files={files.filter((f) => f.interaction_id === i.id)} />
                       </div>
                       {canCreateTask && (
                         <button
@@ -574,16 +593,7 @@ function LeadProfilePage() {
           </div>
         )}
 
-        {tab === "Activity" && (
-          <ActivityTimeline
-            leadId={lead.id}
-            interactions={interactions}
-            tasks={tasks}
-            files={files}
-            history={history}
-            leadCreatedAt={lead.created_at}
-          />
-        )}
+        {tab === "Activity" && <LeadActivityTimeline lead={lead} />}
 
         <AddLeadDrawer open={editOpen} onOpenChange={setEditOpen} lead={lead} />
         <InteractionDrawer
@@ -603,67 +613,6 @@ function LeadProfilePage() {
         <ConfirmDialog open={false} title="" onConfirm={() => {}} onCancel={() => {}} />
       </PermissionGate>
     </AppShell>
-  );
-}
-
-type ActivityEvent = { ts: string; label: string; sub?: string };
-
-function ActivityTimeline({
-  interactions,
-  tasks,
-  files,
-  history,
-  leadCreatedAt,
-}: {
-  leadId: string;
-  interactions: {
-    id: string;
-    interaction_type: string;
-    interaction_date: string;
-    subject: string | null;
-  }[];
-  tasks: { id: string; title: string; created_at: string; completed_at: string | null }[];
-  files: { id: string; filename: string; created_at: string }[];
-  history: { id: string; new_stage: string; previous_stage: string | null; changed_at: string }[];
-  leadCreatedAt: string;
-}) {
-  const events: ActivityEvent[] = [
-    { ts: leadCreatedAt, label: "Lead created" },
-    ...history.map((h) => ({
-      ts: h.changed_at,
-      label: `Stage → ${stageLabel(h.new_stage)}`,
-      sub: h.previous_stage ? `from ${stageLabel(h.previous_stage)}` : undefined,
-    })),
-    ...interactions.map((i) => ({
-      ts: i.interaction_date,
-      label: `Interaction · ${titleCase(i.interaction_type)}`,
-      sub: i.subject ?? undefined,
-    })),
-    ...tasks.map((t) => ({ ts: t.created_at, label: `Task created · ${t.title}` })),
-    ...tasks
-      .filter((t) => t.completed_at)
-      .map((t) => ({ ts: t.completed_at!, label: `Task completed · ${t.title}` })),
-    ...files.map((f) => ({ ts: f.created_at, label: `File uploaded · ${f.filename}` })),
-  ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
-
-  if (events.length === 0) return <EmptyState compact title="No activity yet" />;
-
-  return (
-    <div className="space-y-2">
-      {events.map((e, i) => (
-        <div
-          key={i}
-          className="flex items-start gap-3 rounded-lg border border-border bg-canvas p-3"
-        >
-          <div className="mt-1 h-2 w-2 rounded-full bg-foreground" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">{e.label}</p>
-            {e.sub && <p className="text-xs text-muted-foreground">{e.sub}</p>}
-          </div>
-          <span className="text-xs text-muted-foreground">{fmtDate(e.ts)}</span>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1199,8 +1148,17 @@ function OfferAttachments({ offerId, canUpload }: { offerId: string; canUpload: 
   );
 }
 
+const INTEREST_STATUS: Record<string, { label: string; cls: string }> = {
+  reserved: { label: "In negotiation", cls: "bg-pastel-purple" },
+  won: { label: "Won", cls: "bg-pastel-green" },
+  lost: { label: "Lost", cls: "bg-muted text-muted-foreground" },
+};
+
 function PropertyInterestsTab({ leadId, onEdit }: { leadId: string; onEdit?: () => void }) {
   const { data, isLoading, isError, error, refetch } = useLeadReferences(leadId);
+  const setNegotiated = useSetNegotiationProperty();
+  const { can } = usePermissions();
+  const canMark = can("leads", "edit");
   if (isLoading) return <EmptyState compact title="Loading..." />;
   if (isError) {
     return (
@@ -1275,8 +1233,32 @@ function PropertyInterestsTab({ leadId, onEdit }: { leadId: string; onEdit?: () 
                     {p.reference_code ? `${p.reference_code} · ` : ""}
                     {p.title}
                   </Link>
-                  <span className="text-muted-foreground capitalize">
-                    {it.interest_level ?? it.status ?? "interested"}
+                  <span className="flex items-center gap-2">
+                    {INTEREST_STATUS[it.status as string] ? (
+                      <span className={cn("rounded-full px-2 py-0.5 text-[11px]", INTEREST_STATUS[it.status as string].cls)}>
+                        {INTEREST_STATUS[it.status as string].label}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground capitalize">{it.interest_level ?? "interested"}</span>
+                    )}
+                    {canMark && it.status !== "reserved" && it.status !== "won" && it.status !== "lost" && (
+                      <button
+                        type="button"
+                        disabled={setNegotiated.isPending}
+                        className="rounded-md border border-border px-2 py-0.5 text-[11px] hover:bg-muted disabled:opacity-50"
+                        title="Mark this as the property being negotiated. Other shortlisted properties are not affected."
+                        onClick={async () => {
+                          try {
+                            await setNegotiated.mutateAsync({ leadId, propertyId: p.id, holdProperty: false });
+                            toast.success("Marked as the property being negotiated.");
+                          } catch (e) {
+                            toast.error((e as Error).message);
+                          }
+                        }}
+                      >
+                        Being negotiated
+                      </button>
+                    )}
                   </span>
                 </li>
               );

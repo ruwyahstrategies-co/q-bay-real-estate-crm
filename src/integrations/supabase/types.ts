@@ -241,9 +241,12 @@ export type Database = {
           created_at: string
           entity_id: string
           entity_type: string
+          event_type: string
           from_agent_id: string | null
           id: string
+          mode: string | null
           reason: string | null
+          request_id: string | null
           to_agent_id: string | null
         }
         Insert: {
@@ -253,9 +256,12 @@ export type Database = {
           created_at?: string
           entity_id: string
           entity_type: string
+          event_type?: string
           from_agent_id?: string | null
           id?: string
+          mode?: string | null
           reason?: string | null
+          request_id?: string | null
           to_agent_id?: string | null
         }
         Update: {
@@ -265,9 +271,12 @@ export type Database = {
           created_at?: string
           entity_id?: string
           entity_type?: string
+          event_type?: string
           from_agent_id?: string | null
           id?: string
+          mode?: string | null
           reason?: string | null
+          request_id?: string | null
           to_agent_id?: string | null
         }
         Relationships: []
@@ -769,6 +778,7 @@ export type Database = {
       }
       interactions: {
         Row: {
+          actor_team_member_id: string | null
           ai_processed_at: string | null
           content: string | null
           created_at: string
@@ -779,8 +789,10 @@ export type Database = {
           interaction_date: string
           interaction_type: string
           lead_id: string | null
+          lead_stage: string | null
           metadata: Json
           organisation_id: string | null
+          outcome: string | null
           owner_id: string | null
           property_id: string | null
           subject: string | null
@@ -790,6 +802,7 @@ export type Database = {
           upload_id: string | null
         }
         Insert: {
+          actor_team_member_id?: string | null
           ai_processed_at?: string | null
           content?: string | null
           created_at?: string
@@ -800,8 +813,10 @@ export type Database = {
           interaction_date?: string
           interaction_type: string
           lead_id?: string | null
+          lead_stage?: string | null
           metadata?: Json
           organisation_id?: string | null
+          outcome?: string | null
           owner_id?: string | null
           property_id?: string | null
           subject?: string | null
@@ -811,6 +826,7 @@ export type Database = {
           upload_id?: string | null
         }
         Update: {
+          actor_team_member_id?: string | null
           ai_processed_at?: string | null
           content?: string | null
           created_at?: string
@@ -821,8 +837,10 @@ export type Database = {
           interaction_date?: string
           interaction_type?: string
           lead_id?: string | null
+          lead_stage?: string | null
           metadata?: Json
           organisation_id?: string | null
+          outcome?: string | null
           owner_id?: string | null
           property_id?: string | null
           subject?: string | null
@@ -832,6 +850,13 @@ export type Database = {
           upload_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "interactions_actor_team_member_id_fkey"
+            columns: ["actor_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interactions_lead_id_fkey"
             columns: ["lead_id"]
@@ -1145,6 +1170,7 @@ export type Database = {
       lead_property_interests: {
         Row: {
           created_at: string
+          holds_property: boolean
           id: string
           interest_level: string | null
           lead_id: string
@@ -1156,6 +1182,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          holds_property?: boolean
           id?: string
           interest_level?: string | null
           lead_id: string
@@ -1167,6 +1194,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          holds_property?: boolean
           id?: string
           interest_level?: string | null
           lead_id?: string
@@ -1204,6 +1232,89 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "property_demand_scores"
             referencedColumns: ["property_id"]
+          },
+        ]
+      }
+      lead_reassignment_requests: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          deadline_at: string
+          from_agent_id: string | null
+          id: string
+          lead_id: string
+          lead_name: string
+          lead_stage: string | null
+          mode: string
+          reason: string | null
+          requested_by: string | null
+          resolved_at: string | null
+          response_note: string | null
+          status: string
+          to_agent_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          deadline_at: string
+          from_agent_id?: string | null
+          id?: string
+          lead_id: string
+          lead_name: string
+          lead_stage?: string | null
+          mode: string
+          reason?: string | null
+          requested_by?: string | null
+          resolved_at?: string | null
+          response_note?: string | null
+          status?: string
+          to_agent_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          deadline_at?: string
+          from_agent_id?: string | null
+          id?: string
+          lead_id?: string
+          lead_name?: string
+          lead_stage?: string | null
+          mode?: string
+          reason?: string | null
+          requested_by?: string | null
+          resolved_at?: string | null
+          response_note?: string | null
+          status?: string
+          to_agent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_reassignment_requests_from_agent_id_fkey"
+            columns: ["from_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_reassignment_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_reassignment_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_reassignment_requests_to_agent_id_fkey"
+            columns: ["to_agent_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2218,31 +2329,50 @@ export type Database = {
         Row: {
           changed_at: string
           changed_by: string | null
+          changed_by_member: string | null
           id: string
+          is_correction: boolean
+          kind: string
           lead_id: string
           new_stage: string
           organisation_id: string | null
           previous_stage: string | null
+          reason: string | null
         }
         Insert: {
           changed_at?: string
           changed_by?: string | null
+          changed_by_member?: string | null
           id?: string
+          is_correction?: boolean
+          kind?: string
           lead_id: string
           new_stage: string
           organisation_id?: string | null
           previous_stage?: string | null
+          reason?: string | null
         }
         Update: {
           changed_at?: string
           changed_by?: string | null
+          changed_by_member?: string | null
           id?: string
+          is_correction?: boolean
+          kind?: string
           lead_id?: string
           new_stage?: string
           organisation_id?: string | null
           previous_stage?: string | null
+          reason?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pipeline_history_changed_by_member_fkey"
+            columns: ["changed_by_member"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pipeline_history_lead_id_fkey"
             columns: ["lead_id"]
@@ -4149,6 +4279,7 @@ export type Database = {
           notes: string | null
           organisation_id: string | null
           payment_details: string | null
+          payment_method: string | null
           payment_status: string | null
           property_id: string | null
           recorded_by: string | null
@@ -4175,6 +4306,7 @@ export type Database = {
           notes?: string | null
           organisation_id?: string | null
           payment_details?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           property_id?: string | null
           recorded_by?: string | null
@@ -4201,6 +4333,7 @@ export type Database = {
           notes?: string | null
           organisation_id?: string | null
           payment_details?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           property_id?: string | null
           recorded_by?: string | null
@@ -4273,6 +4406,7 @@ export type Database = {
           filename: string
           height: number | null
           id: string
+          interaction_id: string | null
           lead_id: string | null
           metadata: Json
           mime_type: string | null
@@ -4304,6 +4438,7 @@ export type Database = {
           filename: string
           height?: number | null
           id?: string
+          interaction_id?: string | null
           lead_id?: string | null
           metadata?: Json
           mime_type?: string | null
@@ -4335,6 +4470,7 @@ export type Database = {
           filename?: string
           height?: number | null
           id?: string
+          interaction_id?: string | null
           lead_id?: string | null
           metadata?: Json
           mime_type?: string | null
@@ -4357,6 +4493,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "uploads_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "uploads_lead_id_fkey"
             columns: ["lead_id"]
@@ -4728,6 +4871,15 @@ export type Database = {
       }
     }
     Functions: {
+      _notify_reassignment_admins: {
+        Args: {
+          _body: string
+          _event: string
+          _req: Database["public"]["Tables"]["lead_reassignment_requests"]["Row"]
+          _title: string
+        }
+        Returns: undefined
+      }
       advance_lead_for_viewing: { Args: { _lead_id: string }; Returns: string }
       assign_development_code: { Args: { _seed: string }; Returns: string }
       assign_two_letter_code: {
@@ -4753,12 +4905,14 @@ export type Database = {
         Returns: Json
       }
       can_access_lead: { Args: { _lead_id: string }; Returns: boolean }
+      can_finalize_won: { Args: never; Returns: boolean }
       can_view_owner_phone: { Args: { _owner_id: string }; Returns: boolean }
       can_view_submission_id: {
         Args: { _submission_id: string }
         Returns: boolean
       }
       can_view_tenant_id: { Args: { _tenant_id: string }; Returns: boolean }
+      cancel_lead_reassignment: { Args: { _request_id: string }; Returns: Json }
       cancel_viewing: {
         Args: { _reason?: string; _viewing_id: string }
         Returns: Json
@@ -4766,6 +4920,27 @@ export type Database = {
       check_rate_limit: {
         Args: { _key: string; _max_per_minute: number }
         Returns: boolean
+      }
+      close_lead_deal: {
+        Args: {
+          _client_email: string
+          _client_name: string
+          _client_phone: string
+          _closing_date: string
+          _commission_amount?: number
+          _commission_rate?: number
+          _currency: string
+          _lead_id: string
+          _notes?: string
+          _payment_details: string
+          _payment_method: string
+          _payment_status: string
+          _price: number
+          _property_id: string
+          _transaction_id?: string
+          _transaction_type: string
+        }
+        Returns: Json
       }
       complete_viewing: {
         Args: {
@@ -4793,7 +4968,9 @@ export type Database = {
         }
         Returns: undefined
       }
+      expire_due_lead_reassignments: { Args: never; Returns: number }
       export_team_member_data: { Args: { _member_id: string }; Returns: Json }
+      get_closing_queue: { Args: never; Returns: Json }
       get_owner_phones: {
         Args: { _owner_ids: string[] }
         Returns: {
@@ -4855,6 +5032,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner_phone_elevated: { Args: never; Returns: boolean }
+      is_super_administrator: { Args: never; Returns: boolean }
       lead_created_by_me: { Args: { _lead_id: string }; Returns: boolean }
       lead_effective_intent_score: {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
@@ -4885,6 +5063,10 @@ export type Database = {
           reasons: string[]
           score: number
         }[]
+      }
+      move_lead_stage: {
+        Args: { _lead_id: string; _reason?: string; _stage: string }
+        Returns: string
       }
       pipeline_stage_info: {
         Args: { _key: string }
@@ -5046,6 +5228,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      reassign_member_leads: {
+        Args: { _from_agent_id: string; _mode?: string; _to_agent_id: string }
+        Returns: number
+      }
       reassign_team_member_records: {
         Args: {
           _from_agent_id: string
@@ -5080,6 +5266,16 @@ export type Database = {
         }
         Returns: string
       }
+      request_lead_reassignment: {
+        Args: {
+          _deadline_minutes: number
+          _lead_ids: string[]
+          _mode: string
+          _reason?: string
+          _to_agent_id: string
+        }
+        Returns: Json
+      }
       reschedule_viewing: {
         Args: {
           _agent_id?: string
@@ -5088,6 +5284,10 @@ export type Database = {
           _scheduled_at: string
           _viewing_id: string
         }
+        Returns: Json
+      }
+      respond_lead_reassignment: {
+        Args: { _accept: boolean; _note?: string; _request_id: string }
         Returns: Json
       }
       resubmit_property: {
@@ -5151,6 +5351,14 @@ export type Database = {
       set_lead_property_interests: {
         Args: { _lead_id: string; _property_ids: string[] }
         Returns: string[]
+      }
+      set_negotiation_property: {
+        Args: {
+          _hold_property?: boolean
+          _lead_id: string
+          _property_id: string
+        }
+        Returns: Json
       }
       similar_properties: {
         Args: { _limit?: number; _property_id: string }

@@ -13,14 +13,27 @@ export function TeamsManager() {
   const update = useUpdateTeam();
   const del = useDeleteTeam();
   const [newName, setNewName] = useState("");
+  const [newPurpose, setNewPurpose] = useState("");
 
   async function handleAdd() {
     const name = newName.trim();
     if (!name) return;
     try {
-      await create.mutateAsync({ name });
+      await create.mutateAsync({ name, purpose: newPurpose.trim() || null });
       setNewName("");
+      setNewPurpose("");
       toast.success("Team created");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function savePurpose(id: string, current: string | null, next: string) {
+    const value = next.trim() || null;
+    if (value === (current ?? null)) return;
+    try {
+      await update.mutateAsync({ id, patch: { purpose: value } });
+      toast.success("Team purpose saved");
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -60,16 +73,36 @@ export function TeamsManager() {
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
+              <label className="basis-full">
+                <span className="sr-only">Purpose of {t.name}</span>
+                <input
+                  key={`${t.id}-${t.purpose ?? ""}`}
+                  defaultValue={t.purpose ?? ""}
+                  maxLength={500}
+                  placeholder="Purpose of this team (optional)"
+                  onBlur={(e) => savePurpose(t.id, t.purpose ?? null, e.target.value)}
+                  className="h-8 w-full rounded-md border border-border bg-canvas px-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
+                />
+              </label>
             </div>
           );
         })}
       </div>
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New team name..."
-          className="h-9 flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
+          className="h-9 min-w-[160px] flex-1 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+        />
+        <input
+          value={newPurpose}
+          onChange={(e) => setNewPurpose(e.target.value)}
+          maxLength={500}
+          placeholder="Purpose (optional)"
+          aria-label="Team purpose"
+          className="h-9 min-w-[200px] flex-[2] rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20"
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
         />
         <Button type="button" size="sm" onClick={handleAdd} disabled={create.isPending}>

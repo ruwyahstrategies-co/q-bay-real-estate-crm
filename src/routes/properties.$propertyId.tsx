@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Pencil, Trash2, Share2, FileText, Sparkles, BedDouble, Bath, Ruler, Mail, Phone } from "lucide-react";
 import { useProspectsForProperty, useSimilarProperties } from "@/hooks/use-matching";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
+import { isVillaType } from "@/lib/property-types";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -277,7 +278,7 @@ function PropertyDetailPage() {
                   <dd>{property.maids_room == null ? "-" : property.maids_room ? "Yes" : "No"}</dd>
                 </>
               )}
-              {property.property_type === "Villa" && (
+              {isVillaType(property.property_type) && (
                 <>
                   <dt className="text-muted-foreground">Parking spaces</dt>
                   <dd>{property.parking_spaces ?? "-"}</dd>

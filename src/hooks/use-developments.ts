@@ -7,16 +7,12 @@ export const developmentKeys = {
   detail: (id: string) => ["developments", "detail", id] as const,
 };
 
-/** Stored developments.status values with the labels the Development form uses. */
-export const DEVELOPMENT_STATUS_OPTIONS = [
-  { value: "off_plan", label: "Off-plan" },
-  { value: "under_construction", label: "Under construction" },
-  { value: "ready", label: "Ready" },
-] as const;
-
-export function developmentStatusLabel(status: string | null | undefined): string {
-  return DEVELOPMENT_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status ?? "-";
-}
+export {
+  DEVELOPMENT_STATUS_OPTIONS,
+  LEGACY_DEVELOPMENT_STATUS,
+  developmentStatusChoices,
+  developmentStatusLabel,
+} from "@/lib/development-status";
 
 export type DevelopmentFilters = {
   /** Matches the development name or its developer name. */

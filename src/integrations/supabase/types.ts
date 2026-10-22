@@ -2143,6 +2143,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          phone_duplicate_acknowledged: boolean
           source_lead_id: string | null
           status: string
           updated_at: string
@@ -2164,6 +2165,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          phone_duplicate_acknowledged?: boolean
           source_lead_id?: string | null
           status?: string
           updated_at?: string
@@ -2185,6 +2187,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          phone_duplicate_acknowledged?: boolean
           source_lead_id?: string | null
           status?: string
           updated_at?: string
@@ -4174,6 +4177,7 @@ export type Database = {
           leader_id: string | null
           name: string
           organisation_id: string | null
+          purpose: string | null
           updated_at: string
         }
         Insert: {
@@ -4183,6 +4187,7 @@ export type Database = {
           leader_id?: string | null
           name: string
           organisation_id?: string | null
+          purpose?: string | null
           updated_at?: string
         }
         Update: {
@@ -4192,6 +4197,7 @@ export type Database = {
           leader_id?: string | null
           name?: string
           organisation_id?: string | null
+          purpose?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5068,6 +5074,7 @@ export type Database = {
         Args: { _lead_id: string; _reason?: string; _stage: string }
         Returns: string
       }
+      owner_phone_key: { Args: { _phone: string }; Returns: string }
       pipeline_stage_info: {
         Args: { _key: string }
         Returns: {
@@ -5088,6 +5095,11 @@ export type Database = {
       property_reference_prefix: {
         Args: { _agent_id: string; _development_id?: string; _owner_id: string }
         Returns: string
+      }
+      property_type_family: { Args: { _type: string }; Returns: string }
+      property_type_matches: {
+        Args: { _preferred: string[]; _property_type: string }
+        Returns: boolean
       }
       public_agents: {
         Args: never

@@ -30,16 +30,9 @@ import {
   PROPERTY_AVAILABILITY_LABELS,
   type Property,
 } from "@/lib/db";
+import { isVillaType, propertyTypeChoices } from "@/lib/property-types";
 import { CloudflareVideoUpload } from "./cloudflare-video-upload";
 
-const PROPERTY_TYPE_OPTIONS = [
-  "Apartment",
-  "Villa",
-  "Townhouse",
-  "Penthouse",
-  "Plot",
-  "Commercial",
-].map((v) => ({ value: v, label: v }));
 const AVAILABILITY_OPTIONS = PROPERTY_AVAILABILITIES.map((a) => ({
   value: a,
   label: PROPERTY_AVAILABILITY_LABELS[a],
@@ -176,8 +169,6 @@ export function PropertyDrawer({
   );
 
   const selectedDevelopment = developments.find((d) => d.id === form.development_id) ?? null;
-  const selectedOwner = owners.find((o) => o.id === form.owner_id) ?? null;
-  const referenceUsesDevelopment = !!selectedOwner?.is_developer && !!selectedDevelopment;
   const developerOwnerId = selectedDevelopment?.owner_id ?? null;
   const ownerOptions = owners.map((o) => ({
     value: o.id,
@@ -277,9 +268,9 @@ export function PropertyDrawer({
       available_from: form.available_from || null,
       maids_room: form.property_type === "Apartment" ? !!form.maids_room : null,
       balcony: form.balcony == null ? null : !!form.balcony,
-      majlis: form.property_type === "Villa" ? !!form.majlis : null,
-      indoor_majlis: form.property_type === "Villa" ? !!form.indoor_majlis : null,
-      outdoor_majlis: form.property_type === "Villa" ? !!form.outdoor_majlis : null,
+      majlis: isVillaType(form.property_type) ? !!form.majlis : null,
+      indoor_majlis: isVillaType(form.property_type) ? !!form.indoor_majlis : null,
+      outdoor_majlis: isVillaType(form.property_type) ? !!form.outdoor_majlis : null,
       custom_fields: form.custom_fields ?? {},
     };
     try {
@@ -343,14 +334,8 @@ export function PropertyDrawer({
             {form.reference_code ? (
               form.reference_code
             ) : referencePreview ? (
-              <span
-                title={
-                  referenceUsesDevelopment
-                    ? "Provisional. This owner is a developer, so the code uses the development code plus the agent code. The final code is reserved when you save."
-                    : "Provisional. The final code is reserved when you save."
-                }
-              >
-                {referencePreview} (preview{referenceUsesDevelopment ? ", development code" : ""})
+              <span title="Provisional. Built from the owner code and the agent code. The final code is reserved when you save and never changes afterwards.">
+                {referencePreview} (preview)
               </span>
             ) : (
               "Select an owner and agent to generate"
@@ -368,7 +353,7 @@ export function PropertyDrawer({
           <SelectField
             value={form.property_type}
             onChange={(v) => set("property_type", v ?? "")}
-            options={PROPERTY_TYPE_OPTIONS}
+            options={propertyTypeChoices(property?.property_type).map((v) => ({ value: v, label: v }))}
             allowClear={false}
             placeholder="Select type"
           />
@@ -572,7 +557,7 @@ export function PropertyDrawer({
           </>
         )}
 
-        {form.property_type === "Villa" && (
+        {isVillaType(form.property_type) && (
           <>
             <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

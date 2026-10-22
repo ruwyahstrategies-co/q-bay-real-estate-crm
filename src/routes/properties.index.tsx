@@ -57,8 +57,10 @@ import {
   useDeleteProperty,
   usePropertyThumbnails,
   usePropertyPurposeCounts,
+  type PropertyListRow,
   type PropertyPurposeTab,
 } from "@/hooks/use-properties";
+import { PROPERTY_TYPE_FILTER_OPTIONS } from "@/lib/property-types";
 import { downloadCsv } from "@/lib/csv-export";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
@@ -81,7 +83,7 @@ const STATUS_FILTERS = [
   { value: "all", label: "All" },
 ] as const;
 
-const PROPERTY_TYPES = ["Apartment", "Villa", "Townhouse", "Penthouse", "Plot", "Commercial"];
+const PROPERTY_TYPES = PROPERTY_TYPE_FILTER_OPTIONS;
 
 function PropertiesPage() {
   const navigate = useNavigate();
@@ -234,6 +236,11 @@ function PropertiesPage() {
                       { key: "purpose", label: "Purpose" },
                       { key: "location", label: "Location" },
                       { key: "developer", label: "Developer" },
+                      {
+                        key: "development",
+                        label: "Development",
+                        get: (row: PropertyListRow) => row.developments?.name ?? "",
+                      },
                       { key: "price", label: "Price" },
                       { key: "currency", label: "Currency" },
                       { key: "bedrooms", label: "Bedrooms" },
@@ -247,7 +254,7 @@ function PropertiesPage() {
                       ...exportablePropertyFieldDefs.map((d) => ({
                         key: d.key,
                         label: d.label,
-                        get: (row: Property) =>
+                        get: (row: PropertyListRow) =>
                           (row.custom_fields as Record<string, unknown> | null)?.[d.key],
                       })),
                     ],
@@ -449,7 +456,7 @@ function PropertiesPage() {
               "Type",
               "Purpose",
               "Location",
-              "Developer",
+              "Development",
               "Price",
               "Beds",
               "Size",
@@ -511,7 +518,7 @@ function PropertiesPage() {
                       <PurposeBadge purpose={p.purpose} />
                     </td>
                     <td className="min-w-[150px] px-4 py-3 text-xs">{p.location ?? "-"}</td>
-                    <td className="px-4 py-3 text-xs">{p.developer ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{p.developments?.name ?? "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums">{fmtMoney(p.price, p.currency)}</td>
                     <td className="px-4 py-3 text-xs">{p.bedrooms ?? "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs">

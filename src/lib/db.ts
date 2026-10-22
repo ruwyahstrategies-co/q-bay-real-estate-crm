@@ -50,7 +50,8 @@ export type PermissionPreset = Tables["permission_presets"]["Row"];
 export type PropertyShare = Tables["property_shares"]["Row"];
 export type PropertyShareInsert = Tables["property_shares"]["Insert"];
 export type PropertyShareUpdate = Tables["property_shares"]["Update"];
-export type Owner = Tables["owners"]["Row"];
+/** phone_duplicate_acknowledged is a database-internal flag for pre-existing shared numbers; the app never reads it. */
+export type Owner = Omit<Tables["owners"]["Row"], "phone_duplicate_acknowledged">;
 export type OwnerInsert = Tables["owners"]["Insert"];
 export type OwnerUpdate = Tables["owners"]["Update"];
 export type Development = Tables["developments"]["Row"];

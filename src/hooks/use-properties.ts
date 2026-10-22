@@ -7,6 +7,7 @@ import {
   type PropertyUpdate,
 } from "@/lib/db";
 import { getR2SignedReadUrl } from "@/lib/r2";
+import { typesForFilter } from "@/lib/property-types";
 
 export const propertyKeys = {
   all: ["properties"] as const,
@@ -57,6 +58,9 @@ export type PropertyFilters = {
   approval?: ApprovalStatus | null;
 };
 
+/** A property as the inventory list shows it: the row plus the name of the development it belongs to. */
+export type PropertyListRow = Property & { developments: { name: string } | null };
+
 type FilterChain<T> = {
   eq(column: string, value: unknown): T;
   in(column: string, values: unknown[]): T;
@@ -85,7 +89,7 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   if (status !== "all") q = q.eq("status", status);
   if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
   if (includePurpose && purpose === "sale") q = q.in("purpose", SALE_PURPOSES);
-  if (type) q = q.eq("property_type", type);
+  if (type) q = q.in("property_type", typesForFilter(type));
   if (availability === "needs_confirmation") {
     q = q.lt("availability_next_due_at", new Date().toISOString());
   } else if (availability) {
@@ -140,11 +144,11 @@ export function usePropertiesPage(filters: PropertyFilters, page: number, pageSi
   return useQuery({
     queryKey: [...propertyKeys.all, "page", filterKey(filters), page, pageSize],
     placeholderData: keepPreviousData,
-    queryFn: async (): Promise<{ rows: Property[]; total: number }> => {
+    queryFn: async (): Promise<{ rows: PropertyListRow[]; total: number }> => {
       const q = applyPropertyFilters(
         sb
           .from("properties")
-          .select("*", { count: "exact" })
+          .select("*, developments(name)", { count: "exact" })
           .order("created_at", { ascending: false })
           .order("id", { ascending: true })
           .range(page * pageSize, page * pageSize + pageSize - 1),
@@ -152,20 +156,20 @@ export function usePropertiesPage(filters: PropertyFilters, page: number, pageSi
       );
       const { data, error, count } = await q;
       if (error) throw error;
-      return { rows: data ?? [], total: count ?? 0 };
+      return { rows: (data ?? []) as PropertyListRow[], total: count ?? 0 };
     },
   });
 }
 
 /** Every property matching the filters, fetched in database-sized chunks, for export. Not used for rendering. */
-export async function fetchPropertiesForExport(filters: PropertyFilters): Promise<Property[]> {
-  const out: Property[] = [];
+export async function fetchPropertiesForExport(filters: PropertyFilters): Promise<PropertyListRow[]> {
+  const out: PropertyListRow[] = [];
   const CHUNK = 1000;
   for (let from = 0; ; from += CHUNK) {
     const q = applyPropertyFilters(
       sb
         .from("properties")
-        .select("*")
+        .select("*, developments(name)")
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
         .range(from, from + CHUNK - 1),
@@ -173,7 +177,7 @@ export async function fetchPropertiesForExport(filters: PropertyFilters): Promis
     );
     const { data, error } = await q;
     if (error) throw error;
-    out.push(...(data ?? []));
+    out.push(...((data ?? []) as PropertyListRow[]));
     if (!data || data.length < CHUNK) break;
   }
   return out;
@@ -467,9 +471,9 @@ export function useRestoreProperty() {
 
 /**
  * Live preview of the reference code a new/edited property will get once saved. Needs an owner and an agent.
- * For a developer-owned property linked to a development the reference is built from the DEVELOPMENT code and
- * the agent code; otherwise from the owner code and the agent code. Purely informational: the real value is
- * reserved server-side on insert/update, and an existing reference is never replaced.
+ * The reference is built from the owner code and the agent code (OWNER+AGENT-YY-SEQUENCE), never from a
+ * development. Purely informational: the real value is reserved server-side on insert, and an issued reference
+ * is permanent.
  */
 export function usePropertyReferencePreview(
   ownerId: string | null | undefined,

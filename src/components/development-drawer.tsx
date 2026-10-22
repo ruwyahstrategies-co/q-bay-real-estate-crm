@@ -13,7 +13,11 @@ import { SelectField, SearchableSelectField } from "@/components/select-field";
 import { CountryAreaPlaceFields } from "@/components/location-fields";
 import { useOwners } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
-import { useCreateDevelopment, useUpdateDevelopment } from "@/hooks/use-developments";
+import {
+  developmentStatusChoices,
+  useCreateDevelopment,
+  useUpdateDevelopment,
+} from "@/hooks/use-developments";
 import type { Development } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -171,11 +175,7 @@ export function DevelopmentDrawer({
           <SelectField
             value={status ?? "off_plan"}
             onChange={(v) => setStatus(v ?? "off_plan")}
-            options={[
-              { value: "off_plan", label: "Off-plan" },
-              { value: "under_construction", label: "Under construction" },
-              { value: "ready", label: "Ready" },
-            ]}
+            options={developmentStatusChoices(development?.status).map((o) => ({ value: o.value, label: o.label }))}
             allowClear={false}
           />
         </label>

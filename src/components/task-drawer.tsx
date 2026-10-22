@@ -15,6 +15,7 @@ import { useCurrentUser } from "@/hooks/use-auth";
 import { fromQatarInputValue, toQatarInputValue } from "@/lib/qatar-time";
 import type { Task } from "@/lib/db";
 import { PRIORITIES, TASK_STATUSES } from "@/lib/db";
+import { TASK_CATEGORY_OPTIONS, taskCategoryOf } from "@/lib/calendar-events";
 
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
@@ -167,6 +168,14 @@ export function TaskDrawer({
       <form className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2 content-start" onSubmit={handleSubmit}>
         <Field label="Title *" full>
           <input className={inputCls} value={form.title} onChange={(e) => set("title", e.target.value)} required />
+        </Field>
+        <Field label="Category">
+          <SelectField
+            value={taskCategoryOf(form.task_type)}
+            onChange={(v) => set("task_type", v ?? "task")}
+            options={TASK_CATEGORY_OPTIONS}
+            allowClear={false}
+          />
         </Field>
         <Field label="Due date and time (Qatar)">
           <input className={inputCls} type="datetime-local" value={form.dueLocal} onChange={(e) => set("dueLocal", e.target.value)} />

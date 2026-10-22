@@ -27,7 +27,9 @@ function ViewingsPage() {
   const { teamMember } = useCurrentUser();
   const { data: team = [] } = useTeamMembers();
   const [status, setStatus] = useState<string>("");
-  const [mineOnly, setMineOnly] = useState(!can("viewings", "view_all") && !can("viewings", "view_team"));
+  // The database already limits the list to the viewings this person may see (their own, ones they booked,
+  // and ones for leads they can open), so the page does not narrow it again unless asked.
+  const [mineOnly, setMineOnly] = useState(false);
   const { data: viewings = [] } = useViewings({
     status: status || undefined,
     agentId: mineOnly ? teamMember?.id : undefined,
@@ -64,11 +66,9 @@ function ViewingsPage() {
               emptyLabel="All statuses"
               aria-label="Filter by status"
             />
-            {(can("viewings", "view_all") || can("viewings", "view_team")) && (
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> My viewings only
-              </label>
-            )}
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> Assigned to me only
+            </label>
           </div>
         </Card>
 

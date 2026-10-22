@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus, CalendarPlus, X } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
@@ -11,13 +12,15 @@ import { DialogShell } from "@/components/overlay";
 import { TaskDrawer } from "@/components/task-drawer";
 import { TenancyDrawer } from "@/components/tenancy-drawer";
 import { ScheduleViewingDrawer, ViewingDetailDrawer } from "@/components/viewing-drawers";
+import { EventChip } from "@/components/calendar-event-chip";
+import { CalendarEventDialog } from "@/components/calendar-event-dialog";
 import { usePermissions, useCurrentUser } from "@/hooks/use-auth";
 import { useTeamMembers } from "@/hooks/use-team";
 import { useViewings } from "@/hooks/use-viewings";
-import { useTasks } from "@/hooks/use-tasks";
+import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useAllOwnerContracts } from "@/hooks/use-owner-contracts";
 import { useTenancies, useRentSchedule } from "@/hooks/use-property-management";
-import { fmtMoney, type PropertyLease, type Task } from "@/lib/db";
+import type { PropertyLease, Task } from "@/lib/db";
 import { fmtQatarTime, qatarDayKey } from "@/lib/qatar-time";
 import {
   CALENDAR_VIEWS,
@@ -32,6 +35,20 @@ import {
   stepCursor,
   type CalendarView,
 } from "@/lib/calendar-view";
+import {
+  EVENT_COLOR,
+  EVENT_LABEL,
+  EVENT_TONE,
+  EVENT_TYPES,
+  NO_RELATED,
+  completionPatch,
+  isTaskCancelled,
+  isTaskDone,
+  taskCategoryOf,
+  type CalEvent,
+  type EventType,
+  type RelatedRecords,
+} from "@/lib/calendar-events";
 import { cn, titleCase } from "@/lib/utils";
 
 export const Route = createFileRoute("/calendar")({
@@ -39,76 +56,12 @@ export const Route = createFileRoute("/calendar")({
   component: CalendarPage,
 });
 
-type EventType = "viewing" | "task" | "contract" | "tenancy" | "rent";
-
-/** Every calendar entry carries the id of the record behind it, so opening it never depends on its label. */
-type CalEvent = {
-  key: string;
-  date: string;
-  /** Month cells show the time in front of the label. */
-  label: string;
-  /** The label without the time, for views that show the time in its own column. */
-  shortLabel: string;
-  /** "HH:mm" in Qatar time, or null for an all-day entry such as an expiry. */
-  time: string | null;
-  minutes: number | null;
-  type: EventType;
-} & (
-  | { type: "viewing"; viewingId: string }
-  | { type: "task"; task: Task }
-  | {
-      type: "contract";
-      ownerId: string;
-      ownerName: string;
-      propertyTitle: string | null;
-      propertyId: string | null;
-      expiry: string;
-    }
-  | {
-      type: "tenancy";
-      leaseId: string;
-      propertyId: string;
-      tenant: string;
-      propertyTitle: string | null;
-      start: string | null;
-      end: string;
-      status: string;
-    }
-  | {
-      type: "rent";
-      leaseId: string;
-      propertyId: string | null;
-      propertyTitle: string | null;
-      amount: number;
-      currency: string;
-      due: string;
-      status: string;
-    }
-);
-
-const TYPE_COLOR: Record<EventType, string> = {
-  viewing: "bg-pastel-blue",
-  task: "bg-pastel-purple",
-  contract: "bg-pastel-cream",
-  tenancy: "bg-pastel-green",
-  rent: "bg-muted",
+type TaskWithRelations = Task & {
+  leads?: { full_name: string } | null;
+  owners?: { name: string } | null;
+  properties?: { title: string } | null;
+  team_members?: { full_name: string } | null;
 };
-/** Solid edge/dot tone per type, so chips and the legend stay legible on white. */
-const TYPE_TONE: Record<EventType, string> = {
-  viewing: "#6FA8DC",
-  task: "#A58AD0",
-  contract: "#D6B24A",
-  tenancy: "#4FA374",
-  rent: "#94A3B8",
-};
-const TYPE_LABEL: Record<EventType, string> = {
-  viewing: "Viewing",
-  task: "Follow-Up",
-  contract: "Owner Contract Expiry",
-  tenancy: "Tenancy Expiry",
-  rent: "Rent Due",
-};
-const ALL_TYPES = Object.keys(TYPE_LABEL) as EventType[];
 
 function CalendarPage() {
   const { can } = usePermissions();
@@ -132,6 +85,7 @@ function CalendarPage() {
   const { data: contracts = [] } = useAllOwnerContracts();
   const { data: tenancies = [] } = useTenancies();
   const { data: rentSchedule = [] } = useRentSchedule();
+  const updateTask = useUpdateTask();
 
   // What is open right now. Everything is opened by record id.
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -141,10 +95,13 @@ function CalendarPage() {
   });
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [leaseId, setLeaseId] = useState<string | null>(null);
-  const [info, setInfo] = useState<CalEvent | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
 
   const scopedAgentId = scope === "org" ? null : scope === "me" ? (teamMember?.id ?? null) : scope;
+  const scopedUserId = scopedAgentId ? (team.find((m) => m.id === scopedAgentId)?.user_id ?? null) : null;
+  const nameOf = (id: string | null | undefined) => team.find((m) => m.id === id)?.full_name ?? null;
+  const canCompleteTasks = can("tasks", "complete");
 
   const events = useMemo(() => {
     const list: CalEvent[] = [];
@@ -153,9 +110,25 @@ function CalendarPage() {
       return { time, minutes: minutesOf(time) };
     };
     for (const v of viewings) {
-      if (scopedAgentId && v.assigned_agent_id !== scopedAgentId) continue;
+      // A viewing belongs on a person's calendar when it is assigned to them, they booked it, or it is for
+      // one of their leads, which is the same rule that lets them see it at all.
+      if (
+        scopedAgentId &&
+        v.assigned_agent_id !== scopedAgentId &&
+        v.leads?.assigned_agent_id !== scopedAgentId &&
+        !(scopedUserId && v.created_by === scopedUserId)
+      )
+        continue;
       const t = timed(v.scheduled_at);
-      const name = `${v.leads?.full_name ?? "Viewing"}${v.status === "cancelled" ? " (cancelled)" : ""}`;
+      const cancelled = v.status === "cancelled";
+      const name = `${v.leads?.full_name ?? "Viewing"}${cancelled ? " (cancelled)" : ""}`;
+      const related: RelatedRecords = {
+        ...NO_RELATED,
+        leadId: v.leads?.id ?? v.lead_id,
+        leadName: v.leads?.full_name ?? null,
+        propertyId: v.properties?.id ?? v.property_id,
+        propertyTitle: v.properties?.title ?? null,
+      };
       list.push({
         key: `viewing:${v.id}`,
         date: qatarDayKey(v.scheduled_at),
@@ -163,20 +136,41 @@ function CalendarPage() {
         shortLabel: name,
         ...t,
         type: "viewing",
+        done: v.status === "completed",
+        cancelled,
+        statusLabel: titleCase(v.status),
+        assignedName: nameOf(v.assigned_agent_id),
+        related,
         viewingId: v.id,
+        scheduledAt: v.scheduled_at,
+        viewingStatus: v.status,
+        canReschedule: v.status === "scheduled" || v.status === "confirmed",
       });
     }
-    for (const t of tasks) {
-      if (!t.due_at) continue;
-      if (scopedAgentId && t.assigned_to !== scopedAgentId) continue;
+    for (const row of tasks as TaskWithRelations[]) {
+      if (!row.due_at) continue;
+      if (scopedAgentId && row.assigned_to !== scopedAgentId) continue;
+      const category = taskCategoryOf(row.task_type);
       list.push({
-        key: `task:${t.id}`,
-        date: qatarDayKey(t.due_at),
-        label: t.title,
-        shortLabel: t.title,
-        ...timed(t.due_at),
-        type: "task",
-        task: t,
+        key: `task:${row.id}`,
+        date: qatarDayKey(row.due_at),
+        label: row.title,
+        shortLabel: row.title,
+        ...timed(row.due_at),
+        type: category,
+        done: isTaskDone(row.status),
+        cancelled: isTaskCancelled(row.status),
+        statusLabel: titleCase(row.status ?? "pending"),
+        assignedName: row.team_members?.full_name ?? nameOf(row.assigned_to),
+        related: {
+          leadId: row.lead_id,
+          leadName: row.leads?.full_name ?? null,
+          propertyId: row.property_id,
+          propertyTitle: row.properties?.title ?? null,
+          ownerId: row.owner_id,
+          ownerName: row.owners?.name ?? null,
+        },
+        task: row,
       });
     }
     for (const c of contracts) {
@@ -191,6 +185,17 @@ function CalendarPage() {
         time: null,
         minutes: null,
         type: "contract",
+        done: false,
+        cancelled: false,
+        statusLabel: null,
+        assignedName: nameOf(c.assigned_agent_id),
+        related: {
+          ...NO_RELATED,
+          ownerId: c.owner_id,
+          ownerName: c.owners?.name ?? null,
+          propertyId: c.property_id,
+          propertyTitle: c.properties?.title ?? null,
+        },
         ownerId: c.owner_id,
         ownerName: c.owners?.name ?? "Owner",
         propertyTitle: c.properties?.title ?? null,
@@ -210,6 +215,11 @@ function CalendarPage() {
         time: null,
         minutes: null,
         type: "tenancy",
+        done: false,
+        cancelled: false,
+        statusLabel: titleCase(t.status),
+        assignedName: null,
+        related: { ...NO_RELATED, propertyId: t.property_id, propertyTitle: t.properties?.title ?? null },
         leaseId: t.id,
         propertyId: t.property_id,
         tenant,
@@ -230,6 +240,15 @@ function CalendarPage() {
         time: null,
         minutes: null,
         type: "rent",
+        done: false,
+        cancelled: false,
+        statusLabel: titleCase(r.status),
+        assignedName: null,
+        related: {
+          ...NO_RELATED,
+          propertyId: r.property_leases?.property_id ?? null,
+          propertyTitle: r.property_leases?.properties?.title ?? null,
+        },
         leaseId: r.property_lease_id,
         propertyId: r.property_leases?.property_id ?? null,
         propertyTitle: r.property_leases?.properties?.title ?? null,
@@ -240,10 +259,11 @@ function CalendarPage() {
       });
     }
     return list;
-  }, [viewings, tasks, contracts, tenancies, rentSchedule, scopedAgentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nameOf only reads `team`, which is listed
+  }, [viewings, tasks, contracts, tenancies, rentSchedule, scopedAgentId, scopedUserId, team]);
 
   const typeCounts = useMemo(() => {
-    const counts: Record<EventType, number> = { viewing: 0, task: 0, contract: 0, tenancy: 0, rent: 0 };
+    const counts = Object.fromEntries(EVENT_TYPES.map((t) => [t, 0])) as Record<EventType, number>;
     for (const e of events) counts[e.type]++;
     return counts;
   }, [events]);
@@ -263,13 +283,7 @@ function CalendarPage() {
   const lease = leaseId
     ? ((tenancies.find((t) => t.id === leaseId) as unknown as PropertyLease | undefined) ?? null)
     : null;
-
-  function openEvent(e: CalEvent) {
-    setDayOpen(null);
-    if (e.type === "viewing") setViewingId(e.viewingId);
-    else if (e.type === "task") setTaskDrawer({ open: true, task: e.task });
-    else setInfo(e);
-  }
+  const selected = selectedKey ? (events.find((e) => e.key === selectedKey) ?? null) : null;
 
   function toggleType(t: EventType) {
     setHidden((prev) => {
@@ -280,9 +294,22 @@ function CalendarPage() {
     });
   }
 
+  async function toggleDone(e: CalEvent) {
+    if (e.type !== "task" && e.type !== "event" && e.type !== "reminder") return;
+    try {
+      await updateTask.mutateAsync({
+        id: e.task.id,
+        patch: completionPatch(!e.done, new Date().toISOString()),
+      });
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   const dayEvents = dayOpen ? (eventsByDay.get(dayOpen) ?? []) : [];
   const canAddTask = can("tasks", "create");
   const addTaskOn = (key: string) => setTaskDrawer({ open: true, task: null, dueLocal: `${key}T09:00` });
+  const taskLike = (e: CalEvent) => e.type === "task" || e.type === "event" || e.type === "reminder";
 
   // Month grid cells, Monday first. Built from day keys so no browser time zone can move a day.
   const monthFirst = monthStart(cursorKey);
@@ -305,7 +332,7 @@ function CalendarPage() {
       <PageHeader
         eyebrow="Schedule"
         title="Calendar"
-        description="Viewings, follow-ups, owner contract and tenancy expiry, and rent due dates. Select an entry to open it."
+        description="Tasks, events, reminders and viewings, plus owner contract and tenancy expiry and rent due dates. Hover or focus an entry to preview it, select it to complete, reschedule or open it."
         actions={
           <>
             {canViewAll && (
@@ -329,7 +356,7 @@ function CalendarPage() {
             )}
             {canAddTask && (
               <Button size="sm" onClick={() => setTaskDrawer({ open: true, task: null })}>
-                <Plus className="h-3.5 w-3.5" /> Add task
+                <Plus className="h-3.5 w-3.5" /> Add task, event or reminder
               </Button>
             )}
           </>
@@ -389,6 +416,7 @@ function CalendarPage() {
                 if (!key) return <div key={i} className="min-h-24 rounded-lg border border-transparent" />;
                 const dayNumber = Number(key.slice(8));
                 const list = eventsByDay.get(key) ?? [];
+                const column = i % 7;
                 return (
                   <div
                     key={i}
@@ -417,7 +445,7 @@ function CalendarPage() {
                         <button
                           type="button"
                           aria-label={`Add a task on ${key}`}
-                          title="Add task on this day"
+                          title="Add on this day"
                           onClick={() => addTaskOn(key)}
                           className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus-visible:opacity-100 group-hover:opacity-100"
                         >
@@ -427,20 +455,13 @@ function CalendarPage() {
                     </div>
                     <div className="mt-1 space-y-0.5">
                       {list.slice(0, 3).map((e) => (
-                        <button
+                        <EventChip
                           key={e.key}
-                          type="button"
-                          onClick={() => openEvent(e)}
-                          title={`${TYPE_LABEL[e.type]}: ${e.label}`}
-                          aria-label={`${TYPE_LABEL[e.type]}: ${e.label}, ${key}`}
-                          className={cn(
-                            "block w-full truncate rounded-md border-l-2 px-1.5 py-0.5 text-left text-[10px] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                            TYPE_COLOR[e.type],
-                          )}
-                          style={{ borderLeftColor: TYPE_TONE[e.type] }}
-                        >
-                          {e.label}
-                        </button>
+                          e={e}
+                          dayKey={key}
+                          onOpen={(x) => setSelectedKey(x.key)}
+                          align={column >= 4 ? "right" : "left"}
+                        />
                       ))}
                       {list.length > 3 && (
                         <button
@@ -461,15 +482,18 @@ function CalendarPage() {
 
         {(view === "week" || view === "day") && (
           <div className={cn("mt-4 grid gap-2", view === "week" ? "grid-cols-1 md:grid-cols-7" : "grid-cols-1")}>
-            {listDays.map((key) => (
+            {listDays.map((key, i) => (
               <DayColumn
                 key={key}
                 dayKey={key}
                 isToday={key === todayKey}
                 entries={eventsByDay.get(key) ?? []}
-                onOpen={openEvent}
+                onOpen={(x) => setSelectedKey(x.key)}
                 onAdd={canAddTask ? () => addTaskOn(key) : undefined}
+                onToggleDone={canCompleteTasks ? toggleDone : undefined}
+                taskLike={taskLike}
                 wide={view === "day"}
+                align={view === "week" && i >= 4 ? "right" : "left"}
               />
             ))}
           </div>
@@ -488,9 +512,12 @@ function CalendarPage() {
                   dayKey={key}
                   isToday={key === todayKey}
                   entries={eventsByDay.get(key) ?? []}
-                  onOpen={openEvent}
+                  onOpen={(x) => setSelectedKey(x.key)}
                   onAdd={canAddTask ? () => addTaskOn(key) : undefined}
+                  onToggleDone={canCompleteTasks ? toggleDone : undefined}
+                  taskLike={taskLike}
                   wide
+                  align="left"
                 />
               ))
             )}
@@ -512,7 +539,7 @@ function CalendarPage() {
           )}
         </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          {ALL_TYPES.map((t) => {
+          {EVENT_TYPES.map((t) => {
             const on = !hidden.has(t);
             return (
               <button
@@ -525,8 +552,11 @@ function CalendarPage() {
                   on ? "border-border bg-canvas" : "border-dashed border-border text-muted-foreground line-through",
                 )}
               >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: on ? TYPE_TONE[t] : "transparent", border: `1px solid ${TYPE_TONE[t]}` }} />
-                {TYPE_LABEL[t]}
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: on ? EVENT_TONE[t] : "transparent", border: `1px solid ${EVENT_TONE[t]}` }}
+                />
+                {EVENT_LABEL[t]}
                 <span className="tabular-nums text-muted-foreground">{typeCounts[t]}</span>
               </button>
             );
@@ -544,9 +574,17 @@ function CalendarPage() {
         <EmptyState
           icon={<CalendarDays className="h-4 w-4" />}
           title="Nothing scheduled"
-          description="Viewings, follow-ups and expiries will show here."
+          description="Tasks, events, reminders, viewings and expiries will show here."
         />
       )}
+
+      <CalendarEventDialog
+        event={selected}
+        onClose={() => setSelectedKey(null)}
+        onEditTask={(task) => setTaskDrawer({ open: true, task })}
+        onOpenViewing={setViewingId}
+        onOpenLease={setLeaseId}
+      />
 
       {/* Records open by id */}
       <ViewingDetailDrawer viewingId={viewingId} open={!!viewingId} onOpenChange={(v) => !v && setViewingId(null)} />
@@ -563,7 +601,7 @@ function CalendarPage() {
       <DialogShell open={!!dayOpen} onOpenChange={(v) => !v && setDayOpen(null)} widthClassName="max-w-md" ariaLabel="Entries for the day">
         <div className="p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold">{dayOpen}</h3>
+            <h3 className="text-base font-semibold">{dayOpen ? dayHeading(dayOpen) : ""}</h3>
             <button onClick={() => setDayOpen(null)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close">
               <X className="h-4 w-4" />
             </button>
@@ -573,125 +611,20 @@ function CalendarPage() {
               <li key={e.key}>
                 <button
                   type="button"
-                  onClick={() => openEvent(e)}
-                  className={cn("flex w-full items-center gap-2 rounded-md border-l-2 px-2.5 py-1.5 text-left text-xs hover:opacity-80", TYPE_COLOR[e.type])}
-                  style={{ borderLeftColor: TYPE_TONE[e.type] }}
+                  onClick={() => {
+                    setDayOpen(null);
+                    setSelectedKey(e.key);
+                  }}
+                  className={cn("flex w-full items-center gap-2 rounded-md border-l-2 px-2.5 py-1.5 text-left text-xs hover:opacity-80", EVENT_COLOR[e.type])}
+                  style={{ borderLeftColor: EVENT_TONE[e.type] }}
                 >
-                  <span className="shrink-0 font-medium">{TYPE_LABEL[e.type]}</span>
-                  <span className="truncate">{e.label}</span>
+                  <span className="shrink-0 font-medium">{EVENT_LABEL[e.type]}</span>
+                  <span className={cn("truncate", e.done && "line-through")}>{e.label}</span>
                 </button>
               </li>
             ))}
           </ul>
         </div>
-      </DialogShell>
-
-      {/* Contract expiry, tenancy expiry and rent due: summary with links to the real records */}
-      <DialogShell open={!!info} onOpenChange={(v) => !v && setInfo(null)} widthClassName="max-w-md" ariaLabel="Calendar entry">
-        {info && (
-          <div className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{TYPE_LABEL[info.type]}</p>
-                <h3 className="mt-0.5 text-base font-semibold">{info.label}</h3>
-              </div>
-              <button onClick={() => setInfo(null)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {info.type === "contract" && (
-              <>
-                <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-sm">
-                  <dt className="text-muted-foreground">Owner</dt>
-                  <dd>{info.ownerName}</dd>
-                  <dt className="text-muted-foreground">Property</dt>
-                  <dd>{info.propertyTitle ?? "-"}</dd>
-                  <dt className="text-muted-foreground">Expires</dt>
-                  <dd>{info.expiry}</dd>
-                </dl>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link to="/owners/$ownerId" params={{ ownerId: info.ownerId }}>
-                    <Button size="sm">Open owner and contract</Button>
-                  </Link>
-                  {info.propertyId && (
-                    <Link to="/properties/$propertyId" params={{ propertyId: info.propertyId }}>
-                      <Button size="sm" variant="outline">
-                        Open property
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </>
-            )}
-
-            {info.type === "tenancy" && (
-              <>
-                <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-sm">
-                  <dt className="text-muted-foreground">Tenant</dt>
-                  <dd>{info.tenant}</dd>
-                  <dt className="text-muted-foreground">Property</dt>
-                  <dd>{info.propertyTitle ?? "-"}</dd>
-                  <dt className="text-muted-foreground">Lease</dt>
-                  <dd>
-                    {info.start ?? "?"} to {info.end}
-                  </dd>
-                  <dt className="text-muted-foreground">Status</dt>
-                  <dd>{titleCase(info.status)}</dd>
-                </dl>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setLeaseId(info.leaseId);
-                      setInfo(null);
-                    }}
-                  >
-                    Open tenancy
-                  </Button>
-                  <Link to="/properties/$propertyId" params={{ propertyId: info.propertyId }}>
-                    <Button size="sm" variant="outline">
-                      Open property
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            )}
-
-            {info.type === "rent" && (
-              <>
-                <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-sm">
-                  <dt className="text-muted-foreground">Property</dt>
-                  <dd>{info.propertyTitle ?? "-"}</dd>
-                  <dt className="text-muted-foreground">Amount</dt>
-                  <dd className="tabular-nums">{fmtMoney(info.amount, info.currency)}</dd>
-                  <dt className="text-muted-foreground">Due</dt>
-                  <dd>{info.due}</dd>
-                  <dt className="text-muted-foreground">Status</dt>
-                  <dd>{titleCase(info.status)}</dd>
-                </dl>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setLeaseId(info.leaseId);
-                      setInfo(null);
-                    }}
-                  >
-                    Open tenancy
-                  </Button>
-                  {info.propertyId && (
-                    <Link to="/properties/$propertyId" params={{ propertyId: info.propertyId }}>
-                      <Button size="sm" variant="outline">
-                        Open property
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </DialogShell>
     </AppShell>
   );
@@ -704,14 +637,20 @@ function DayColumn({
   entries,
   onOpen,
   onAdd,
+  onToggleDone,
+  taskLike,
   wide,
+  align,
 }: {
   dayKey: string;
   isToday: boolean;
   entries: CalEvent[];
   onOpen: (e: CalEvent) => void;
   onAdd?: () => void;
+  onToggleDone?: (e: CalEvent) => void;
+  taskLike: (e: CalEvent) => boolean;
   wide?: boolean;
+  align: "left" | "right";
 }) {
   return (
     <section
@@ -732,7 +671,7 @@ function DayColumn({
             type="button"
             onClick={onAdd}
             aria-label={`Add a task on ${dayKey}`}
-            title="Add task on this day"
+            title="Add on this day"
             className="rounded p-0.5 text-muted-foreground hover:bg-muted"
           >
             <Plus className="h-3 w-3" />
@@ -745,23 +684,14 @@ function DayColumn({
         <ul className="space-y-1">
           {entries.map((e) => (
             <li key={e.key}>
-              <button
-                type="button"
-                onClick={() => onOpen(e)}
-                title={`${TYPE_LABEL[e.type]}: ${e.shortLabel}`}
-                aria-label={`${TYPE_LABEL[e.type]}: ${e.time ?? "all day"} ${e.shortLabel}, ${dayKey}`}
-                className={cn(
-                  "flex w-full items-start gap-2 rounded-md border-l-2 px-2 py-1.5 text-left text-xs transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                  TYPE_COLOR[e.type],
-                )}
-                style={{ borderLeftColor: TYPE_TONE[e.type] }}
-              >
-                <span className="w-12 shrink-0 tabular-nums text-muted-foreground">{e.time ?? "All day"}</span>
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block", wide ? "" : "truncate")}>{e.shortLabel}</span>
-                  <span className="block text-[10px] text-muted-foreground">{TYPE_LABEL[e.type]}</span>
-                </span>
-              </button>
+              <EventChip
+                e={e}
+                dayKey={dayKey}
+                variant="list"
+                onOpen={onOpen}
+                align={align}
+                onToggleDone={onToggleDone && taskLike(e) && !e.cancelled ? onToggleDone : undefined}
+              />
             </li>
           ))}
         </ul>

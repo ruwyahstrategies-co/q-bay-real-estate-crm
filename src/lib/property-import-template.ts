@@ -27,12 +27,19 @@ const MINT = "FFDAF1DE";
 type ListSource = { key: ImportFieldKey; values: string[] };
 
 export function templateLists(lookups: ImportLookups): ListSource[] {
-  const names = (xs: { name: string }[]) => Array.from(new Set(xs.map((x) => x.name))).sort((a, b) => a.localeCompare(b));
+  const names = (xs: { name: string }[]) =>
+    Array.from(new Set(xs.map((x) => x.name))).sort((a, b) => a.localeCompare(b));
   return [
     { key: "purpose", values: PURPOSE_CHOICES.map((p) => p.label) },
     { key: "property_type", values: [...PROPERTY_TYPES] },
     { key: "owner", values: names(lookups.owners) },
-    { key: "agent", values: lookups.agents.filter((a) => a.is_active).map((a) => a.full_name).sort((a, b) => a.localeCompare(b)) },
+    {
+      key: "agent",
+      values: lookups.agents
+        .filter((a) => a.is_active)
+        .map((a) => a.full_name)
+        .sort((a, b) => a.localeCompare(b)),
+    },
     { key: "country", values: names(lookups.countries.filter((c) => c.is_active)) },
     { key: "area", values: names(lookups.areas.filter((a) => a.is_active)) },
     { key: "place", values: names(lookups.places.filter((p) => p.is_active)) },
@@ -82,13 +89,21 @@ export async function buildPropertyImportTemplate(lookups: ImportLookups): Promi
   });
 
   // Properties sheet.
-  sheet.columns = IMPORT_FIELDS.map((f) => ({ header: f.header + (f.required ? " *" : ""), key: f.key, width: f.width }));
+  sheet.columns = IMPORT_FIELDS.map((f) => ({
+    header: f.header + (f.required ? " *" : ""),
+    key: f.key,
+    width: f.width,
+  }));
   const header = sheet.getRow(1);
   header.height = 22;
   header.eachCell((cell, col) => {
     const field = IMPORT_FIELDS[col - 1];
     cell.font = { bold: true, color: { argb: field.required ? "FFFFFFFF" : MINT } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: field.required ? GREEN_MID : GREEN_DARK } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: field.required ? GREEN_MID : GREEN_DARK },
+    };
     cell.alignment = { vertical: "middle" };
     cell.note = field.note;
   });
@@ -142,12 +157,25 @@ export async function buildPropertyImportTemplate(lookups: ImportLookups): Promi
     { header: "What to enter", key: "note", width: 90 },
   ];
   info.getRow(1).font = { bold: true };
-  for (const f of IMPORT_FIELDS) info.addRow({ column: f.header, required: f.required ? "Yes" : "No", note: f.note });
+  for (const f of IMPORT_FIELDS)
+    info.addRow({ column: f.header, required: f.required ? "Yes" : "No", note: f.note });
   info.addRow({});
-  info.addRow({ column: "How it works", note: "Fill in the Properties sheet, then use Upload Properties in the CRM. Every row is checked first and nothing is saved until you confirm." });
-  info.addRow({ column: "Approval", note: "Properties imported by a user without approval rights wait for an Administrator and stay off the website until approved." });
-  info.addRow({ column: "Updating", note: "To change an existing property, fill in its Reference Code and only the columns that change. Blank cells are left as they are." });
-  info.addRow({ column: "Lists", note: "Drop-downs show what exists in the CRM now. Download a fresh template to see newly added owners, agents or locations." });
+  info.addRow({
+    column: "How it works",
+    note: "Fill in the Properties sheet, then use Upload Properties in the CRM. Every row is checked first and nothing is saved until you confirm.",
+  });
+  info.addRow({
+    column: "Approval",
+    note: "Properties imported by a user without approval rights wait for an Administrator and stay off the website until approved.",
+  });
+  info.addRow({
+    column: "Updating",
+    note: "To change an existing property, fill in its Reference Code and only the columns that change. Blank cells are left as they are.",
+  });
+  info.addRow({
+    column: "Lists",
+    note: "Drop-downs show what exists in the CRM now. Download a fresh template to see newly added owners, agents or locations.",
+  });
 
   const buffer = await wb.xlsx.writeBuffer();
   return new Uint8Array(buffer as ArrayBuffer);

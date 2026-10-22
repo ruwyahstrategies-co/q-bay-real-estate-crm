@@ -18,7 +18,9 @@ export const PROPERTY_TYPES = [
   "Commercial",
 ] as const;
 
-const VILLA_TYPES = new Set([VILLA_STANDALONE, VILLA_COMPOUND, LEGACY_VILLA].map((t) => t.toLowerCase()));
+const VILLA_TYPES = new Set(
+  [VILLA_STANDALONE, VILLA_COMPOUND, LEGACY_VILLA].map((t) => t.toLowerCase()),
+);
 
 /** True for Villa Standalone, Villa Compound and the older plain Villa. */
 export function isVillaType(type: string | null | undefined): boolean {

@@ -39,7 +39,9 @@ test("filtering for Villa covers all villas, a specific kind covers only itself"
 test("Under construction cannot be chosen as a development status but still displays", () => {
   const values = developmentStatusChoices("off_plan").map((o) => o.value);
   assert.deepEqual(values, ["off_plan", "ready"]);
-  assert.ok(developmentStatusChoices("under_construction").some((o) => o.value === "under_construction"));
+  assert.ok(
+    developmentStatusChoices("under_construction").some((o) => o.value === "under_construction"),
+  );
   assert.equal(developmentStatusLabel("under_construction"), "Under construction");
   assert.equal(developmentStatusLabel("ready"), "Ready");
 });

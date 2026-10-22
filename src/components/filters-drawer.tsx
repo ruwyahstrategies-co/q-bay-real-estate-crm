@@ -32,17 +32,29 @@ export function FiltersButton({
       <SlidersHorizontal className="h-3.5 w-3.5" />
       Filters
       {count > 0 && (
-        <span className="rounded-full bg-qbay px-1.5 text-[10px] leading-4 tabular-nums text-white">{count}</span>
+        <span className="rounded-full bg-qbay px-1.5 text-[10px] leading-4 tabular-nums text-white">
+          {count}
+        </span>
       )}
     </button>
   );
 }
 
 /** A labelled control inside the drawer. */
-export function FilterField({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+export function FilterField({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: ReactNode;
+  hint?: string;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
       {children}
       {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
     </div>
@@ -78,7 +90,12 @@ export function FiltersDrawer({
   children: ReactNode;
 }) {
   return (
-    <DrawerShell open={open} onOpenChange={onOpenChange} widthClassName="max-w-md" ariaLabel={title}>
+    <DrawerShell
+      open={open}
+      onOpenChange={onOpenChange}
+      widthClassName="max-w-md"
+      ariaLabel={title}
+    >
       <div className="flex h-full w-full flex-col">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
           <h3 className="text-base font-semibold">{title}</h3>

@@ -2,8 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Pencil, Trash2, Share2, FileText, Sparkles, BedDouble, Bath, Ruler, Mail, Phone } from "lucide-react";
 import { useProspectsForProperty, useSimilarProperties } from "@/hooks/use-matching";
-import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
+import { usePropertyBrochure } from "@/hooks/use-property-brochure";
 import { isVillaType } from "@/lib/property-types";
+import { PropertyMediaManager } from "@/components/property-media-manager";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui-primitives";
@@ -24,11 +25,8 @@ import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
 import { PropertySharesSection } from "@/components/share-history";
 import { PropertyApprovalPanel } from "@/components/property-approval-panel";
 import { PropertyViewingsSection, PropertyTasksSection } from "@/components/property-related";
-import { useProperty, usePropertyMedia, useDeleteProperty, useSetHeroMedia, useReorderPropertyMedia } from "@/hooks/use-properties";
-import { sb, fmtMoney, isConfirmationOverdue } from "@/lib/db";
-import { useQueryClient } from "@tanstack/react-query";
-import { propertyKeys } from "@/hooks/use-properties";
-import { useDeleteUpload, getSignedPreviewUrl } from "@/hooks/use-uploads";
+import { useProperty, usePropertyMedia, useDeleteProperty } from "@/hooks/use-properties";
+import { fmtMoney, isConfirmationOverdue } from "@/lib/db";
 import { useRecordPropertyEvent } from "@/hooks/use-property-events";
 import { usePropertyReferences } from "@/hooks/use-references";
 import { useTeamMembers } from "@/hooks/use-team";
@@ -52,11 +50,7 @@ function PropertyDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const qc = useQueryClient();
-  const deleteUpload = useDeleteUpload();
   const deleteProperty = useDeleteProperty();
-  const setHeroMedia = useSetHeroMedia();
-  const reorderMedia = useReorderPropertyMedia();
   const recordEvent = useRecordPropertyEvent();
   const { can } = usePermissions();
   const canEdit = can("properties", "edit");
@@ -64,19 +58,11 @@ function PropertyDetailPage() {
   const canUpload = can("uploads", "upload");
   const canDeleteUpload = can("uploads", "delete");
 
+  const brochure = usePropertyBrochure();
+  const advisor = team.find((m) => m.id === property?.assigned_agent_id);
   async function handleShare() {
     if (!property) return;
-    const agent = team.find((m) => m.id === property.assigned_agent_id);
-    try {
-      const result = await sharePropertyPdf(
-        property,
-        undefined,
-        agent ? { full_name: agent.full_name, email: agent.email, phone: agent.phone } : null,
-      );
-      if (result === "downloaded") toast.success("PDF downloaded - share it from your downloads");
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
+    await brochure.share(property.id, advisor);
   }
 
   // Record a 'view' event once per session per day per property
@@ -89,21 +75,6 @@ function PropertyDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
-
-  async function handleMediaUploaded(uploadId: string) {
-    const { error } = await sb.from("property_media").insert({
-      property_id: propertyId,
-      upload_id: uploadId,
-      media_type: "image",
-      display_order: media.length,
-    });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
-      qc.invalidateQueries({ queryKey: propertyKeys.all });
-    }
-  }
 
   const galleryImages: GalleryImage[] = (
     media as unknown as {
@@ -223,8 +194,13 @@ function PropertyDetailPage() {
             <PropertyWebsiteLinkButtons property={property} showHint className="mt-4" />
 
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
-              <Button variant="outline" size="sm" onClick={() => openPropertyPdf(property)}>
-                <FileText className="h-3.5 w-3.5" /> PDF
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={brochure.busyId !== null}
+                onClick={() => brochure.download(property.id, advisor)}
+              >
+                <FileText className="h-3.5 w-3.5" /> {brochure.busyId === property.id ? "Building PDF..." : "PDF"}
               </Button>
               {canEdit && (
                 <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
@@ -334,82 +310,12 @@ function PropertyDetailPage() {
         </div>
 
         <div className="mt-6">
-          <h3 className="mb-3 text-base font-semibold">Media</h3>
-          {canUpload && (
-            <UploadDropzone
-              title="Upload property images"
-              description="JPG, PNG, or WEBP."
-              categoryKey="property_media"
-              propertyId={propertyId}
-              onUploaded={handleMediaUploaded}
-            />
-          )}
-          {media.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {media.map((m, index) => {
-                const row = m as unknown as {
-                  id: string;
-                  is_hero: boolean;
-                  display_order: number;
-                  uploads: {
-                    id: string;
-                    filename: string;
-                    storage_bucket: string;
-                    storage_path: string;
-                    public_url: string | null;
-                  } | null;
-                };
-                return (
-                  <MediaThumb
-                    key={row.id}
-                    upload={row.uploads}
-                    isHero={row.is_hero}
-                    canDelete={canDeleteUpload}
-                    canEdit={canEdit}
-                    canMoveUp={index > 0}
-                    canMoveDown={index < media.length - 1}
-                    onSetHero={() => {
-                      if (!row.uploads) return;
-                      setHeroMedia.mutate(
-                        { propertyId, mediaId: row.id, imageUrl: row.uploads.public_url },
-                        {
-                          onSuccess: () => toast.success("Hero image updated"),
-                          onError: (e) => toast.error((e as Error).message),
-                        },
-                      );
-                    }}
-                    onMove={(direction) => {
-                      const swapWith = media[index + direction] as unknown as { id: string; display_order: number } | undefined;
-                      if (!swapWith) return;
-                      reorderMedia.mutate(
-                        {
-                          propertyId,
-                          items: [
-                            { id: row.id, display_order: swapWith.display_order },
-                            { id: swapWith.id, display_order: row.display_order },
-                          ],
-                        },
-                        { onError: (e) => toast.error((e as Error).message) },
-                      );
-                    }}
-                    onDelete={async () => {
-                      const u = row.uploads;
-                      if (!u) return;
-                      try {
-                        await deleteUpload.mutateAsync(u as never);
-                        await sb.from("property_media").delete().eq("id", row.id);
-                        qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
-                        qc.invalidateQueries({ queryKey: propertyKeys.all });
-                        toast.success("Removed");
-                      } catch (e) {
-                        toast.error((e as Error).message);
-                      }
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
+          <PropertyMediaManager
+            propertyId={propertyId}
+            canUpload={canUpload}
+            canEdit={canEdit || canUpload}
+            canDelete={canDeleteUpload}
+          />
         </div>
 
         {canUpload && (
@@ -607,96 +513,5 @@ function MatchRowLead({
         <p className="mt-1 text-[11px] text-muted-foreground">{reasons.join(", ")}</p>
       )}
     </li>
-  );
-}
-
-function MediaThumb({
-  upload,
-  isHero,
-  onDelete,
-  onSetHero,
-  onMove,
-  canDelete,
-  canEdit,
-  canMoveUp,
-  canMoveDown,
-}: {
-  upload?: { id: string; filename: string; storage_bucket: string; storage_path: string; public_url?: string | null } | null;
-  isHero?: boolean;
-  onDelete: () => void;
-  onSetHero?: () => void;
-  onMove?: (direction: -1 | 1) => void;
-  canDelete: boolean;
-  canEdit?: boolean;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
-}) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!upload) return;
-    if (upload.public_url) {
-      setUrl(upload.public_url);
-      return;
-    }
-    getSignedPreviewUrl(upload as never).then(setUrl);
-  }, [upload]);
-
-  if (!upload) return null;
-  return (
-    <div className="group relative overflow-hidden rounded-xl border border-border bg-background aspect-square">
-      {url ? (
-        <img src={url} alt={upload.filename} className="h-full w-full object-cover" />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-          {upload.filename}
-        </div>
-      )}
-      {isHero && (
-        <span className="absolute left-2 top-2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-medium text-background">
-          Hero
-        </span>
-      )}
-      <div className="absolute inset-x-0 bottom-0 hidden items-center justify-between gap-1 bg-black/60 px-2 py-1.5 group-hover:flex">
-        {canEdit && onSetHero && !isHero ? (
-          <button
-            onClick={onSetHero}
-            className="rounded-md bg-white/95 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-white"
-          >
-            Set as hero
-          </button>
-        ) : (
-          <span />
-        )}
-        {onMove && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onMove(-1)}
-              disabled={!canMoveUp}
-              aria-label="Move left"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-foreground hover:bg-white disabled:opacity-40"
-            >
-              ‹
-            </button>
-            <button
-              onClick={() => onMove(1)}
-              disabled={!canMoveDown}
-              aria-label="Move right"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-foreground hover:bg-white disabled:opacity-40"
-            >
-              ›
-            </button>
-          </div>
-        )}
-      </div>
-      {canDelete && (
-        <button
-          onClick={onDelete}
-          className="absolute right-2 top-2 hidden h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground group-hover:flex"
-          aria-label="Remove"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      )}
-    </div>
   );
 }

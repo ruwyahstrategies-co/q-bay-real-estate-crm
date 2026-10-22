@@ -61,6 +61,13 @@ function extOf(name: string): string {
 
 export class UploadValidationError extends Error {}
 
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 /**
  * Media that must never silently fall back to Supabase Storage.
  * If R2 is unavailable/misconfigured, fail loudly so staff know the upload
@@ -110,7 +117,10 @@ export function useUploadFile() {
       interactionId,
       uploadedBy,
       metadata,
+      onProgress,
     }: {
+      /** Called with 0 to 100 while the file is sent to storage. */
+      onProgress?: (pct: number) => void;
       file: File;
       categoryKey: UploadCategoryKey;
       leadId?: string | null;
@@ -144,7 +154,8 @@ export function useUploadFile() {
         processing_status = extracted_text != null ? "completed" : "uploaded";
       }
 
-      const contentType = file.type || "application/octet-stream";
+      // Some browsers and phones send no type for an image. Fall back to the extension so it is stored as an image.
+      const contentType = file.type || IMAGE_MIME_BY_EXT[ext] || "application/octet-stream";
       const entityId = propertyId ?? leadId ?? ownerId ?? tenantId ?? propertyLeaseId ?? offerId ?? crypto.randomUUID();
 
       // Try Cloudflare R2 first (the target architecture) - fall back to the
@@ -158,7 +169,7 @@ export function useUploadFile() {
           mimeType: contentType,
           sizeBytes: file.size,
         });
-        await putToR2(auth.uploadUrl, file, contentType);
+        await putToR2(auth.uploadUrl, file, contentType, onProgress);
 
         const insertRow = {
           category: categoryKey,

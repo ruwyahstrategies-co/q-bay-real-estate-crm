@@ -32,6 +32,8 @@ import { useOffers } from "@/hooks/use-offers";
 import { useTransactions } from "@/hooks/use-transactions";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { fmtMoney } from "@/lib/db";
+import { metricMoney } from "@/lib/metric-format";
+import { summariseBudgets } from "@/lib/lead-budgets";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/analytics")({
@@ -129,11 +131,15 @@ function AnalyticsPage() {
   const lost = leads.filter((l) => l.pipeline_stage === "lost");
   const openLeads = activeLeads.filter((l) => !["won", "lost"].includes(l.pipeline_stage));
 
-  const pipelineValue = openLeads.reduce((a, l) => a + (l.budget_max ?? 0), 0);
-  const wonValue = won.reduce((a, l) => a + (l.budget_max ?? 0), 0);
+  // Lead budgets are what people say they could spend, not revenue. Sale and rent budgets and different
+  // currencies are kept apart; the headline tiles use the biggest sale group.
+  const openBudgets = summariseBudgets(openLeads).find((g) => g.intent === "sale") ?? null;
+  const wonBudgets = summariseBudgets(won).find((g) => g.intent === "sale") ?? null;
+  const pipelineValue = openBudgets?.total ?? 0;
+  const wonValue = wonBudgets?.total ?? 0;
   const closedTotal = won.length + lost.length;
   const conversionRate = closedTotal ? Math.round((won.length / closedTotal) * 100) : 0;
-  const avgDeal = won.length ? Math.round(wonValue / won.length) : 0;
+  const avgDeal = wonBudgets && wonBudgets.withBudget ? Math.round(wonBudgets.total / wonBudgets.withBudget) : 0;
 
   const avgCycleDays = useMemo(() => {
     const durations = won
@@ -216,6 +222,23 @@ function AnalyticsPage() {
   }, [leads, viewings, offers, won, since]);
 
   const closedTransactions = useMemo(() => transactions.filter((t) => t.status === "closed" && inRange(t.closed_at)), [transactions, since]);
+  // Recorded deals are the real money. Totals are per currency and per kind (sale price vs rent), never mixed.
+  const recordedTotals = useMemo(() => {
+    const totals = new Map<string, { type: string; currency: string; total: number; count: number; commission: number }>();
+    for (const t of closedTransactions) {
+      const type = t.transaction_type === "rental" ? "rental" : "sale";
+      const currency = (t.currency || "QAR").toUpperCase();
+      const key = `${type}:${currency}`;
+      const cur = totals.get(key) ?? { type, currency, total: 0, count: 0, commission: 0 };
+      cur.total += Number(t.transaction_value ?? 0);
+      cur.commission += Number(t.commission_value ?? 0);
+      cur.count += 1;
+      totals.set(key, cur);
+    }
+    return Array.from(totals.values()).sort((a, b) => b.total - a.total);
+  }, [closedTransactions]);
+  const recordedSales = recordedTotals.find((g) => g.type === "sale") ?? null;
+  const recordedRentals = recordedTotals.find((g) => g.type === "rental") ?? null;
   const salesRentalsOverTime = useMemo(() => {
     const byWeek = new Map<string, { sale: number; rental: number }>();
     for (const t of closedTransactions) {
@@ -290,7 +313,18 @@ function AnalyticsPage() {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Open pipeline value" value={fmtMoney(pipelineValue, "QAR")} icon={<BarChart3 className="h-4 w-4" />} tone="blue" />
+              <MetricCard
+                label="Open lead budgets"
+                value={metricMoney(pipelineValue, openBudgets?.currency).value}
+                title={openBudgets ? metricMoney(pipelineValue, openBudgets.currency).exact : undefined}
+                hint={
+                  openBudgets
+                    ? `Sale leads, maximum budget. Not revenue. ${openBudgets.withBudget} of ${openBudgets.leads} have a budget.`
+                    : "Sale leads, maximum budget. Not revenue."
+                }
+                icon={<BarChart3 className="h-4 w-4" />}
+                tone="blue"
+              />
               <MetricCard
                 label="Leads in range"
                 value={leads.length}
@@ -309,10 +343,54 @@ function AnalyticsPage() {
                 tone="green"
                 delta={wonDelta == null ? undefined : `${wonDelta >= 0 ? "+" : ""}${wonDelta}% vs previous period`}
               />
-              <MetricCard label="Won value" value={fmtMoney(wonValue, "QAR")} tone="cream" />
-              <MetricCard label="Avg. deal size" value={won.length ? fmtMoney(avgDeal, "QAR") : "n/a"} tone="blue" />
+              <MetricCard
+                label="Won lead budgets"
+                value={metricMoney(wonValue, wonBudgets?.currency).value}
+                title={wonBudgets ? metricMoney(wonValue, wonBudgets.currency).exact : undefined}
+                hint="Budgets of leads marked won. The recorded sale prices are under Closed sales."
+                tone="cream"
+              />
+              <MetricCard
+                label="Avg. won budget"
+                value={wonBudgets && wonBudgets.withBudget ? metricMoney(avgDeal, wonBudgets.currency).value : "n/a"}
+                title={wonBudgets && wonBudgets.withBudget ? metricMoney(avgDeal, wonBudgets.currency).exact : undefined}
+                hint="Average budget of won leads that have one."
+                tone="blue"
+              />
               <MetricCard label="Unassigned leads" value={unassigned} tone="purple" />
             </div>
+
+            {recordedTotals.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {recordedSales && (
+                  <MetricCard
+                    label="Closed sales"
+                    value={metricMoney(recordedSales.total, recordedSales.currency).value}
+                    title={metricMoney(recordedSales.total, recordedSales.currency).exact}
+                    hint={`${recordedSales.count} recorded ${recordedSales.count === 1 ? "sale" : "sales"} in this range. Actual sale prices.`}
+                    tone="green"
+                  />
+                )}
+                {recordedRentals && (
+                  <MetricCard
+                    label="Closed rentals"
+                    value={metricMoney(recordedRentals.total, recordedRentals.currency).value}
+                    title={metricMoney(recordedRentals.total, recordedRentals.currency).exact}
+                    hint={`${recordedRentals.count} recorded ${recordedRentals.count === 1 ? "rental" : "rentals"}. Rent amounts, not purchase prices.`}
+                    tone="cream"
+                  />
+                )}
+                {recordedSales && recordedSales.commission > 0 && (
+                  <MetricCard
+                    label="Sales commission"
+                    value={metricMoney(recordedSales.commission, recordedSales.currency).value}
+                    title={metricMoney(recordedSales.commission, recordedSales.currency).exact}
+                    hint="Commission recorded on closed sales."
+                    tone="blue"
+                  />
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <ChartCard title="Leads over time" description="New leads created per week.">

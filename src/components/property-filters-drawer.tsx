@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FilterField, FilterGroup, FiltersDrawer } from "./filters-drawer";
 import { FilterSelect } from "./filter-toolbar";
 import { MultiSelectField } from "./multi-select-field";
-import { SegmentedControl } from "./segmented-control";
+import { tabOwnsAvailability } from "@/lib/property-status-tabs";
 import {
   EMPTY_PROPERTY_FILTERS,
   propertyFilterCount,
@@ -18,12 +18,6 @@ const inputCls =
 const FULL = "w-full sm:w-full";
 
 type Option = { value: string; label: string };
-
-const ARCHIVE_OPTIONS = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
-  { value: "all", label: "All" },
-] as const;
 
 /** Every Properties filter, edited as a draft. Apply sends it to the database; Reset clears all filters. */
 export function PropertyFiltersDrawer({
@@ -55,6 +49,7 @@ export function PropertyFiltersDrawer({
 
   const set = <K extends keyof PropertyFilterState>(k: K, v: PropertyFilterState[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
+  const availabilityLocked = tabOwnsAvailability(applied.archive);
   const areaOptions = useMemo(
     () => areas.filter((a) => !draft.countryId || a.countryId === draft.countryId),
     [areas, draft.countryId],
@@ -91,10 +86,14 @@ export function PropertyFiltersDrawer({
             className={FULL}
           />
         </FilterField>
-        <FilterField label="Availability">
+        <FilterField
+          label="Availability"
+          hint={availabilityLocked ? `The ${draft.archive === "sold" ? "Sold" : "Rented"} tab already decides availability.` : undefined}
+        >
           <MultiSelectField
             label="Availability"
             values={draft.availabilities}
+            disabled={availabilityLocked}
             onChange={(v) => set("availabilities", v)}
             options={[...PROPERTY_AVAILABILITIES, "needs_confirmation"].map((a) => ({
               value: a,
@@ -239,15 +238,6 @@ export function PropertyFiltersDrawer({
             ]}
             allLabel="Either"
             className={FULL}
-          />
-        </FilterField>
-        <FilterField label="Archive state">
-          <SegmentedControl
-            ariaLabel="Archive state"
-            size="md"
-            value={draft.archive}
-            onChange={(v) => set("archive", v)}
-            options={ARCHIVE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
           />
         </FilterField>
       </FilterGroup>

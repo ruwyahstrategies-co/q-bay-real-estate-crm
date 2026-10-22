@@ -18,7 +18,9 @@ import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { useTeamMembers, useDeleteTeamMember, useUpdateTeamMember } from "@/hooks/use-team";
 import { useLeads } from "@/hooks/use-leads";
-import { fmtMoney } from "@/lib/db";
+import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { metricMoney } from "@/lib/metric-format";
+import { hasDominantBudget, largestShare, summariseBudgets } from "@/lib/lead-budgets";
 import type { StaffTeamMember } from "@/lib/db-extensions";
 import { ROLE_PRESETS, isRolePresetKey } from "@/lib/permissions";
 
@@ -40,33 +42,63 @@ function TeamPage() {
   const { can } = usePermissions();
   const canManage = can("team", "manage");
 
+  const { data: stages = [] } = usePipelineStages();
+  // Won and Lost come from the pipeline settings; the two built-in keys are the fallback.
+  const wonKeys = new Set(stages.filter((s) => s.is_won).map((s) => s.stage_key));
+  const lostKeys = new Set(stages.filter((s) => s.is_lost).map((s) => s.stage_key));
+  if (wonKeys.size === 0) wonKeys.add("won");
+  if (lostKeys.size === 0) lostKeys.add("lost");
+  const isOpen = (stage: string) => !wonKeys.has(stage) && !lostKeys.has(stage);
+
+  // What this page can total is limited to the leads the signed-in person is allowed to see.
+  const scopeLabel = can("leads", "view_all") ? "all leads" : can("leads", "view_team") ? "your team's leads" : "your leads";
+
   function leadCount(id: string) {
     return leads.filter((l) => l.assigned_agent_id === id).length;
   }
-  function pipelineValue(id: string) {
-    return leads
-      .filter((l) => l.assigned_agent_id === id && !["won", "lost"].includes(l.pipeline_stage))
-      .reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
+  /** Maximum budgets of one member's open sale leads (a rent budget is a different kind of number). */
+  function openSaleBudget(id: string) {
+    const groups = summariseBudgets(leads.filter((l) => l.assigned_agent_id === id && isOpen(l.pipeline_stage)));
+    const g = groups.find((x) => x.intent === "sale");
+    return g && g.total > 0 ? { ...metricMoney(g.total, g.currency), group: g } : null;
   }
   function closedDeals(id: string) {
-    return leads.filter((l) => l.assigned_agent_id === id && l.pipeline_stage === "won").length;
+    return leads.filter((l) => l.assigned_agent_id === id && wonKeys.has(l.pipeline_stage)).length;
   }
 
   const totalAssigned = leads.filter((l) => l.assigned_agent_id).length;
-  const totalPipeline = leads
-    .filter((l) => !["won", "lost"].includes(l.pipeline_stage))
-    .reduce((acc, l) => acc + (l.budget_max ?? 0), 0);
-  const totalClosed = leads.filter((l) => l.pipeline_stage === "won").length;
-  const totalLost = leads.filter((l) => l.pipeline_stage === "lost").length;
+  const openLeads = leads.filter((l) => isOpen(l.pipeline_stage));
+  const budgetGroups = summariseBudgets(openLeads);
+  // The headline is the biggest sale group. Other currencies and rent budgets stay in the tooltip.
+  const headline = budgetGroups.find((g) => g.intent === "sale") ?? budgetGroups[0] ?? null;
+  const headlineMoney = headline && headline.total > 0 ? metricMoney(headline.total, headline.currency) : null;
+  const budgetDetails = budgetGroups
+    .filter((g) => g.total > 0)
+    .map(
+      (g) =>
+        `${g.intent === "sale" ? "Sale" : "Rent"} ${metricMoney(g.total, g.currency).exact} (${g.withBudget} of ${g.leads} leads have a budget${hasDominantBudget(g) ? `, one budget is ${largestShare(g)}% of it` : ""})`,
+    )
+    .join("\n");
+  const totalClosed = leads.filter((l) => wonKeys.has(l.pipeline_stage)).length;
+  const totalLost = leads.filter((l) => lostKeys.has(l.pipeline_stage)).length;
   const conv = totalClosed + totalLost > 0 ? `${Math.round((totalClosed / (totalClosed + totalLost)) * 100)}%` : "-";
 
   const metrics = [
     { label: "Team members", value: String(team.length), icon: <UserCog />, tone: "green" as const },
     { label: "Assigned leads", value: String(totalAssigned), icon: <Users />, tone: "blue" as const },
-    { label: "Pipeline value", value: totalPipeline > 0 ? fmtMoney(totalPipeline, leads[0]?.currency) : "-", icon: <Wallet />, tone: "cream" as const },
-    { label: "Closed deals", value: String(totalClosed), icon: <Trophy />, tone: "green" as const },
-    { label: "Lost deals", value: String(totalLost), icon: <XCircle />, tone: "purple" as const },
-    { label: "Conversion rate", value: conv, icon: <Percent />, tone: "blue" as const },
+    {
+      label: "Open lead budgets",
+      value: headlineMoney?.value ?? "-",
+      title: budgetDetails || undefined,
+      hint: headline
+        ? `${headline.intent === "sale" ? "Sale" : "Rent"} leads, maximum budget. Not revenue. ${headline.withBudget} of ${headline.leads} have a budget. Counts ${scopeLabel}.`
+        : `Maximum budget of open leads. Not revenue. Counts ${scopeLabel}.`,
+      icon: <Wallet />,
+      tone: "cream" as const,
+    },
+    { label: "Leads won", value: String(totalClosed), icon: <Trophy />, tone: "green" as const },
+    { label: "Leads lost", value: String(totalLost), icon: <XCircle />, tone: "purple" as const },
+    { label: "Win rate", value: conv, icon: <Percent />, tone: "blue" as const },
   ];
 
   return (
@@ -87,7 +119,7 @@ function TeamPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map((m) => (
-          <MetricCard key={m.label} label={m.label} value={m.value} icon={m.icon} tone={m.tone} />
+          <MetricCard key={m.label} label={m.label} value={m.value} icon={m.icon} tone={m.tone} title={m.title} hint={m.hint} />
         ))}
       </div>
 
@@ -99,7 +131,7 @@ function TeamPage() {
       )}
 
       <DataTable
-        columns={["Member", "Role", "Login", "Status", "Assigned leads", "Pipeline value", "Closed deals", "Actions"]}
+        columns={["Member", "Role", "Login", "Status", "Assigned leads", "Open sale budgets", "Leads won", "Actions"]}
         empty={<EmptyState icon={<UserCog className="h-4 w-4" />} title="No team members yet" description="Add agents to start assigning leads." />}
       >
         {team.length > 0
@@ -145,7 +177,12 @@ function TeamPage() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-xs">{leadCount(m.id)}</td>
-                <td className="px-4 py-3 text-xs">{pipelineValue(m.id) > 0 ? fmtMoney(pipelineValue(m.id), "QAR") : "-"}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums">
+                  {(() => {
+                    const b = openSaleBudget(m.id);
+                    return b ? <span title={b.exact}>{b.value}</span> : "-";
+                  })()}
+                </td>
                 <td className="px-4 py-3 text-xs">{closedDeals(m.id)}</td>
                 <td className="px-4 py-3">
                   {canManage && (

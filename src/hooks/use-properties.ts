@@ -8,6 +8,7 @@ import {
 } from "@/lib/db";
 import { getR2SignedReadUrl } from "@/lib/r2";
 import { typesForFilter } from "@/lib/property-types";
+import { PROPERTY_STATUS_TABS, withStatusTab, type PropertyStatusTab } from "@/lib/property-status-tabs";
 
 export const propertyKeys = {
   all: ["properties"] as const,
@@ -246,6 +247,35 @@ export function usePropertyPurposeCounts(opts?: Omit<PropertyFilters, "purpose">
 }
 
 /** Properties waiting for an Administrator, for the review banner. */
+/**
+ * How many properties each status tab (Active, Sold, Rented, Archived, All) holds under the page's other
+ * filters and the chosen Sale or Rent side. One cheap head-only count per tab, using the same filter
+ * definition as the list, so a tab's number always matches what it will show.
+ */
+export function usePropertyStatusCounts(
+  filters: Omit<PropertyFilters, "purpose" | "status" | "availability">,
+  purpose: PropertyPurposeTab,
+) {
+  return useQuery({
+    queryKey: [...propertyKeys.all, "status-counts", filterKey(filters as PropertyFilters), purpose],
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<Record<PropertyStatusTab, number>> => {
+      const entries = await Promise.all(
+        PROPERTY_STATUS_TABS.map(async (tab) => {
+          const q = applyPropertyFilters(
+            sb.from("properties").select("id", { count: "exact", head: true }),
+            withStatusTab({ ...filters, purpose } as PropertyFilters, tab.value),
+          );
+          const { count, error } = await q;
+          if (error) throw error;
+          return [tab.value, count ?? 0] as const;
+        }),
+      );
+      return Object.fromEntries(entries) as Record<PropertyStatusTab, number>;
+    },
+  });
+}
+
 export function usePendingApprovalCount(enabled = true) {
   return useQuery({
     enabled,
@@ -327,7 +357,7 @@ export function useProperty(id: string | undefined) {
   });
 }
 
-/** First (display_order 0) media image per property, as signed preview URLs, for list/grid thumbnails. */
+/** The hero photo of each property (or its first photo), as a displayable URL, for list and grid thumbnails. */
 export function usePropertyThumbnails(propertyIds: string[]) {
   const ids = [...propertyIds].sort();
   return useQuery({
@@ -337,9 +367,11 @@ export function usePropertyThumbnails(propertyIds: string[]) {
     queryFn: async (): Promise<Record<string, string>> => {
       const { data, error } = await sb
         .from("property_media")
-        .select("property_id, display_order, uploads(id, storage_provider, storage_bucket, storage_path, public_url)")
+        .select("property_id, display_order, is_hero, uploads(id, storage_provider, storage_bucket, storage_path, public_url)")
         .in("property_id", ids)
         .eq("media_type", "image")
+        // The hero first, then gallery order, so the first row per property is the photo to show.
+        .order("is_hero", { ascending: false })
         .order("display_order", { ascending: true });
       if (error) throw error;
 
@@ -401,49 +433,74 @@ export function usePropertyMedia(propertyId: string | undefined) {
 export function useSetHeroMedia() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      propertyId,
-      mediaId,
-      imageUrl,
-    }: {
-      propertyId: string;
-      mediaId: string;
-      imageUrl: string | null;
-    }) => {
-      await sb.from("property_media").update({ is_hero: false }).eq("property_id", propertyId).eq("is_hero", true);
-      const { error: heroErr } = await sb.from("property_media").update({ is_hero: true }).eq("id", mediaId);
-      if (heroErr) throw heroErr;
-      if (imageUrl) {
-        const { error: propErr } = await sb.from("properties").update({ hero_image_url: imageUrl }).eq("id", propertyId);
-        if (propErr) throw propErr;
-      }
+    mutationFn: async ({ mediaId }: { propertyId: string; mediaId: string }) => {
+      // One database step: marks this photo as the hero, clears the others and updates the property's hero address.
+      const { error } = await sb.rpc("set_property_hero", { _media_id: mediaId });
+      if (error) throw error;
     },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: propertyKeys.media(vars.propertyId) });
-      qc.invalidateQueries({ queryKey: propertyKeys.detail(vars.propertyId) });
-      qc.invalidateQueries({ queryKey: propertyKeys.all });
-    },
+    onSuccess: (_data, vars) => refreshPropertyImages(qc, vars.propertyId),
   });
 }
 
-/** Reorders gallery images by writing new display_order values. */
-export function useReorderPropertyMedia() {
+/** Everything that shows a property's photos: the gallery, the hero, list thumbnails and the property itself. */
+function refreshPropertyImages(qc: ReturnType<typeof useQueryClient>, propertyId: string) {
+  qc.invalidateQueries({ queryKey: propertyKeys.media(propertyId) });
+  qc.invalidateQueries({ queryKey: propertyKeys.detail(propertyId) });
+  qc.invalidateQueries({ queryKey: propertyKeys.all });
+  qc.invalidateQueries({ queryKey: ["uploads"] });
+}
+
+/**
+ * Adds an uploaded photo to a property's gallery. The database gives it the next position (safe when several
+ * photos arrive together) and makes it the hero when the property has none, or when asked. It resolves only
+ * when the photo is really in the gallery.
+ */
+export function useAddPropertyMedia() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
       propertyId,
-      items,
+      uploadId,
+      makeHero,
     }: {
       propertyId: string;
-      items: { id: string; display_order: number }[];
-    }) => {
-      const results = await Promise.all(
-        items.map((it) => sb.from("property_media").update({ display_order: it.display_order }).eq("id", it.id)),
-      );
-      const failed = results.find((r) => r.error);
-      if (failed?.error) throw failed.error;
+      uploadId: string;
+      makeHero?: boolean;
+    }): Promise<string> => {
+      const { data, error } = await sb.rpc("add_property_media", {
+        _property_id: propertyId,
+        _upload_id: uploadId,
+        _make_hero: !!makeHero,
+      });
+      if (error) throw error;
+      return data as string;
     },
-    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: propertyKeys.media(vars.propertyId) }),
+    onSuccess: (_data, vars) => refreshPropertyImages(qc, vars.propertyId),
+  });
+}
+
+/** Puts the gallery in the given order (ids of property_media rows, first to last). */
+export function useReorderPropertyMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ propertyId, orderedIds }: { propertyId: string; orderedIds: string[] }) => {
+      const { error } = await sb.rpc("reorder_property_media", { _property_id: propertyId, _ordered_ids: orderedIds });
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => refreshPropertyImages(qc, vars.propertyId),
+  });
+}
+
+/** Takes a photo out of the gallery (the next photo becomes the hero if it was the hero) and returns its upload id. */
+export function useRemovePropertyMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ mediaId }: { propertyId: string; mediaId: string }): Promise<string> => {
+      const { data, error } = await sb.rpc("remove_property_media", { _media_id: mediaId });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (_data, vars) => refreshPropertyImages(qc, vars.propertyId),
   });
 }
 

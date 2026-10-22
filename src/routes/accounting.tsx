@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card, Button } from "@/components/ui-primitives";
 import { MetricCard } from "@/components/metric-card";
+import { moneyProps } from "@/lib/metric-format";
 import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
@@ -88,11 +89,11 @@ function AccountingPage() {
         {tab === "Overview" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-              <MetricCard label="Closed income" value={fmtMoney(totalIncome, "QAR")} />
-              <MetricCard label="Closed expense" value={fmtMoney(totalExpense, "QAR")} />
-              <MetricCard label="Commissions" value={fmtMoney(totalCommission, "QAR")} />
-              <MetricCard label="Outstanding receivable" value={fmtMoney(outstandingReceivable, "QAR")} tone="green" />
-              <MetricCard label="Outstanding payable" value={fmtMoney(outstandingPayable, "QAR")} tone="purple" />
+              <MetricCard label="Closed income" {...moneyProps(totalIncome, "QAR")} />
+              <MetricCard label="Closed expense" {...moneyProps(totalExpense, "QAR")} />
+              <MetricCard label="Commissions" {...moneyProps(totalCommission, "QAR")} />
+              <MetricCard label="Outstanding receivable" {...moneyProps(outstandingReceivable, "QAR")} tone="green" />
+              <MetricCard label="Outstanding payable" {...moneyProps(outstandingPayable, "QAR")} tone="purple" />
             </div>
             <Card>
               <p className="text-xs text-muted-foreground">

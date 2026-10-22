@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { useUploadFile, UploadValidationError } from "@/hooks/use-uploads";
-import type { UploadCategoryKey } from "@/lib/db";
+import type { Upload, UploadCategoryKey } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 const linkCls = "self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline";
@@ -22,12 +22,18 @@ export function HeroImageField({
   categoryKey,
   propertyId,
   label = "image",
+  onUploaded,
 }: {
   value: string | null | undefined;
   onChange: (url: string | null) => void;
   categoryKey: UploadCategoryKey;
   propertyId?: string | null;
   label?: string;
+  /**
+   * Called once the file is stored. Use it to make the image part of the record's gallery. If it throws, the
+   * upload is reported as not added, never as a success.
+   */
+  onUploaded?: (row: Upload) => Promise<void> | void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -40,9 +46,19 @@ export function HeroImageField({
     try {
       const row = await upload.mutateAsync({ file, categoryKey, propertyId });
       onChange(row.public_url);
-      toast.success(
-        `Image uploaded to ${row.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}`,
-      );
+      if (onUploaded) {
+        try {
+          await onUploaded(row);
+        } catch (err) {
+          toast.error(`The image was uploaded but could not be added to the photos: ${(err as Error).message}`);
+          return;
+        }
+        toast.success("Image uploaded and added to the photos");
+      } else {
+        toast.success(
+          `Image uploaded to ${row.storage_provider === "r2" ? "Cloudflare R2" : "Supabase Storage"}`,
+        );
+      }
     } catch (err) {
       toast.error(err instanceof UploadValidationError ? err.message : (err as Error).message);
     } finally {

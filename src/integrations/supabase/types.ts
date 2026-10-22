@@ -4889,6 +4889,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      add_property_media: {
+        Args: { _make_hero?: boolean; _property_id: string; _upload_id: string }
+        Returns: string
+      }
       advance_lead_for_viewing: { Args: { _lead_id: string }; Returns: string }
       assign_development_code: { Args: { _seed: string }; Returns: string }
       assign_two_letter_code: {
@@ -5316,6 +5320,11 @@ export type Database = {
         }
         Returns: string
       }
+      remove_property_media: { Args: { _media_id: string }; Returns: string }
+      reorder_property_media: {
+        Args: { _ordered_ids: string[]; _property_id: string }
+        Returns: undefined
+      }
       request_lead_reassignment: {
         Args: {
           _deadline_minutes: number
@@ -5410,6 +5419,7 @@ export type Database = {
         }
         Returns: Json
       }
+      set_property_hero: { Args: { _media_id: string }; Returns: undefined }
       similar_properties: {
         Args: { _limit?: number; _property_id: string }
         Returns: {

@@ -9,6 +9,7 @@ import { HeroImageField } from "./hero-image-field";
 import { SelectField, SearchableSelectField } from "./select-field";
 import { cn } from "@/lib/utils";
 import {
+  useAddPropertyMedia,
   useCreateProperty,
   useUpdateProperty,
   usePropertyReferencePreview,
@@ -162,6 +163,9 @@ export function PropertyDrawer({
   const canApprove = can("properties", "approve");
 
   const [form, setForm] = useState<FormState>(() => initialForm(property));
+  const addMedia = useAddPropertyMedia();
+  // The hero photo chosen while adding a new property (it has no id yet, so it is linked once saved).
+  const [pendingHeroUploadId, setPendingHeroUploadId] = useState<string | null>(null);
   const { data: referencePreview } = usePropertyReferencePreview(
     form.owner_id,
     form.assigned_agent_id,
@@ -178,7 +182,10 @@ export function PropertyDrawer({
   // The drawer shell stays mounted through its close animation, so reset the
   // form explicitly whenever a different record (or a fresh "add") opens.
   useEffect(() => {
-    if (open) setForm(initialForm(property));
+    if (open) {
+      setForm(initialForm(property));
+      setPendingHeroUploadId(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, property?.id]);
 
@@ -280,6 +287,15 @@ export function PropertyDrawer({
         onSaved?.(saved, false);
       } else {
         const saved = await create.mutateAsync(payload);
+        // A hero photo uploaded before the property existed is added to its gallery now.
+        if (pendingHeroUploadId) {
+          try {
+            await addMedia.mutateAsync({ propertyId: saved.id, uploadId: pendingHeroUploadId, makeHero: true });
+          } catch (err) {
+            toast.error(`The property was saved, but its hero photo could not be added: ${(err as Error).message}`);
+          }
+          setPendingHeroUploadId(null);
+        }
         toast.success(
           canApprove
             ? "Property created"
@@ -623,6 +639,14 @@ export function PropertyDrawer({
             categoryKey="property_media"
             propertyId={property?.id}
             label="hero image"
+            onUploaded={async (row) => {
+              if (property?.id) {
+                // Editing: the photo joins this property's gallery as its hero right away.
+                await addMedia.mutateAsync({ propertyId: property.id, uploadId: row.id, makeHero: true });
+              } else {
+                setPendingHeroUploadId(row.id);
+              }
+            }}
           />
         </Field>
         <Field label="Property video" full>

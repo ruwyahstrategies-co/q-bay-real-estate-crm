@@ -162,7 +162,7 @@ export async function buildPropertyImportTemplate(lookups: ImportLookups): Promi
   info.addRow({});
   info.addRow({
     column: "How it works",
-    note: "Fill in the Properties sheet, then use Upload Properties in the CRM. Every row is checked first and nothing is saved until you confirm.",
+    note: "Fill in the Properties sheet, then use Import from Excel on the Properties page in the CRM. Every row is checked first and nothing is saved until you confirm.",
   });
   info.addRow({
     column: "Approval",

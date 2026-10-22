@@ -7,6 +7,7 @@
 
 import type { LeadFilters } from "@/hooks/use-leads";
 import type { PropertyFilters, ApprovalStatus } from "@/hooks/use-properties";
+import { withStatusTab, type PropertyStatusTab } from "@/lib/property-status-tabs";
 
 /** A typed number box. Empty or not a number means "no limit". */
 export function parseAmount(text: string): number | null {
@@ -158,7 +159,8 @@ export type PropertyFilterState = {
   agentIds: string[];
   approvals: ApprovalStatus[];
   published: "yes" | "no" | null;
-  archive: "active" | "archived" | "all";
+  /** The status tab: Active, Sold, Rented, Archived or All. */
+  archive: PropertyStatusTab;
 };
 
 export const EMPTY_PROPERTY_FILTERS: PropertyFilterState = {
@@ -192,8 +194,8 @@ export function propertyFilterCount(f: PropertyFilterState): number {
     (f.placeId ? 1 : 0) +
     (f.agentIds.length ? 1 : 0) +
     (f.approvals.length ? 1 : 0) +
-    (f.published ? 1 : 0) +
-    (f.archive !== "active" ? 1 : 0)
+    (f.published ? 1 : 0)
+    // The status tab is on the page itself, so it is not counted as a drawer filter.
   );
 }
 
@@ -205,10 +207,12 @@ export function propertyQueryFrom(
   f: PropertyFilterState,
 ): Omit<PropertyFilters, "search" | "purpose"> {
   const priceBad = rangeProblem(f.minPrice, f.maxPrice, "price") != null;
+  // The status tab decides the archive state, and the availability too when it is Sold or Rented.
+  const tabbed = withStatusTab({ status: "active" as "active" | "archived" | "all", availabilities: f.availabilities }, f.archive);
   return {
     types: f.types,
-    availabilities: f.availabilities,
-    status: f.archive,
+    availabilities: tabbed.availabilities,
+    status: tabbed.status,
     minPrice: priceBad ? null : parseAmount(f.minPrice),
     maxPrice: priceBad ? null : parseAmount(f.maxPrice),
     minBedrooms: f.minBedrooms ? Number(f.minBedrooms) : null,

@@ -39,9 +39,10 @@ test("an empty filter set counts as zero and a group counts once however many ch
     4,
   );
   assert.equal(propertyFilterCount(EMPTY_PROPERTY_FILTERS), 0);
+  // The status tab sits on the page, so it is not counted as a drawer filter.
   assert.equal(
-    propertyFilterCount({ ...EMPTY_PROPERTY_FILTERS, archive: "all", areaIds: ["x", "y"] }),
-    2,
+    propertyFilterCount({ ...EMPTY_PROPERTY_FILTERS, archive: "sold", areaIds: ["x", "y"] }),
+    1,
   );
 });
 

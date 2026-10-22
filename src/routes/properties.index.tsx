@@ -10,7 +10,7 @@ import {
   ArchiveRestore,
   Trash2,
   Share2,
-  Upload,
+  FileSpreadsheet,
   Download,
   FileText,
   MapPin,
@@ -56,10 +56,16 @@ import {
   useDeleteProperty,
   usePropertyThumbnails,
   usePropertyPurposeCounts,
+  usePropertyStatusCounts,
   type PropertyListRow,
   type PropertyPurposeTab,
 } from "@/hooks/use-properties";
 import { ActiveFilterChips, FiltersButton, type FilterChip } from "@/components/filters-drawer";
+import {
+  PROPERTY_STATUS_TABS,
+  tabOwnsAvailability,
+  type PropertyStatusTab,
+} from "@/lib/property-status-tabs";
 import { PropertyFiltersDrawer } from "@/components/property-filters-drawer";
 import {
   EMPTY_PROPERTY_FILTERS,
@@ -71,7 +77,7 @@ import {
 import { useDevelopments } from "@/hooks/use-developments";
 import { downloadCsv } from "@/lib/csv-export";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
-import { openPropertyPdf, sharePropertyPdf } from "@/lib/property-pdf";
+import { usePropertyBrochure } from "@/hooks/use-property-brochure";
 import {
   PROPERTY_AVAILABILITIES,
   PROPERTY_AVAILABILITY_LABELS,
@@ -84,12 +90,6 @@ export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties" }] }),
   component: PropertiesPage,
 });
-
-const STATUS_FILTERS = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
-  { value: "all", label: "All" },
-] as const;
 
 function PropertiesPage() {
   const navigate = useNavigate();
@@ -121,6 +121,11 @@ function PropertiesPage() {
   const showingFrom = total === 0 ? 0 : page * PROPERTY_PAGE_SIZE + 1;
   const showingTo = Math.min(total, (page + 1) * PROPERTY_PAGE_SIZE);
   const { data: purposeCounts } = usePropertyPurposeCounts(baseFilters);
+  // Each status tab counts under the other filters; Sold and Rented set availability themselves.
+  const { data: statusCounts } = usePropertyStatusCounts(
+    { ...baseFilters, availabilities: filters.availabilities },
+    purpose,
+  );
   const { data: thumbnails = {} } = usePropertyThumbnails(properties.map((p) => p.id));
   const { data: propertyFieldDefs = [] } = useFieldDefinitions("property", { activeOnly: true });
   const exportablePropertyFieldDefs = propertyFieldDefs.filter((d) => d.is_exportable);
@@ -133,16 +138,12 @@ function PropertiesPage() {
   // Every filter that is on, with how to turn it off. The Filters count and the chips come from the same object.
   const filterChips: FilterChip[] = [
     filters.types.length > 0 && { key: "types", label: `Type: ${filters.types.join(", ")}`, onRemove: clear("types", []) },
-    filters.availabilities.length > 0 && {
-      key: "availability",
-      label: `Availability: ${nameList(filters.availabilities, (a) => PROPERTY_AVAILABILITY_LABELS[a] ?? a)}`,
-      onRemove: clear("availabilities", []),
-    },
-    filters.archive !== "active" && {
-      key: "archive",
-      label: `Shown: ${filters.archive === "archived" ? "Archived" : "All"}`,
-      onRemove: clear("archive", "active"),
-    },
+    filters.availabilities.length > 0 &&
+      !tabOwnsAvailability(filters.archive) && {
+        key: "availability",
+        label: `Availability: ${nameList(filters.availabilities, (a) => PROPERTY_AVAILABILITY_LABELS[a] ?? a)}`,
+        onRemove: clear("availabilities", []),
+      },
     filters.minPrice.trim() && {
       key: "minPrice",
       label: `Price from ${filters.minPrice}`,
@@ -198,9 +199,10 @@ function PropertiesPage() {
   const drawerFilterCount = propertyFilterCount(filters);
   const activeFilterCount = drawerFilterCount + (search.trim() ? 1 : 0);
   const filterProblems = propertyFilterProblems(filters);
+  // Clearing filters keeps the status tab you are on (Active, Sold, Rented, Archived or All).
   function clearFilters() {
     setSearch("");
-    setFilters(EMPTY_PROPERTY_FILTERS);
+    setFilters((f) => ({ ...EMPTY_PROPERTY_FILTERS, archive: f.archive }));
   }
   const archive = useArchiveProperty();
   const restore = useRestoreProperty();
@@ -212,19 +214,8 @@ function PropertiesPage() {
   const canApprove = can("properties", "approve");
   const { data: pendingCount = 0 } = usePendingApprovalCount(canApprove);
 
-  async function handleShare(p: Property) {
-    const agent = team.find((m) => m.id === p.assigned_agent_id);
-    try {
-      const result = await sharePropertyPdf(
-        p,
-        thumbnails[p.id],
-        agent ? { full_name: agent.full_name, email: agent.email, phone: agent.phone } : null,
-      );
-      if (result === "downloaded") toast.success("PDF downloaded - share it from your downloads");
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
+  const brochure = usePropertyBrochure();
+  const agentOf = (p: Property) => team.find((m) => m.id === p.assigned_agent_id);
 
   return (
     <AppShell>
@@ -283,7 +274,7 @@ function PropertiesPage() {
               </Button>
               {canCreate && (
                 <Button variant="outline" size="sm" onClick={() => setImporterOpen(true)}>
-                  <Upload className="h-3.5 w-3.5" /> Upload Properties
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Import from Excel
                 </Button>
               )}
               {canCreate && (
@@ -320,6 +311,20 @@ function PropertiesPage() {
                 ? `No ${purpose === "sale" ? "sale" : "rental"} properties`
                 : `Showing ${showingFrom}-${showingTo} of ${total} ${purpose === "sale" ? "sale" : "rental"} ${total === 1 ? "property" : "properties"}`}
           </p>
+        </div>
+
+        <div className="mb-3">
+          <SegmentedControl<PropertyStatusTab>
+            ariaLabel="Property status"
+            size="md"
+            value={filters.archive}
+            onChange={(tab) => setFilters((f) => ({ ...f, archive: tab }))}
+            options={PROPERTY_STATUS_TABS.map((t) => ({
+              value: t.value,
+              label: t.label,
+              count: statusCounts?.[t.value],
+            }))}
+          />
         </div>
 
         {canApprove && pendingCount > 0 && !filters.approvals.includes("pending") && (
@@ -371,7 +376,7 @@ function PropertiesPage() {
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
           applied={filters}
-          onApply={setFilters}
+          onApply={(next) => setFilters((f) => ({ ...next, archive: f.archive }))}
           agents={team.map((m) => ({ value: m.id, label: m.full_name }))}
           developments={developments.map((d) => ({ value: d.id, label: d.name }))}
           countries={countries.map((c) => ({ value: c.id, label: c.is_active ? c.name : `${c.name} (inactive)` }))}
@@ -473,9 +478,10 @@ function PropertiesPage() {
                       <div className="flex items-center gap-1">
                         <PropertyWebsiteLinkIcon property={p} />
                         <button
-                          className="rounded-md p-1.5 hover:bg-muted"
-                          title="Download PDF"
-                          onClick={() => openPropertyPdf(p, thumbnails[p.id])}
+                          className="rounded-md p-1.5 hover:bg-muted disabled:opacity-50"
+                          title={brochure.busyId === p.id ? "Building PDF..." : "Download PDF"}
+                          disabled={brochure.busyId !== null}
+                          onClick={() => brochure.download(p.id, agentOf(p))}
                         >
                           <FileText className="h-3.5 w-3.5" />
                         </button>
@@ -527,9 +533,10 @@ function PropertiesPage() {
                           </button>
                         ) : (
                           <button
-                            className="rounded-md p-1.5 hover:bg-muted"
+                            className="rounded-md p-1.5 hover:bg-muted disabled:opacity-50"
                             title="Share"
-                            onClick={() => handleShare(p)}
+                            disabled={brochure.busyId !== null}
+                            onClick={() => brochure.share(p.id, agentOf(p))}
                           >
                             <Share2 className="h-3.5 w-3.5" />
                           </button>

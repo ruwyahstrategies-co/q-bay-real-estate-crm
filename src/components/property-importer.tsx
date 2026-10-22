@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { X, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +19,7 @@ import {
   type ImportLookups,
 } from "@/lib/property-import";
 import { buildPropertyImportTemplate } from "@/lib/property-import-template";
+import { csvToTable, importableSheets, sheetToTable, type SheetTable } from "@/lib/spreadsheet-table";
 import { downloadBytes } from "@/lib/download";
 
 // Bulk property import. A file is read, every row is checked against what exists in the CRM (owners, agents,
@@ -107,6 +107,8 @@ export function PropertyImporter({
   const [selectedSheet, setSelectedSheet] = useState<string>("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
+  // The row number each entry of `rows` has in the file, so a message about row 14 points at row 14 in Excel.
+  const [lines, setLines] = useState<number[]>([]);
   const [mapping, setMapping] = useState<Mapping>({});
   const [duplicateAction, setDuplicateAction] = useState<"skip" | "update" | "new">("update");
   const [busy, setBusy] = useState(false);
@@ -122,6 +124,7 @@ export function PropertyImporter({
     setSelectedSheet("");
     setHeaders([]);
     setRows([]);
+    setLines([]);
     setMapping({});
     setChecked([]);
     setSummary(null);
@@ -155,49 +158,59 @@ export function PropertyImporter({
     }
   }
 
+  function applyTable(table: SheetTable) {
+    setHeaders(table.headers);
+    setRows(table.rows);
+    setLines(table.lines);
+    setMapping(autoMatchColumns(table.headers));
+    setStep("map");
+  }
+
   async function handleFileSelected(f: File) {
-    setFile(f);
     const ext = f.name.split(".").pop()?.toLowerCase();
-    if (ext === "csv") {
-      Papa.parse<Row>(f, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const hs = results.meta.fields ?? [];
-          setHeaders(hs);
-          setRows(results.data);
-          setMapping(autoMatchColumns(hs));
-          setStep("map");
-        },
-      });
-    } else if (ext === "xlsx") {
-      const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      workbook.current = wb;
-      // The template's own sheet is picked for you; any other workbook asks which sheet to read.
-      const names = wb.SheetNames.filter(
-        (n) => importNorm(n) !== "instructions" && importNorm(n) !== "lists",
-      );
-      setSheets(names);
-      setSelectedSheet(names.find((n) => importNorm(n) === "properties") ?? names[0] ?? "");
-      setStep("sheet");
-    } else {
+    if (ext !== "csv" && ext !== "xlsx") {
       toast.error("Upload a .xlsx or .csv file.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (ext === "csv") {
+        const table = csvToTable(await f.text());
+        if (table.headers.length === 0) throw new Error("This file is empty. Add a header row and your properties.");
+        setFile(f);
+        applyTable(table);
+      } else {
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        // Kept in a ref: a workbook is a large object and must survive re-renders untouched.
+        workbook.current = wb;
+        // The template's own sheet is picked for you; any other workbook asks which sheet to read.
+        const names = importableSheets(wb.SheetNames, importNorm);
+        if (names.length === 0) throw new Error("This workbook has no sheets to read.");
+        setFile(f);
+        setSheets(names);
+        setSelectedSheet(names.find((n) => importNorm(n) === "properties") ?? names[0]);
+        setStep("sheet");
+      }
+    } catch (e) {
+      workbook.current = null;
+      toast.error(`Could not read this file. ${(e as Error).message || "Check that it is a valid .xlsx or .csv file."}`);
+    } finally {
+      setBusy(false);
     }
   }
 
   function loadSheet() {
-    const wb = workbook.current;
-    if (!wb || !selectedSheet) return;
-    const json = XLSX.utils.sheet_to_json<Row>(wb.Sheets[selectedSheet], {
-      defval: "",
-      raw: false,
-    });
-    const hs = json[0] ? Object.keys(json[0]) : [];
-    setHeaders(hs);
-    setRows(json);
-    setMapping(autoMatchColumns(hs));
-    setStep("map");
+    const sheet = workbook.current?.Sheets[selectedSheet];
+    if (!sheet) {
+      toast.error("That sheet could not be read. Choose the file again.");
+      return;
+    }
+    const table = sheetToTable(sheet);
+    if (table.headers.length === 0) {
+      toast.error(`The sheet "${selectedSheet}" is empty. Choose another sheet or add a header row.`);
+      return;
+    }
+    applyTable(table);
   }
 
   const present = new Set(
@@ -231,7 +244,7 @@ export function PropertyImporter({
         const refCode = String(values.reference_code ?? "").trim();
         const existingId = refCode ? byRef.get(refCode.toLowerCase()) : undefined;
         const title = String(values.title ?? "").trim() || refCode || "(no title)";
-        const line = i + 2;
+        const line = lines[i] ?? i + 2;
         if (existingId && duplicateAction === "skip") {
           out.push({ line, title, kind: "skip", payload: {}, errors: [], existingId });
           return;
@@ -328,11 +341,11 @@ export function PropertyImporter({
         if (!v) handleClose();
       }}
       widthClassName="max-w-3xl"
-      ariaLabel="Import properties"
+      ariaLabel="Import properties from Excel"
     >
       <div className="flex max-h-[90vh] w-full flex-col">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
-          <h3 className="text-base font-semibold">Import Properties</h3>
+          <h3 className="text-base font-semibold">Import Properties from Excel</h3>
           <button
             onClick={handleClose}
             disabled={busy}
@@ -371,12 +384,20 @@ export function PropertyImporter({
                 <p className="mt-1 text-xs text-muted-foreground">
                   An .xlsx or .csv file. Every row is checked before anything is saved.
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This adds property records only. To add photos, open the property and use its Media section.
+                </p>
                 <input
                   type="file"
                   accept=".csv,.xlsx"
                   className="hidden"
                   id="property-importer-file"
-                  onChange={(e) => e.target.files?.[0] && handleFileSelected(e.target.files[0])}
+                  onChange={(e) => {
+                    const chosen = e.target.files?.[0];
+                    // Cleared so choosing the same file again (after fixing it) still triggers a read.
+                    e.target.value = "";
+                    if (chosen) void handleFileSelected(chosen);
+                  }}
                 />
                 <Button
                   size="sm"

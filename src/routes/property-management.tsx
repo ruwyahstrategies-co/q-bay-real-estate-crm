@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui-primitives";
 import { MetricCard } from "@/components/metric-card";
+import { moneyProps } from "@/lib/metric-format";
 import { EmptyState } from "@/components/empty-state";
 import { PermissionGate } from "@/components/permission-gate";
 import { DrawerShell } from "@/components/overlay";
@@ -143,7 +144,7 @@ function PropertyManagementPage() {
               <MetricCard label="Open issues" value={String(openIssues)} />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <MetricCard label="Outstanding balance" value={fmtMoney(outstandingBalance, "QAR")} />
+              <MetricCard label="Outstanding balance" {...moneyProps(outstandingBalance, "QAR")} />
               <MetricCard label="Partially paid installments" value={String(rentPartial.length)} />
             </div>
             <Card>

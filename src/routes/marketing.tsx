@@ -122,12 +122,8 @@ function RequestMediaPanel({ propertyId, canUpload }: { propertyId: string; canU
   const qc = useQueryClient();
 
   async function handleUploaded(uploadId: string) {
-    const { error } = await sb.from("property_media").insert({
-      property_id: propertyId,
-      upload_id: uploadId,
-      media_type: "image",
-      display_order: media.length,
-    });
+    // The database picks the next position and the hero, so photos added together never collide.
+    const { error } = await sb.rpc("add_property_media", { _property_id: propertyId, _upload_id: uploadId });
     if (error) {
       toast.error(error.message);
     } else {

@@ -1,1 +1,22 @@
 project_id = "vnfcejfvncivthazteif"
+
+# WhatsApp functions. The gateway checks the signed-in user's token for every one of them except the webhook.
+# The webhook is called by Meta, which cannot send a Supabase token, so it is public and is protected by
+# Meta's request signature (X-Hub-Signature-256) instead: it refuses every delivery whose signature does not
+# match, and everything while META_APP_SECRET is unset. Each other function also authenticates the caller and
+# checks lead-level permission internally.
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-send]
+verify_jwt = true
+
+[functions.whatsapp-connection]
+verify_jwt = true
+
+[functions.whatsapp-templates]
+verify_jwt = true
+
+[functions.whatsapp-media]
+verify_jwt = true

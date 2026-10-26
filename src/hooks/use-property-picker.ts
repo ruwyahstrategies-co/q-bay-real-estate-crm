@@ -7,6 +7,7 @@ import { sb } from "@/lib/db";
 export type PickerProperty = {
   id: string;
   reference_code: string | null;
+  property_number_label?: string | null;
   title: string;
   location: string | null;
   development_name: string | null;
@@ -52,6 +53,7 @@ export function usePropertyPickerSearch(opts: {
 export type PropertyBrief = {
   id: string;
   reference_code: string | null;
+  property_number_label?: string | null;
   title: string;
   location: string | null;
   price: number | null;
@@ -73,7 +75,7 @@ export function usePropertyBriefs(ids: string[]) {
       for (let i = 0; i < ids.length; i += BRIEF_CHUNK) {
         const { data, error } = await sb
           .from("properties")
-          .select("id, reference_code, title, location, price, currency")
+          .select("id, reference_code, property_number_label, title, location, price, currency")
           .in("id", ids.slice(i, i + BRIEF_CHUNK));
         if (error) throw error;
         for (const row of data ?? []) out.set(row.id, row as PropertyBrief);

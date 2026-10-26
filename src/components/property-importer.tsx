@@ -21,6 +21,7 @@ import {
 import { buildPropertyImportTemplate } from "@/lib/property-import-template";
 import { csvToTable, importableSheets, sheetToTable, type SheetTable } from "@/lib/spreadsheet-table";
 import { downloadBytes } from "@/lib/download";
+import { parsePropertyNumber } from "@/lib/property-number";
 
 // Bulk property import. A file is read, every row is checked against what exists in the CRM (owners, agents,
 // locations, developments, approved developers), and only then does the person confirm. The database still
@@ -224,13 +225,16 @@ export function PropertyImporter({
     setBusy(true);
     try {
       const lookups = await loadImportLookups();
-      const existing = await fetchAll<{ id: string; reference_code: string | null }>(
+      const existing = await fetchAll<{ id: string; reference_code: string | null; property_number: number | null }>(
         "properties",
-        "id, reference_code",
+        "id, reference_code, property_number",
       );
       const byRef = new Map<string, string>();
-      for (const e of existing)
+      const byNumber = new Map<number, string>();
+      for (const e of existing) {
         if (e.reference_code) byRef.set(e.reference_code.toLowerCase(), e.id);
+        if (e.property_number != null) byNumber.set(e.property_number, e.id);
+      }
 
       const out: Checked[] = [];
       rows.forEach((row, i) => {
@@ -241,9 +245,14 @@ export function PropertyImporter({
         // A completely empty line (common at the bottom of a template) is not a property.
         if (Object.values(values).every((v) => !String(v).trim())) return;
 
+        // An existing property is found by its permanent number or by its reference. Numbers are never imported.
+        const typedNumber = String(values.property_number ?? "").trim();
+        const numberValue = parsePropertyNumber(typedNumber);
         const refCode = String(values.reference_code ?? "").trim();
-        const existingId = refCode ? byRef.get(refCode.toLowerCase()) : undefined;
-        const title = String(values.title ?? "").trim() || refCode || "(no title)";
+        const existingId =
+          (numberValue != null ? byNumber.get(numberValue) : undefined) ??
+          (refCode ? byRef.get(refCode.toLowerCase()) : undefined);
+        const title = String(values.title ?? "").trim() || refCode || typedNumber || "(no title)";
         const line = lines[i] ?? i + 2;
         if (existingId && duplicateAction === "skip") {
           out.push({ line, title, kind: "skip", payload: {}, errors: [], existingId });

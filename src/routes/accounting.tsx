@@ -23,6 +23,7 @@ import { useLeads } from "@/hooks/use-leads";
 import { useTeamMembers } from "@/hooks/use-team";
 import { fmtMoney, fmtDate, TRANSACTION_TYPES, INVOICE_TYPES, INVOICE_STATUSES, type TransactionRow } from "@/lib/db";
 import { cn, titleCase } from "@/lib/utils";
+import { propertyCode } from "@/lib/property-number";
 
 export const Route = createFileRoute("/accounting")({
   head: () => ({ meta: [{ title: "Accounts" }] }),
@@ -295,7 +296,7 @@ function InvoicesTab({ canManage, kind }: { canManage: boolean; kind: "receivabl
                   {inv.type} {inv.invoice_number ? `#${inv.invoice_number}` : ""} - {inv.owners?.name ?? inv.leads?.full_name ?? "Unlinked"}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {fmtMoney(inv.amount, inv.currency)} {inv.due_date ? `· due ${fmtDate(inv.due_date)}` : ""} {inv.properties ? `· ${inv.properties.reference_code ?? inv.properties.title}` : ""}
+                  {fmtMoney(inv.amount, inv.currency)} {inv.due_date ? `· due ${fmtDate(inv.due_date)}` : ""} {inv.properties ? `· ${propertyCode(inv.properties) || inv.properties.title}` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">

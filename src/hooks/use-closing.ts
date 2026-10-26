@@ -6,6 +6,7 @@ export type ClosingQueueProperty = {
   property_id: string;
   title: string;
   reference_code: string | null;
+  property_number_label?: string | null;
   price: number | null;
   currency: string | null;
   status: string | null;
@@ -40,7 +41,16 @@ export function useClosingQueue(enabled: boolean) {
     queryFn: async (): Promise<ClosingQueueItem[]> => {
       const { data, error } = await sb.rpc("get_closing_queue");
       if (error) throw error;
-      return (data as unknown as ClosingQueueItem[]) ?? [];
+      const items = (data as unknown as ClosingQueueItem[]) ?? [];
+      // The queue function predates property numbers, so the numbers are read alongside it.
+      const ids = [...new Set(items.flatMap((i) => (i.properties ?? []).map((p) => p.property_id)).filter(Boolean))];
+      if (ids.length === 0) return items;
+      const { data: nums } = await sb.from("properties").select("id, property_number_label").in("id", ids);
+      const byId = new Map((nums ?? []).map((n) => [n.id, n.property_number_label]));
+      return items.map((i) => ({
+        ...i,
+        properties: (i.properties ?? []).map((p) => ({ ...p, property_number_label: byId.get(p.property_id) ?? null })),
+      }));
     },
   });
 }

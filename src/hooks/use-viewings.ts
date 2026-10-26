@@ -17,10 +17,10 @@ export const viewingKeys = {
 
 export type ViewingWithRelations = Viewing & {
   leads: { id: string; full_name: string; assigned_agent_id: string | null } | null;
-  properties: { id: string; title: string; reference_code: string | null } | null;
+  properties: { id: string; title: string; reference_code: string | null; property_number_label?: string | null } | null;
 };
 
-const VIEWING_SELECT = "*, leads(id, full_name, assigned_agent_id), properties(id, title, reference_code)";
+const VIEWING_SELECT = "*, leads(id, full_name, assigned_agent_id), properties(id, title, reference_code, property_number_label)";
 
 export function useViewings(opts?: { agentId?: string; status?: string; from?: string; to?: string }) {
   const { agentId, status, from, to } = opts ?? {};

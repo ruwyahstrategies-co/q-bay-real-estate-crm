@@ -10,6 +10,7 @@ import {
 } from "@/hooks/use-property-picker";
 import { fmtMoney } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { propertyCode, propertyLabel } from "@/lib/property-number";
 
 // Property pickers that scale. Search runs in the database (reference, title, location, development, area),
 // results come one page at a time, and nothing here ever loads the whole inventory into the browser.
@@ -58,7 +59,7 @@ function PropertyRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            {p.reference_code && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{p.reference_code}</span>}
+            {propertyCode(p) && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{propertyCode(p)}</span>}
             <span className="truncate font-medium">{p.title}</span>
           </span>
           {subline(p) && <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{subline(p)}</span>}
@@ -162,9 +163,12 @@ function PickerPanel({
   );
 }
 
-function briefLabel(b: { reference_code: string | null; title: string } | undefined, fallback: string) {
+function briefLabel(
+  b: { reference_code: string | null; property_number_label?: string | null; title: string } | undefined,
+  fallback: string,
+) {
   if (!b) return fallback;
-  return b.reference_code ? `${b.reference_code} · ${b.title}` : b.title;
+  return propertyLabel(b);
 }
 
 /** Choose one property. Used for viewings, tasks and anywhere a single property is required. */

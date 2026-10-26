@@ -13,6 +13,7 @@ import { useChangePipelineStage } from "@/hooks/use-leads";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { useLeadReferences } from "@/hooks/use-references";
 import { useSetNegotiationProperty } from "@/hooks/use-closing";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export type MovableLead = ClosingLead & { pipeline_stage: string };
 
@@ -22,6 +23,7 @@ type Interest = {
   properties: {
     title: string;
     reference_code: string | null;
+    property_number_label?: string | null;
     price: number | null;
     currency: string | null;
   } | null;
@@ -103,7 +105,7 @@ function NegotiationPropertyDialog({
                 />
                 <span className="min-w-0">
                   <span className="block font-medium">
-                    {i.properties?.reference_code ? `${i.properties.reference_code} · ` : ""}
+                    {propertyCodePrefix(i.properties)}
                     {i.properties?.title}
                   </span>
                   <span className="block text-xs text-muted-foreground">

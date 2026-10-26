@@ -808,7 +808,7 @@ function BroadcastDialog({
         continue;
       }
       try {
-        await send.mutateAsync({ lead_id: l.id, to: l.phone, message: message.trim() });
+        await send.mutateAsync({ lead_id: l.id, message: message.trim(), client_request_id: crypto.randomUUID() });
         out.push({ name: l.full_name, ok: true });
       } catch (e) {
         out.push({ name: l.full_name, ok: false, error: (e as Error).message });
@@ -836,8 +836,9 @@ function BroadcastDialog({
       <div className="p-5">
         <h3 className="text-base font-semibold">WhatsApp Broadcast</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Sends via each recipient's assigned agent's own WhatsApp Business connection - there is no
-          shared sender. Sending only succeeds for leads assigned to your own connected number.
+          Each message goes out on the WhatsApp number set up for you in Settings, and only to leads you
+          can access. Free text reaches only people who wrote to you in the last 24 hours; everyone else
+          is skipped and listed below. Use an approved template from the WhatsApp inbox to start a conversation.
         </p>
         <p className="mt-2 text-xs font-medium">
           {leads.length} recipient{leads.length === 1 ? "" : "s"} selected
@@ -847,7 +848,7 @@ function BroadcastDialog({
           <>
             <textarea
               className="mt-3 h-28 w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm"
-              placeholder="Message (respect Meta's 24h/template rules for first contact)..."
+              placeholder="Message (free text only reaches people who wrote to you in the last 24 hours)..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />

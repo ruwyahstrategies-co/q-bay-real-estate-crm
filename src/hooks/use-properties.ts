@@ -46,6 +46,8 @@ export type PropertyFilters = {
   availability?: string | null;
   /** Sale or Rent, applied in the database on properties.purpose. null = both sides. */
   purpose?: PropertyPurposeTab | null;
+  /** Any of these stored purposes (Off-Plan and Off-Plan Resale are separate). Empty = no filter. Narrows within the Sale/Rent side. */
+  purposes?: string[];
   /** Price range, inclusive, in the property's own currency. */
   minPrice?: number | null;
   maxPrice?: number | null;
@@ -90,6 +92,7 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
     status = "active",
     availability = null,
     purpose = null,
+    purposes = [],
     minPrice = null,
     maxPrice = null,
     agentIds = [],
@@ -109,6 +112,7 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   if (status !== "all") q = q.eq("status", status);
   if (includePurpose && purpose === "rent") q = q.eq("purpose", "rent");
   if (includePurpose && purpose === "sale") q = q.in("purpose", SALE_PURPOSES);
+  if (purposes.length > 0) q = q.in("purpose", purposes);
   if (type) q = q.in("property_type", typesForFilter(type));
   if (availability === "needs_confirmation") {
     q = q.lt("availability_next_due_at", new Date().toISOString());
@@ -143,7 +147,7 @@ function applyPropertyFilters<T extends FilterChain<T>>(q: T, f: PropertyFilters
   if (published != null) q = q.eq("is_published", published);
   if (search.trim()) {
     const term = `%${search.trim().replace(/[,()]/g, " ")}%`;
-    q = q.or(`title.ilike.${term},reference_code.ilike.${term},location.ilike.${term}`);
+    q = q.or(`title.ilike.${term},reference_code.ilike.${term},property_number_label.ilike.${term},location.ilike.${term}`);
   }
   return q;
 }
@@ -153,6 +157,7 @@ function filterKey(f: PropertyFilters) {
   return {
     ...f,
     agentIds: [...(f.agentIds ?? [])].sort(),
+    purposes: [...(f.purposes ?? [])].sort(),
     areaIds: [...(f.areaIds ?? [])].sort(),
   };
 }

@@ -113,3 +113,18 @@ test("property filters: a place only counts under a single area, website flag be
   assert.equal(propertyQueryFrom(EMPTY_PROPERTY_FILTERS).published, null);
   assert.equal(propertyQueryFrom(EMPTY_PROPERTY_FILTERS).status, "active");
 });
+
+test("Off-Plan and Off-Plan Resale are separate listing types that combine with the other filters", () => {
+  const offPlan = { ...EMPTY_PROPERTY_FILTERS, purposes: ["off_plan"] };
+  const both = { ...EMPTY_PROPERTY_FILTERS, purposes: ["off_plan", "off_plan_resale"] };
+  assert.deepEqual(propertyQueryFrom(offPlan).purposes, ["off_plan"]);
+  assert.deepEqual(propertyQueryFrom(both).purposes, ["off_plan", "off_plan_resale"]);
+  assert.deepEqual(propertyQueryFrom(EMPTY_PROPERTY_FILTERS).purposes, []);
+  // The group counts once, and sits alongside the other filters and the status tab.
+  assert.equal(propertyFilterCount(both), 1);
+  const combined = propertyQueryFrom({ ...offPlan, archive: "sold", areaIds: ["x"], types: ["Villa"] });
+  assert.deepEqual(combined.purposes, ["off_plan"]);
+  assert.deepEqual(combined.areaIds, ["x"]);
+  assert.deepEqual(combined.types, ["Villa"]);
+  assert.deepEqual(combined.availabilities, ["sold"]);
+});

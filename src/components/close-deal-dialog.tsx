@@ -24,6 +24,7 @@ import {
 import { useCloseLeadDeal } from "@/hooks/use-closing";
 import { useLeadOffers } from "@/hooks/use-offers";
 import { useLeadReferences } from "@/hooks/use-references";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
@@ -124,7 +125,7 @@ export function CloseDealDialog({
       (refs?.interests ?? []) as unknown as {
         property_id: string;
         status: string | null;
-        properties: { title: string; reference_code: string | null } | null;
+        properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null;
       }[],
     [refs],
   );
@@ -260,7 +261,7 @@ export function CloseDealDialog({
                           : "border-border text-muted-foreground hover:bg-muted",
                       )}
                     >
-                      {i.properties?.reference_code ? `${i.properties.reference_code} · ` : ""}
+                      {propertyCodePrefix(i.properties)}
                       {i.properties?.title ?? "Property"}
                       {i.status === "reserved" ? " (in negotiation)" : ""}
                     </button>

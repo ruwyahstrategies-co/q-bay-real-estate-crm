@@ -16,6 +16,7 @@ import { usePropertyMedia } from "@/hooks/use-properties";
 import { sb } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertyKeys } from "@/hooks/use-properties";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/marketing")({
   head: () => ({ meta: [{ title: "Marketing" }] }),
@@ -64,7 +65,7 @@ function MarketingPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <Link to="/properties/$propertyId" params={{ propertyId: p?.id ?? "" }} className="text-sm font-medium hover:underline">
-                          {p?.reference_code ? `${p.reference_code} · ` : ""}{p?.title ?? "Property"}
+                          {propertyCodePrefix(p)}{p?.title ?? "Property"}
                         </Link>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{r.status.replace(/_/g, " ")}</span>
                       </div>

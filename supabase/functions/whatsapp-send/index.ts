@@ -1,55 +1,20 @@
-// Sends a WhatsApp message through the CALLING AGENT'S OWN Meta Cloud API
-// connection — never a shared/global sender. Requires conversations.create.
-// Supports free-text (only valid inside Meta's 24h customer-service window)
-// and template sends (required to open/re-open a conversation) — Meta's
-// template rules are enforced by the Graph API itself, not bypassed here.
+// Sends a WhatsApp message to a LEAD. The recipient's number is read from the lead on the server, never taken
+// from the browser, and the caller must be allowed to message that lead (checked in the database as the caller,
+// so it is the same rule that guards the lead itself).
+//
+// Meta's rules are enforced in the database: free text only inside the 24 hour customer service window, an
+// approved template otherwise, never to someone who opted out, and a repeated client_request_id never sends twice.
+// Nothing is sent until WHATSAPP_LIVE_ENABLED is "true". The access token is read from the vault on the server and
+// is never returned.
+//
+// Request: { lead_id, client_request_id?, opt_in_confirmed?, and exactly one of
+//            message | template: { name, language, params[] } | media: { kind, url, caption?, filename? } }
 
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-type TeamMemberRow = { id: string; user_id: string | null; is_active: boolean | null; role: string | null; permissions: Record<string, string[]> | null };
-type ResolvedCaller = { ok: true; userId: string; email: string | null; teamMember: TeamMemberRow } | { ok: false; status: number; error: string };
-async function resolveActiveCaller(req: Request, serviceClient: SupabaseClient): Promise<ResolvedCaller> {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return { ok: false, status: 401, error: "Missing bearer token" };
-  const token = authHeader.replace("Bearer ", "");
-  const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-  const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: userData, error: userErr } = await anonClient.auth.getUser(token);
-  if (userErr || !userData?.user) return { ok: false, status: 401, error: "Invalid session" };
-  const user = userData.user;
-  const { data: teamMember, error: memberErr } = await serviceClient
-    .from("team_members").select("id, user_id, is_active, role, permissions").eq("user_id", user.id).maybeSingle();
-  if (memberErr) return { ok: false, status: 500, error: "Failed to resolve staff record" };
-  if (!teamMember) return { ok: false, status: 403, error: "Account not provisioned. Ask an administrator to create your staff login." };
-  if (teamMember.is_active === false) return { ok: false, status: 403, error: "Account is inactive." };
-  return { ok: true, userId: user.id, email: user.email ?? null, teamMember: teamMember as TeamMemberRow };
-}
-function hasPermission(teamMember: TeamMemberRow, moduleKey: string, action: string): boolean {
-  const actions = teamMember.permissions?.[moduleKey];
-  return Array.isArray(actions) && actions.includes(action);
-}
-async function authorizeCaller(req: Request, serviceClient: SupabaseClient, checks: { module: string; action: string }[]) {
-  const resolved = await resolveActiveCaller(req, serviceClient);
-  if (!resolved.ok) return resolved;
-  for (const { module: moduleKey, action } of checks) {
-    if (!hasPermission(resolved.teamMember, moduleKey, action)) return { ok: false as const, status: 403, error: `Missing permission: ${moduleKey}.${action}` };
-  }
-  return { ok: true as const, userId: resolved.userId, email: resolved.email, teamMember: resolved.teamMember };
-}
-async function checkRateLimit(req: Request, service: SupabaseClient, fnName: string, maxPerMinute: number): Promise<boolean> {
-  try {
-    const xf = req.headers.get("x-forwarded-for");
-    const ip = xf ? xf.split(",")[0].trim() : req.headers.get("cf-connecting-ip") || "anon";
-    const [{ data: ipOk }, { data: globalOk }] = await Promise.all([
-      service.rpc("check_rate_limit", { _key: `${fnName}:ip:${ip}`, _max_per_minute: maxPerMinute }),
-      service.rpc("check_rate_limit", { _key: `${fnName}:global`, _max_per_minute: maxPerMinute * 10 }),
-    ]);
-    return ipOk !== false && globalOk !== false;
-  } catch { return true; }
-}
-function tooManyRequests(corsHeaders: Record<string, string>) {
-  return new Response(JSON.stringify({ error: "Too many requests. Please slow down and try again in a minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerScopedClient } from "../_shared/auth.ts";
+import { authorizeCaller } from "../_shared/user-auth.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { handleSend, type WhatsappConnection, type WhatsappMode } from "../_shared/whatsapp-handlers.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -57,97 +22,102 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const GRAPH_VERSION = "v21.0";
+const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
-}
+const CONNECTION_COLUMNS = "id, phone_number_id, waba_id, connection_status, access_token_secret_id, scope";
 
-type Body = {
-  lead_id?: string;
-  to?: string;
-  message?: string;
-  template_name?: string;
-  template_language?: string;
-  template_params?: string[];
-};
+const wrap = (r: { data: any; error: { message: string } | null }) => ({
+  data: r.data,
+  error: r.error ? { message: r.error.message } : null,
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  const service = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-  if (!await checkRateLimit(req, service, "whatsapp-send", 20)) return tooManyRequests(CORS);
-  const auth = await authorizeCaller(req, service, [{ module: "conversations", action: "create" }]);
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
 
-  let body: Body;
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
+  const res = await handleSend(req, {
+    liveEnabled: Deno.env.get("WHATSAPP_LIVE_ENABLED") === "true",
+    defaultCountryCode: Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE") || "974",
+    graphVersion: Deno.env.get("WHATSAPP_GRAPH_VERSION") || "v21.0",
+    fetch,
+    rateLimitOk: (r) => checkRateLimit(r, "whatsapp-send", 30),
 
-  const to = body.to?.replace(/[^\d+]/g, "");
-  if (!to) return json({ error: "to (recipient phone number) is required" }, 400);
-  if (!body.message && !body.template_name) return json({ error: "message or template_name is required" }, 400);
+    authenticate: async (r) => {
+      const auth = await authorizeCaller(r, service, [{ module: "conversations", action: "create" }]);
+      return auth.ok ? { ok: true, userId: auth.userId, teamMemberId: auth.teamMember.id } : auth;
+    },
 
-  const { data: conn } = await service
-    .from("agent_whatsapp_connections")
-    .select("*")
-    .eq("team_member_id", auth.teamMember.id)
-    .maybeSingle();
+    canSendLead: async (r, leadId) => {
+      const { data, error } = await callerScopedClient(r).rpc("whatsapp_can_send_lead", { _lead_id: leadId });
+      return !error && data === true;
+    },
 
-  if (!conn) return json({ error: "You have no WhatsApp connection configured. Set one up in Settings first." }, 409);
-  if (conn.connection_status !== "connected") {
-    return json({ error: "Your WhatsApp connection is not verified yet. Verify it in Settings first." }, 409);
-  }
+    getLead: async (leadId) => {
+      const { data } = await service.from("leads").select("id, phone").eq("id", leadId).maybeSingle();
+      return data ?? null;
+    },
 
-  const { data: token } = await service.rpc("vault_read_secret", { _id: conn.access_token_secret_id });
-  if (!token) return json({ error: "Could not read stored access token." }, 500);
+    getMode: async (): Promise<WhatsappMode> => {
+      const { data } = await service.from("app_settings").select("setting_value").eq("setting_key", "whatsapp_mode").maybeSingle();
+      const mode = (data?.setting_value as { mode?: string } | null)?.mode;
+      return mode === "shared" || mode === "individual" ? mode : "undecided";
+    },
 
-  const payload: Record<string, unknown> = {
-    messaging_product: "whatsapp",
-    to,
-  };
-  if (body.template_name) {
-    payload.type = "template";
-    payload.template = {
-      name: body.template_name,
-      language: { code: body.template_language || "en_US" },
-      components: body.template_params?.length
-        ? [{ type: "body", parameters: body.template_params.map((p) => ({ type: "text", text: p })) }]
-        : undefined,
-    };
-  } else {
-    payload.type = "text";
-    payload.text = { body: body.message };
-  }
+    getConnections: async (teamMemberId) => {
+      const [own, company] = await Promise.all([
+        service.from("agent_whatsapp_connections").select(CONNECTION_COLUMNS).eq("team_member_id", teamMemberId).eq("scope", "agent").maybeSingle(),
+        service.from("agent_whatsapp_connections").select(CONNECTION_COLUMNS).eq("scope", "company").limit(1).maybeSingle(),
+      ]);
+      return { own: (own.data as WhatsappConnection | null) ?? null, company: (company.data as WhatsappConnection | null) ?? null };
+    },
 
-  try {
-    const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${conn.phone_number_id}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data?.error?.message ?? `Meta API error ${res.status}`;
-      return json({ error: msg }, 502);
-    }
+    getTemplate: async (wabaId, name, language) => {
+      const { data } = await service
+        .from("whatsapp_templates")
+        .select("name, language, status, param_count, category")
+        .eq("waba_id", wabaId)
+        .eq("name", name)
+        .eq("language", language)
+        .maybeSingle();
+      return data ?? null;
+    },
 
-    const messageId = data?.messages?.[0]?.id ?? null;
+    readToken: async (secretId) => {
+      const { data } = await service.rpc("vault_read_secret", { _id: secretId });
+      return typeof data === "string" && data ? data : null;
+    },
 
-    if (body.lead_id) {
-      await service.from("interactions").insert({
-        lead_id: body.lead_id,
-        interaction_type: "whatsapp",
-        direction: "outbound",
-        content: body.message ?? `[template: ${body.template_name}]`,
-        created_by: auth.userId,
-        metadata: { message_id: messageId, phone_number_id: conn.phone_number_id, to },
-      });
-    }
+    beginOutbound: async (a) =>
+      wrap(
+        await service.rpc("whatsapp_begin_outbound", {
+          _connection_id: a.connectionId,
+          _lead_id: a.leadId,
+          _wa_id: a.waId,
+          _client_request_id: a.clientRequestId,
+          _type: a.type,
+          _body: a.body,
+          _template_name: a.templateName,
+          _template_language: a.templateLanguage,
+          _template_params: a.templateParams,
+          _sent_by: a.sentBy,
+          _opt_in_confirmed: a.optInConfirmed,
+        }),
+      ),
 
-    return json({ ok: true, message_id: messageId });
-  } catch (e) {
-    return json({ error: (e as Error).message || "Send failed" }, 502);
-  }
+    finishOutbound: async (a) =>
+      wrap(
+        await service.rpc("whatsapp_finish_outbound", {
+          _message_id: a.messageId,
+          _wa_message_id: a.waMessageId,
+          _error_code: a.errorCode,
+          _error_text: a.errorText,
+          _sent_by_user: a.sentByUser,
+        }),
+      ),
+  });
+
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(CORS)) headers.set(k, v);
+  return new Response(res.body, { status: res.status, headers });
 });

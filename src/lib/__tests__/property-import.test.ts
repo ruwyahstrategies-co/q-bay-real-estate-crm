@@ -231,6 +231,12 @@ test("a reference code typed on a new property is never copied into the payload"
   assert.equal("reference_code" in r.payload, false);
 });
 
+test("a property number typed on a new property is never copied into the payload", () => {
+  const r = validatePropertyRow({ ...good, property_number: "007" }, ALL, lookups, false);
+  assert.equal("property_number" in r.payload, false);
+  assert.equal("property_number_label" in r.payload, false);
+});
+
 test("template headings are matched to their fields", () => {
   const headers = IMPORT_FIELDS.map((f) => f.header + (f.required ? " *" : ""));
   const map = autoMatchColumns(headers);

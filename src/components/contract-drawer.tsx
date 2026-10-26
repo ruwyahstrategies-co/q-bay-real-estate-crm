@@ -10,6 +10,7 @@ import { useOwnerProperties } from "@/hooks/use-owners";
 import { useTeamMembers } from "@/hooks/use-team";
 import { fillContractTemplate, openContractPdf, contractTitle } from "@/lib/contract-pdf";
 import { CONTRACT_PURPOSES, type Owner, type OwnerContract } from "@/lib/db";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
@@ -161,7 +162,7 @@ export function ContractDrawer({
           <SearchableSelectField
             value={form.property_id}
             onChange={(v) => set("property_id", v)}
-            options={properties.map((p) => ({ value: p.id, label: `${p.reference_code ? p.reference_code + " · " : ""}${p.title}` }))}
+            options={properties.map((p) => ({ value: p.id, label: `${propertyCodePrefix(p)}${p.title}` }))}
             placeholder="Select property"
             emptyLabel="None"
             searchPlaceholder="Search properties..."

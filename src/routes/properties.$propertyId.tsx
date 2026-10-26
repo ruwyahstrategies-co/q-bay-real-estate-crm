@@ -35,6 +35,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { usePermissions } from "@/hooks/use-auth";
 import { titleCase } from "@/lib/utils";
 import { DynamicFieldsView, type CustomFieldValues } from "@/components/dynamic-fields";
+import { propertyNumberOf } from "@/lib/property-number";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   head: () => ({ meta: [{ title: "Property Details" }] }),
@@ -128,6 +129,7 @@ function PropertyDetailPage() {
             </div>
             <h1 className="mt-3 text-xl font-semibold leading-snug tracking-tight">{property.title}</h1>
             <p className="mt-1 text-xs text-muted-foreground">
+              {propertyNumberOf(property) ? `No. ${propertyNumberOf(property)} · ` : ""}
               {property.reference_code ? `${property.reference_code} · ` : ""}
               {property.property_type ?? "-"} · {property.location ?? "-"}
             </p>

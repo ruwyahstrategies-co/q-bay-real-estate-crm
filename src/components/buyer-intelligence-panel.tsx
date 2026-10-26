@@ -12,6 +12,7 @@ import { useUploads } from "@/hooks/use-uploads";
 import { useProperties } from "@/hooks/use-properties";
 import { fmtDateTime, stageLabel, type Lead } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { propertyLabel } from "@/lib/property-number";
 
 type Props = { lead: Lead };
 
@@ -204,7 +205,7 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
             <ul className="mt-1 flex flex-wrap gap-1.5">
               {s.wants.mentioned_properties.map((mp, i) => {
                 const p = mp.property_id ? propsById.get(mp.property_id) : undefined;
-                const label = p ? `${p.reference_code ?? ""} ${p.title}`.trim() : mp.label;
+                const label = p ? propertyLabel(p) : mp.label;
                 return p ? (
                   <Link key={i} to="/properties/$propertyId" params={{ propertyId: p.id }}
                     className="inline-flex items-center gap-1 rounded-full bg-pastel-blue px-2 py-0.5 text-[11px] hover:underline">
@@ -295,7 +296,7 @@ function SalesView({ lead, analysis }: { lead: Lead; analysis: AIAnalysis }) {
                 <li key={i} className="rounded-lg border border-border p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{p ? `${p.reference_code ?? ""} ${p.title}`.trim() : "Property"}</p>
+                      <p className="text-sm font-medium truncate">{p ? propertyLabel(p) : "Property"}</p>
                       <p className="text-xs text-muted-foreground">{m.price} · {m.availability}</p>
                     </div>
                     <span className="shrink-0 rounded-full bg-pastel-purple px-2 py-0.5 text-xs font-semibold">{m.match_percent}%</span>

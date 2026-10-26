@@ -51,17 +51,17 @@ export function useTenancies() {
     queryKey: pmKeys.tenancies,
     queryFn: async (): Promise<
       (PropertyLease & {
-        properties: { title: string; reference_code: string | null } | null;
+        properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null;
         tenants: TenantRecord | null;
       })[]
     > => {
       const { data, error } = await sb
         .from("property_leases")
-        .select(`*, properties(title, reference_code), tenants(${TENANT_COLUMNS})`)
+        .select(`*, properties(title, reference_code, property_number_label), tenants(${TENANT_COLUMNS})`)
         .order("lease_end", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as unknown as (PropertyLease & {
-        properties: { title: string; reference_code: string | null } | null;
+        properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null;
         tenants: TenantRecord | null;
       })[];
     },
@@ -268,17 +268,17 @@ export function useMaintenanceIssues(propertyId?: string) {
   return useQuery({
     queryKey: propertyId ? [...pmKeys.maintenance, propertyId] : pmKeys.maintenance,
     queryFn: async (): Promise<
-      (MaintenanceIssue & { properties: { title: string; reference_code: string | null } | null })[]
+      (MaintenanceIssue & { properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null })[]
     > => {
       let q = sb
         .from("property_maintenance_issues")
-        .select("*, properties(title, reference_code)")
+        .select("*, properties(title, reference_code, property_number_label)")
         .order("reported_at", { ascending: false });
       if (propertyId) q = q.eq("property_id", propertyId);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as (MaintenanceIssue & {
-        properties: { title: string; reference_code: string | null } | null;
+        properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null;
       })[];
     },
   });

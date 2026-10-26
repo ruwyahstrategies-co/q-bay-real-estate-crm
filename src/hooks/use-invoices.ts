@@ -16,7 +16,7 @@ export function useInvoices(type?: "receivable" | "payable") {
       let q = sb
         .from("invoices")
         .select(
-          "*, owners(name), leads(full_name), properties(title, reference_code), team_members:team_members!invoices_agent_id_fkey(full_name)",
+          "*, owners(name), leads(full_name), properties(title, reference_code, property_number_label), team_members:team_members!invoices_agent_id_fkey(full_name)",
         )
         .order("due_date", { ascending: true, nullsFirst: false });
       if (type) q = q.eq("type", type);

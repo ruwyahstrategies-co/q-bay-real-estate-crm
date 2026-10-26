@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sb } from "@/lib/db";
 
 export type LeadRef = { id: string; full_name: string };
-export type PropertyRef = { id: string; title: string; reference_code: string | null };
+export type PropertyRef = { id: string; title: string; reference_code: string | null; property_number_label?: string | null };
 export type InteractionRef = {
   id: string;
   interaction_type: string;
@@ -22,7 +22,7 @@ export function useLeadReferences(leadId: string | undefined) {
         sb
           .from("lead_property_interests")
           .select(
-            "id, interest_level, status, notes, property_id, properties(id, title, reference_code, location, property_type, price, currency)",
+            "id, interest_level, status, notes, property_id, properties(id, title, reference_code, property_number_label, location, property_type, price, currency)",
           )
           .eq("lead_id", leadId!),
         sb.from("interactions").select("id").eq("lead_id", leadId!),
@@ -38,7 +38,7 @@ export function useLeadReferences(leadId: string | undefined) {
         const { data: events = [] } = await (sb as any)
           .from("property_events")
           .select(
-            "property_id, source_id, occurred_at, event_type, properties(id, title, reference_code)",
+            "property_id, source_id, occurred_at, event_type, properties(id, title, reference_code, property_number_label)",
           )
           .eq("event_type", "mention")
           .in("source_id", intIds);

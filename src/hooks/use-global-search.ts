@@ -47,8 +47,8 @@ export function useGlobalSearch(query: string, enabled: boolean) {
           .limit(PER_TYPE),
         sb
           .from("properties")
-          .select("id, title, reference_code, location, availability")
-          .or(`title.ilike.${like},reference_code.ilike.${like},location.ilike.${like}`)
+          .select("id, title, reference_code, property_number_label, location, availability")
+          .or(`title.ilike.${like},reference_code.ilike.${like},property_number_label.ilike.${like},location.ilike.${like}`)
           .limit(PER_TYPE),
         sb.rpc("search_owners", { _query: term, _limit: PER_TYPE }),
         sb.from("developments").select("id, name, status").ilike("name", like).limit(PER_TYPE),
@@ -78,7 +78,7 @@ export function useGlobalSearch(query: string, enabled: boolean) {
         out.push({
           key: `property:${p.id}`,
           type: "Property",
-          title: join(p.reference_code, p.title),
+          title: join(p.property_number_label ?? p.reference_code, p.title),
           subtitle: join(p.location, p.availability),
           to: "/properties/$propertyId",
           params: { propertyId: p.id },

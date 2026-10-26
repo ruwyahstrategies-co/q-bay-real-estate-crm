@@ -76,11 +76,13 @@ import {
 } from "@/lib/list-filters";
 import { useDevelopments } from "@/hooks/use-developments";
 import { downloadCsv } from "@/lib/csv-export";
+import { propertyNumberOf } from "@/lib/property-number";
 import { useFieldDefinitions } from "@/hooks/use-field-definitions";
 import { usePropertyBrochure } from "@/hooks/use-property-brochure";
 import {
   PROPERTY_AVAILABILITIES,
   PROPERTY_AVAILABILITY_LABELS,
+  PROPERTY_PURPOSE_LABELS,
   fmtMoney,
   isConfirmationOverdue,
   type Property,
@@ -137,6 +139,11 @@ function PropertiesPage() {
     () => setFilters((f) => ({ ...f, [k]: empty }));
   // Every filter that is on, with how to turn it off. The Filters count and the chips come from the same object.
   const filterChips: FilterChip[] = [
+    filters.purposes.length > 0 && {
+      key: "purposes",
+      label: `Listing type: ${nameList(filters.purposes, (p) => PROPERTY_PURPOSE_LABELS[p] ?? p)}`,
+      onRemove: clear("purposes", []),
+    },
     filters.types.length > 0 && { key: "types", label: `Type: ${filters.types.join(", ")}`, onRemove: clear("types", []) },
     filters.availabilities.length > 0 &&
       !tabOwnsAvailability(filters.archive) && {
@@ -236,6 +243,7 @@ function PropertiesPage() {
                     `properties-${new Date().toISOString().slice(0, 10)}.csv`,
                     rows,
                     [
+                      { key: "property_number_label", label: "Property number" },
                       { key: "title", label: "Title" },
                       { key: "reference_code", label: "Reference code" },
                       { key: "property_type", label: "Type" },
@@ -395,6 +403,7 @@ function PropertiesPage() {
         {view === "table" ? (
           <DataTable
             columns={[
+              "No.",
               "Property",
               "Reference",
               "Type",
@@ -429,6 +438,7 @@ function PropertiesPage() {
             {properties.length > 0
               ? properties.map((p) => (
                   <tr key={p.id} className={dataRowCls}>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums">{propertyNumberOf(p) || "-"}</td>
                     <td className="min-w-[200px] px-4 py-3 text-sm font-medium">
                       <Link
                         to="/properties/$propertyId"
@@ -611,8 +621,8 @@ function PropertiesPage() {
                     <div className="flex flex-1 flex-col p-4">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="text-base font-semibold tabular-nums">{fmtMoney(p.price, p.currency)}</p>
-                        {p.reference_code && (
-                          <span className="font-mono text-[11px] text-muted-foreground">{p.reference_code}</span>
+                        {propertyNumberOf(p) && (
+                          <span className="font-mono text-[11px] text-muted-foreground">No. {propertyNumberOf(p)}</span>
                         )}
                       </div>
                       <h4 className="mt-1 line-clamp-1 text-sm font-medium">{p.title}</h4>

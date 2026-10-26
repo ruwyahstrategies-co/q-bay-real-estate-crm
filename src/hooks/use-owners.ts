@@ -103,7 +103,7 @@ export function useOwnerProperties(ownerId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await sb
         .from("properties")
-        .select("id, title, reference_code, status, price, currency")
+        .select("id, title, reference_code, property_number_label, status, price, currency")
         .eq("owner_id", ownerId!);
       if (error) throw error;
       return data ?? [];
@@ -140,7 +140,7 @@ export function useOwnerTransactions(ownerId: string | undefined) {
       if (propertyIds.length === 0) return [];
       const { data, error } = await sb
         .from("transactions")
-        .select("*, properties(title, reference_code)")
+        .select("*, properties(title, reference_code, property_number_label)")
         .in("property_id", propertyIds)
         .order("created_at", { ascending: false });
       if (error) throw error;

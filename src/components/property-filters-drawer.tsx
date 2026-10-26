@@ -10,8 +10,8 @@ import {
   type PropertyFilterState,
 } from "@/lib/list-filters";
 import { PROPERTY_TYPE_FILTER_OPTIONS } from "@/lib/property-types";
-import { PROPERTY_AVAILABILITIES, PROPERTY_AVAILABILITY_LABELS } from "@/lib/db";
-import { APPROVAL_LABELS, type ApprovalStatus } from "@/hooks/use-properties";
+import { PROPERTY_AVAILABILITIES, PROPERTY_AVAILABILITY_LABELS, PROPERTY_PURPOSE_LABELS } from "@/lib/db";
+import { APPROVAL_LABELS, SALE_PURPOSES, type ApprovalStatus } from "@/hooks/use-properties";
 
 const inputCls =
   "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/25";
@@ -76,6 +76,16 @@ export function PropertyFiltersDrawer({
       }}
     >
       <FilterGroup title="The property">
+        <FilterField label="Listing type" hint="Narrows the Sale side. Rent has its own tab.">
+          <MultiSelectField
+            label="Listing type"
+            values={draft.purposes}
+            onChange={(v) => set("purposes", v)}
+            options={SALE_PURPOSES.map((p) => ({ value: p, label: PROPERTY_PURPOSE_LABELS[p] ?? p }))}
+            allLabel="All listing types"
+            className={FULL}
+          />
+        </FilterField>
         <FilterField label="Types">
           <MultiSelectField
             label="Types"

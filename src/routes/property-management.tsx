@@ -53,6 +53,7 @@ import {
 } from "@/lib/db";
 import { cn, titleCase } from "@/lib/utils";
 import { MaskedPhone } from "@/components/masked-phone";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/property-management")({
   head: () => ({ meta: [{ title: "Property Management" }] }),
@@ -246,7 +247,7 @@ function ManagedPropertiesTab() {
               onChange={setAddId}
               options={unmanaged.map((p) => ({
                 value: p.id,
-                label: `${p.reference_code ? p.reference_code + " · " : ""}${p.title}`,
+                label: `${propertyCodePrefix(p)}${p.title}`,
               }))}
               placeholder="Select property"
               searchPlaceholder="Search properties..."
@@ -288,7 +289,7 @@ function ManagedPropertiesTab() {
                     params={{ propertyId: p.id }}
                     className="text-sm font-medium hover:underline"
                   >
-                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {propertyCodePrefix(p)}
                     {p.title}
                   </Link>
                   <p className="mt-0.5 text-xs text-muted-foreground">

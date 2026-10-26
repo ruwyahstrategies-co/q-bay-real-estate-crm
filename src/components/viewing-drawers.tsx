@@ -23,6 +23,7 @@ import {
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
 import { fmtQatarDateTime, fromQatarInputValue, toQatarInputValue } from "@/lib/qatar-time";
 import { cn, titleCase } from "@/lib/utils";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 const inputCls =
   "h-9 w-full rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
@@ -307,7 +308,7 @@ export function ViewingDetailDrawer({
               <dd>
                 {viewing.property_id ? (
                   <Link to="/properties/$propertyId" params={{ propertyId: viewing.property_id }} className="inline-flex items-center gap-1 text-qbay hover:underline" onClick={() => onOpenChange(false)}>
-                    {viewing.properties?.reference_code ? `${viewing.properties.reference_code} · ` : ""}
+                    {propertyCodePrefix(viewing.properties)}
                     {viewing.properties?.title ?? "Property"} <ExternalLink className="h-3 w-3" />
                   </Link>
                 ) : (

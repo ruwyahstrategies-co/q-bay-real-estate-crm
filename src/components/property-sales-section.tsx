@@ -18,6 +18,7 @@ import { fmtDate, fmtMoney, type Property } from "@/lib/db";
 import { normalizePhone, phoneError } from "@/lib/phone";
 import { qatarDayKey } from "@/lib/qatar-time";
 import { cn } from "@/lib/utils";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 const inputCls =
   "h-9 rounded-lg border border-border bg-canvas px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-ring/50 focus:ring-2 focus:ring-ring/20";
@@ -152,7 +153,7 @@ function SaleDrawer({
         <div>
           <h3 className="text-base font-semibold">{sale ? "Edit sale details" : "Record sale"}</h3>
           <p className="text-xs text-muted-foreground">
-            {property.reference_code ? `${property.reference_code} · ` : ""}
+            {propertyCodePrefix(property)}
             {property.title}
           </p>
         </div>

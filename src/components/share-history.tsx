@@ -10,6 +10,7 @@ import {
   usePropertyShares,
   type PropertyShareRow,
 } from "@/hooks/use-property-shares";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 function StatusPill({ share }: { share: PropertyShareRow }) {
   return (
@@ -92,7 +93,7 @@ export function LeadSharedPropertiesSection({ leadId }: { leadId: string }) {
                     params={{ propertyId: s.properties.id }}
                     className="font-medium hover:underline"
                   >
-                    {s.properties.reference_code ? `${s.properties.reference_code} · ` : ""}
+                    {propertyCodePrefix(s.properties)}
                     {s.properties.title}
                   </Link>
                 ) : (

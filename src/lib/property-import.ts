@@ -29,7 +29,8 @@ export type ImportFieldKey =
   | "furnishing_status"
   | "availability"
   | "description"
-  | "reference_code";
+  | "reference_code"
+  | "property_number";
 
 export type ImportField = {
   key: ImportFieldKey;
@@ -160,6 +161,13 @@ export const IMPORT_FIELDS: ImportField[] = [
     required: false,
     width: 18,
     note: "Leave blank for new properties; the CRM issues it from the owner and agent. Fill it only to update an existing property.",
+  },
+  {
+    key: "property_number",
+    header: "Property Number",
+    required: false,
+    width: 16,
+    note: "Leave blank for new properties; the CRM issues the next number (001, 002 ...). Fill it only to update an existing property.",
   },
 ];
 
@@ -464,6 +472,7 @@ export function autoMatchColumns(headers: string[]): Partial<Record<ImportFieldK
     furnishing_status: ["furnishing", "furnishing status"],
     built_up_area: ["built up area", "builtup area"],
     reference_code: ["reference code", "reference", "ref"],
+    property_number: ["property number", "property no", "number", "no"],
   };
   for (const f of IMPORT_FIELDS) {
     const wanted = [f.header, f.key.replace(/_/g, " "), ...(aliases[f.key] ?? [])].map(importNorm);

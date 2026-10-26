@@ -16,6 +16,7 @@ import { useViewings } from "@/hooks/use-viewings";
 import { VIEWING_STATUSES } from "@/lib/db";
 import { fmtQatarDateTime } from "@/lib/qatar-time";
 import { titleCase } from "@/lib/utils";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/viewings")({
   head: () => ({ meta: [{ title: "Viewings" }] }),
@@ -97,7 +98,7 @@ function ViewingsPage() {
               <td className="px-4 py-3 text-xs">
                 {v.property_id ? (
                   <Link to="/properties/$propertyId" params={{ propertyId: v.property_id }} className="hover:underline">
-                    {v.properties?.reference_code ? `${v.properties.reference_code} · ` : ""}
+                    {propertyCodePrefix(v.properties)}
                     {v.properties?.title ?? "Property"}
                   </Link>
                 ) : (

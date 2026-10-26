@@ -63,10 +63,11 @@ import { fmtQatarDateTime } from "@/lib/qatar-time";
 import { useLeadOffers, useCreateOffer, useUpdateOffer, OFFER_STATUSES } from "@/hooks/use-offers";
 import { OfferFormsPanel } from "@/components/offer-forms-panel";
 import { useSetNegotiationProperty } from "@/hooks/use-closing";
-import { useSendWhatsapp } from "@/hooks/use-whatsapp";
+import { useLeadWhatsapp, useSendWhatsapp } from "@/hooks/use-whatsapp";
 import { useConvertLeadToOwner } from "@/hooks/use-leads";
 import { MaskedPhone } from "@/components/masked-phone";
 import { DynamicFieldsView, type CustomFieldValues } from "@/components/dynamic-fields";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/leads/$leadId")({
   head: () => ({ meta: [{ title: "Lead Profile" }] }),
@@ -650,14 +651,22 @@ function LeadPropertyMatches({ leadId }: { leadId: string }) {
 
 function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | null }) {
   const send = useSendWhatsapp();
+  const { data: wa } = useLeadWhatsapp(leadId);
   const [message, setMessage] = useState("");
+  // One id per message being typed: pressing Send twice, or retrying after a slow reply, sends it once.
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   if (!phone) return null;
   return (
     <Card>
-      <h4 className="text-sm font-semibold">Send via your WhatsApp Business connection</h4>
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold">WhatsApp</h4>
+        <Link to="/whatsapp" search={{ lead: leadId }} className="text-xs underline-offset-2 hover:underline">
+          Open in inbox{wa && wa.unread > 0 ? ` (${wa.unread} unread)` : ""}
+        </Link>
+      </div>
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Uses your own connected WhatsApp Business number (Settings). Logged as a conversation on
-        this lead.
+        Goes out on the WhatsApp number set up in Settings and is logged as a conversation on this lead.
+        Free text works for 24 hours after they last wrote; otherwise use an approved template in the inbox.
       </p>
       <div className="mt-2 flex gap-2">
         <input
@@ -671,8 +680,9 @@ function WhatsappSendBox({ leadId, phone }: { leadId: string; phone: string | nu
           disabled={send.isPending || !message.trim()}
           onClick={async () => {
             try {
-              await send.mutateAsync({ lead_id: leadId, to: phone, message: message.trim() });
+              await send.mutateAsync({ lead_id: leadId, message: message.trim(), client_request_id: requestId });
               setMessage("");
+              setRequestId(crypto.randomUUID());
               toast.success("Message sent");
             } catch (e) {
               toast.error((e as Error).message);
@@ -954,7 +964,7 @@ function ViewingsTab({ leadId }: { leadId: string }) {
                   <span className="block text-sm font-medium tabular-nums">{fmtQatarDateTime(v.scheduled_at)}</span>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {v.properties
-                      ? `${v.properties.reference_code ? `${v.properties.reference_code} · ` : ""}${v.properties.title}`
+                      ? `${propertyCodePrefix(v.properties)}${v.properties.title}`
                       : "No property linked"}
                     {" · "}
                     {agentName(v.assigned_agent_id)}
@@ -1230,7 +1240,7 @@ function PropertyInterestsTab({ leadId, onEdit }: { leadId: string; onEdit?: () 
                     params={{ propertyId: p.id }}
                     className="hover:underline"
                   >
-                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {propertyCodePrefix(p)}
                     {p.title}
                   </Link>
                   <span className="flex items-center gap-2">
@@ -1283,7 +1293,7 @@ function PropertyInterestsTab({ leadId, onEdit }: { leadId: string; onEdit?: () 
                     params={{ propertyId: p.id }}
                     className="hover:underline"
                   >
-                    {p.reference_code ? `${p.reference_code} · ` : ""}
+                    {propertyCodePrefix(p)}
                     {p.title}
                   </Link>
                   <span className="text-muted-foreground">{fmtDate(e.occurred_at)}</span>

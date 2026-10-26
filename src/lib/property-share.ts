@@ -1,6 +1,7 @@
 import { APP_CONFIG } from "@/lib/config";
 import { PROPERTY_PURPOSE_LABELS, fmtMoney, type Property } from "@/lib/db";
 import { propertyWebsiteLink } from "@/lib/website-link";
+import { propertyNumberOf } from "@/lib/property-number";
 
 /** The deployment-level website address, used only when Settings does not hold one. */
 export function envWebsiteUrl(): string | null {
@@ -27,7 +28,9 @@ export function buildPropertyShareMessage(
   siteUrl?: string | null,
 ): string {
   const lines: string[] = [property.title];
-  if (property.reference_code) lines.push(`Ref: ${property.reference_code}`);
+  const no = propertyNumberOf(property);
+  if (no) lines.push(`Property No: ${no}`);
+  else if (property.reference_code) lines.push(`Ref: ${property.reference_code}`);
   const facts = [
     PROPERTY_PURPOSE_LABELS[property.purpose] ?? property.purpose,
     locationLabel || property.location,

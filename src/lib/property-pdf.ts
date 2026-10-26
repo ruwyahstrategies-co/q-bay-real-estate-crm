@@ -16,6 +16,7 @@ import jsPDF from "jspdf";
 import type { Property } from "./db";
 import { APP_CONFIG } from "./config";
 import { metricMoney } from "./metric-format";
+import { propertyNumberOf } from "./property-number";
 
 export type PdfImage = { dataUrl: string; width: number; height: number };
 
@@ -104,6 +105,7 @@ export function propertyFacts(property: Property, developmentName?: string | nul
     ["Furnishing", property.furnishing_status ? furnishingLabel(property.furnishing_status) : null],
   ];
   const specs: [string, string | null][] = [
+    ["Property number", propertyNumberOf(property) || null],
     ["Reference", property.reference_code],
     [
       "Listing",
@@ -176,7 +178,8 @@ export function buildPropertyPdfDoc(input: PropertyPdfInput): jsPDF {
     setText(MUTED, 8, true);
     doc.text(APP_CONFIG.companyName.toUpperCase(), MARGIN, 24);
     setText(MUTED, 8);
-    const ref = property.reference_code ? `  |  ${property.reference_code}` : "";
+    const no = propertyNumberOf(property);
+    const ref = no ? `  |  No. ${no}` : property.reference_code ? `  |  ${property.reference_code}` : "";
     const shortTitle = doc.splitTextToSize(`${title}${ref}`, CONTENT_W - 140)[0] ?? "";
     doc.text(shortTitle, PAGE_W - MARGIN, 24, { align: "right" });
     doc.setDrawColor(...LINE);
@@ -270,7 +273,11 @@ export function buildPropertyPdfDoc(input: PropertyPdfInput): jsPDF {
 
   // Reference and location.
   const where = pdfText(property.location).trim();
-  const refLine = [property.reference_code ? `Ref ${property.reference_code}` : "", where]
+  const refLine = [
+    propertyNumberOf(property) ? `No. ${propertyNumberOf(property)}` : "",
+    property.reference_code ? `Ref ${property.reference_code}` : "",
+    where,
+  ]
     .filter(Boolean)
     .join("  |  ");
   if (refLine) {
@@ -448,8 +455,11 @@ export function buildPropertyPdf(input: PropertyPdfInput): Blob {
   return buildPropertyPdfDoc(input).output("blob");
 }
 
-export function propertyPdfFilename(property: Pick<Property, "reference_code" | "title">): string {
-  const base = (property.reference_code || property.title || "property")
+export function propertyPdfFilename(
+  property: Pick<Property, "reference_code" | "title"> & Partial<Pick<Property, "property_number" | "property_number_label">>,
+): string {
+  const no = propertyNumberOf(property);
+  const base = (no ? `Property-${no}` : property.reference_code || property.title || "property")
     .replace(/[^a-zA-Z0-9-_]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return `${base || "property"}.pdf`;

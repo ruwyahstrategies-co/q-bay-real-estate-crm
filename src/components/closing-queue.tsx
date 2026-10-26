@@ -8,6 +8,7 @@ import { fmtDate, fmtMoney } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { useClosingQueue, type ClosingQueueItem } from "@/hooks/use-closing";
 import { usePipelineStages, stageLabelFrom } from "@/hooks/use-pipeline-stages";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 /**
  * Deals waiting to be finalised: leads that have reached Documentation, and leads marked Won that have no
@@ -71,7 +72,7 @@ export function ClosingQueue() {
                   <ul className="space-y-0.5">
                     {q.properties.slice(0, 3).map((p) => (
                       <li key={p.property_id}>
-                        {p.reference_code ? `${p.reference_code} · ` : ""}
+                        {propertyCodePrefix(p)}
                         {p.title}
                         {p.price != null ? ` · ${fmtMoney(p.price, p.currency)}` : ""}
                         {p.status === "reserved" ? " (in negotiation)" : ""}

@@ -20,12 +20,12 @@ export type PropertyShareRow = {
   delivery_error: string | null;
   shared_at: string;
   leads: { id: string; full_name: string; phone: string | null } | null;
-  properties: { id: string; title: string; reference_code: string | null } | null;
+  properties: { id: string; title: string; reference_code: string | null; property_number_label?: string | null } | null;
   team_members: { full_name: string } | null;
 };
 
 const SHARE_SELECT =
-  "id, property_id, lead_id, shared_by, channel, status, message, external_message_id, delivery_error, shared_at, leads(id, full_name, phone), properties(id, title, reference_code), team_members(full_name)";
+  "id, property_id, lead_id, shared_by, channel, status, message, external_message_id, delivery_error, shared_at, leads(id, full_name, phone), properties(id, title, reference_code, property_number_label), team_members(full_name)";
 
 /** Every share of one property, newest first (only leads the caller can see come back, enforced by RLS). */
 export function usePropertyShares(propertyId: string | undefined) {
@@ -129,10 +129,11 @@ export function useSharePropertyWithLeads() {
             patch = { channel: "whatsapp", status: "failed", delivery_error: "Lead has no phone number" };
           } else {
             try {
+              // The share row's own id makes a retry of this share send once, never twice.
               const res = await sendWhatsappMessage({
                 lead_id: lead.id,
-                to: lead.phone,
                 message: input.message,
+                client_request_id: row.id,
               });
               patch = {
                 channel: "whatsapp",

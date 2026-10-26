@@ -7,6 +7,7 @@ import {
   Building2,
   Building,
   MessagesSquare,
+  MessageCircle,
   Upload,
   Sparkles,
   KanbanSquare,
@@ -64,6 +65,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, module: "pipeline" },
       { to: "/conversations", label: "Conversations", icon: MessagesSquare, module: "conversations" },
+      { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, module: "conversations" },
     ],
   },
   {

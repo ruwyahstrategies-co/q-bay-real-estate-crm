@@ -15,6 +15,7 @@ import { usePublicWebsiteUrl } from "@/hooks/use-public-website";
 import { PropertyWebsiteLinkButtons } from "@/components/property-website-link";
 import { MaskedPhone } from "@/components/masked-phone";
 import { LEAD_CLASSIFICATION_LABELS, fmtDate, fmtMoney, type Property } from "@/lib/db";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 const MAX_ROWS = 100;
 
@@ -166,7 +167,7 @@ export function SharePropertyDrawer({
         <div className="min-w-0">
           <h3 className="text-base font-semibold">Share with leads</h3>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {property.reference_code ? `${property.reference_code} · ` : ""}
+            {propertyCodePrefix(property)}
             {property.title}
           </p>
         </div>

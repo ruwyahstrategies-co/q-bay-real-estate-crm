@@ -21,7 +21,9 @@ import {
   useSaveWhatsappConnection,
   useVerifyWhatsapp,
   useDisconnectWhatsapp,
+  useWhatsappStatus,
 } from "@/hooks/use-whatsapp";
+import { WhatsappSetupPanel } from "@/components/whatsapp-setup-panel";
 import {
   useCountries,
   useAreas,
@@ -294,6 +296,9 @@ function WhatsappSection() {
   const save = useSaveWhatsappConnection();
   const verify = useVerifyWhatsapp();
   const disconnect = useDisconnectWhatsapp();
+  const { data: waStatus } = useWhatsappStatus();
+  // A manager can connect this number as the one shared company number instead of a personal one.
+  const [asCompany, setAsCompany] = useState(false);
 
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [wabaId, setWabaId] = useState("");
@@ -306,12 +311,14 @@ function WhatsappSection() {
     setPhoneNumberId(connection.phone_number_id ?? "");
     setWabaId(connection.waba_id ?? "");
     setDisplayNumber(connection.display_phone_number ?? "");
+    setAsCompany(connection.scope === "company");
   }, [connection?.id]);
 
   async function handleSave() {
     if (!phoneNumberId.trim()) return toast.error("Phone Number ID is required");
     try {
       await save.mutateAsync({
+        scope: asCompany ? "company" : "agent",
         phone_number_id: phoneNumberId.trim(),
         waba_id: wabaId || undefined,
         display_phone_number: displayNumber || undefined,
@@ -328,14 +335,15 @@ function WhatsappSection() {
 
   return (
     <div className="mt-4 max-w-lg space-y-4 text-sm">
+      <WhatsappSetupPanel />
       <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-4">
         <MessageCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <div>
-          <p className="font-medium">Your own WhatsApp Business (Meta Cloud API) connection</p>
+          <p className="font-medium">Your WhatsApp Business (Meta Cloud API) connection</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Each staff member connects their own WhatsApp Business number here. There is no
-            shared/global WhatsApp sender - your access token is stored encrypted and is never shown
-            again after saving.
+            Connect the WhatsApp Business number you message from. Which numbers the company uses (one shared
+            number or each agent's own) is chosen above. Your access token is stored encrypted on the server
+            and is never shown again after saving.
           </p>
           {!isLoading && connection && (
             <p className="mt-2 text-xs">
@@ -356,6 +364,12 @@ function WhatsappSection() {
         </div>
       </div>
 
+      {waStatus?.can_manage && waStatus.mode !== "individual" ? (
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" className="mt-0.5" checked={asCompany} onChange={(e) => setAsCompany(e.target.checked)} />
+          <span>This is the shared company number (managers only). Everyone sends from it when the company uses one shared number.</span>
+        </label>
+      ) : null}
       <label className="flex flex-col gap-1.5">
         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Phone Number ID *

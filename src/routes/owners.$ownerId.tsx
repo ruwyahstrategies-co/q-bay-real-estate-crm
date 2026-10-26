@@ -42,6 +42,7 @@ import type { OwnerContract, PropertySubmission } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { MaskedPhone } from "@/components/masked-phone";
 import { developmentStatusLabel } from "@/hooks/use-developments";
+import { propertyCode, propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/owners/$ownerId")({
   head: () => ({ meta: [{ title: "Owner Profile" }] }),
@@ -258,7 +259,7 @@ function OwnerProfilePage() {
                       params={{ propertyId: p.id }}
                       className="hover:underline"
                     >
-                      {p.reference_code ? `${p.reference_code} · ` : ""}
+                      {propertyCodePrefix(p)}
                       {p.title}
                     </Link>
                     <span className="text-muted-foreground">{fmtMoney(p.price, p.currency)}</span>
@@ -286,7 +287,7 @@ function OwnerProfilePage() {
                       params={{ propertyId: p.id }}
                       className="hover:underline"
                     >
-                      {p.reference_code ? `${p.reference_code} · ` : ""}
+                      {propertyCodePrefix(p)}
                       {p.title}
                     </Link>
                     <span className="capitalize text-muted-foreground">{p.status}</span>
@@ -381,7 +382,7 @@ function OwnerProfilePage() {
                     className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-xs"
                   >
                     <span>
-                      {t.properties?.reference_code ? `${t.properties.reference_code} · ` : ""}
+                      {propertyCodePrefix(t.properties)}
                       {t.properties?.title ?? "Property"} - {t.transaction_type}
                     </span>
                     <span className="text-muted-foreground">
@@ -426,7 +427,7 @@ function OwnerProfilePage() {
                       <p className="text-sm font-medium capitalize">
                         {c.purpose} contract{" "}
                         {c.properties
-                          ? `· ${c.properties.reference_code ?? c.properties.title}`
+                          ? `· ${propertyCode(c.properties) || c.properties.title}`
                           : ""}
                       </p>
                       <p className="text-xs text-muted-foreground">

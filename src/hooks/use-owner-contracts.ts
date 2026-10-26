@@ -23,14 +23,14 @@ export function useOwnerContracts(ownerId: string | undefined) {
   return useQuery({
     queryKey: ownerId ? contractKeys.byOwner(ownerId) : ["owner_contracts", "none"],
     enabled: !!ownerId,
-    queryFn: async (): Promise<(OwnerContract & { properties: { title: string; reference_code: string | null } | null })[]> => {
+    queryFn: async (): Promise<(OwnerContract & { properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null })[]> => {
       const { data, error } = await sb
         .from("owner_contracts")
-        .select("*, properties(title, reference_code)")
+        .select("*, properties(title, reference_code, property_number_label)")
         .eq("owner_id", ownerId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as (OwnerContract & { properties: { title: string; reference_code: string | null } | null })[];
+      return (data ?? []) as unknown as (OwnerContract & { properties: { title: string; reference_code: string | null; property_number_label?: string | null } | null })[];
     },
   });
 }
@@ -100,7 +100,7 @@ export function useExpiringOwnerContracts(withinDays = 30) {
       const cutoff = new Date(Date.now() + withinDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const { data, error } = await sb
         .from("owner_contracts")
-        .select("*, owners(name), properties(title, reference_code)")
+        .select("*, owners(name), properties(title, reference_code, property_number_label)")
         .in("status", ["generated", "signed"])
         .not("expiry_date", "is", null)
         .lte("expiry_date", cutoff)

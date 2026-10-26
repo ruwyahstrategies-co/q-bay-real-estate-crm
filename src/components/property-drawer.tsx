@@ -32,6 +32,7 @@ import {
   type Property,
 } from "@/lib/db";
 import { isVillaType, propertyTypeChoices } from "@/lib/property-types";
+import { propertyNumberOf } from "@/lib/property-number";
 import { CloudflareVideoUpload } from "./cloudflare-video-upload";
 
 const AVAILABILITY_OPTIONS = PROPERTY_AVAILABILITIES.map((a) => ({
@@ -344,6 +345,17 @@ export function PropertyDrawer({
             value={form.title_ar ?? ""}
             onChange={(e) => set("title_ar", e.target.value)}
           />
+        </Field>
+        <Field label="Property number">
+          <div className={cn(inputCls, "flex items-center text-muted-foreground")}>
+            {propertyNumberOf(property) ? (
+              <span title="Sequential and permanent. It does not change when the owner or agent changes.">
+                {propertyNumberOf(property)}
+              </span>
+            ) : (
+              "Assigned when you save"
+            )}
+          </div>
         </Field>
         <Field label="Reference code">
           <div className={cn(inputCls, "flex items-center text-muted-foreground")}>

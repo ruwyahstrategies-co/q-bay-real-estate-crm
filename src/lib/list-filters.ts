@@ -146,6 +146,8 @@ export function leadQueryFrom(
 // ----------------------------------------------------------- Properties
 
 export type PropertyFilterState = {
+  /** Stored purposes: Off-Plan and Off-Plan Resale are separate options. */
+  purposes: string[];
   types: string[];
   availabilities: string[];
   minPrice: string;
@@ -164,6 +166,7 @@ export type PropertyFilterState = {
 };
 
 export const EMPTY_PROPERTY_FILTERS: PropertyFilterState = {
+  purposes: [],
   types: [],
   availabilities: [],
   minPrice: "",
@@ -182,6 +185,7 @@ export const EMPTY_PROPERTY_FILTERS: PropertyFilterState = {
 
 export function propertyFilterCount(f: PropertyFilterState): number {
   return (
+    (f.purposes.length ? 1 : 0) +
     (f.types.length ? 1 : 0) +
     (f.availabilities.length ? 1 : 0) +
     (f.minPrice.trim() ? 1 : 0) +
@@ -210,6 +214,7 @@ export function propertyQueryFrom(
   // The status tab decides the archive state, and the availability too when it is Sold or Rented.
   const tabbed = withStatusTab({ status: "active" as "active" | "archived" | "all", availabilities: f.availabilities }, f.archive);
   return {
+    purposes: f.purposes,
     types: f.types,
     availabilities: tabbed.availabilities,
     status: tabbed.status,

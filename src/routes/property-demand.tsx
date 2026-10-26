@@ -20,6 +20,7 @@ import { usePropertyDemandScores, usePropertySupport, type DemandRow } from "@/h
 import { fmtMoney, fmtDate, fmtDateTime } from "@/lib/db";
 import { cn, titleCase } from "@/lib/utils";
 import { PermissionGate } from "@/components/permission-gate";
+import { propertyCodePrefix } from "@/lib/property-number";
 
 export const Route = createFileRoute("/property-demand")({
   head: () => ({
@@ -476,7 +477,7 @@ function PricingOpportunityCard({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{p.title}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {p.reference_code ? `${p.reference_code} · ` : ""}{p.property_type ?? ""} · {p.location ?? "-"}
+            {propertyCodePrefix(p)}{p.property_type ?? ""} · {p.location ?? "-"}
           </p>
           <p className="mt-2 text-base font-semibold">{fmtMoney(p.price, p.currency)}</p>
         </div>
@@ -562,7 +563,7 @@ function DemandRankingSection({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       <Link to="/properties/$propertyId" params={{ propertyId: row.property_id }} className="hover:underline">
-                        {p.reference_code ? `${p.reference_code} · ` : ""}{p.title}
+                        {propertyCodePrefix(p)}{p.title}
                       </Link>
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">

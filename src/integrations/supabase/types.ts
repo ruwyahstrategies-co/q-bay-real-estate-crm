@@ -24,6 +24,7 @@ export type Database = {
           last_error: string | null
           last_verified_at: string | null
           phone_number_id: string | null
+          scope: string
           team_member_id: string
           updated_at: string
           waba_id: string | null
@@ -38,6 +39,7 @@ export type Database = {
           last_error?: string | null
           last_verified_at?: string | null
           phone_number_id?: string | null
+          scope?: string
           team_member_id: string
           updated_at?: string
           waba_id?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           last_error?: string | null
           last_verified_at?: string | null
           phone_number_id?: string | null
+          scope?: string
           team_member_id?: string
           updated_at?: string
           waba_id?: string | null
@@ -2551,6 +2554,8 @@ export type Database = {
           property_finder_external_id: string | null
           property_finder_status: string
           property_finder_synced_at: string | null
+          property_number: number | null
+          property_number_label: string | null
           property_type: string | null
           purpose: string
           reference_code: string | null
@@ -2637,6 +2642,8 @@ export type Database = {
           property_finder_external_id?: string | null
           property_finder_status?: string
           property_finder_synced_at?: string | null
+          property_number?: number | null
+          property_number_label?: string | null
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
@@ -2723,6 +2730,8 @@ export type Database = {
           property_finder_external_id?: string | null
           property_finder_status?: string
           property_finder_synced_at?: string | null
+          property_number?: number | null
+          property_number_label?: string | null
           property_type?: string | null
           purpose?: string
           reference_code?: string | null
@@ -3266,6 +3275,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_number_counter: {
+        Row: {
+          id: number
+          last_value: number
+        }
+        Insert: {
+          id?: number
+          last_value?: number
+        }
+        Update: {
+          id?: number
+          last_value?: number
+        }
+        Relationships: []
       }
       property_reference_counters: {
         Row: {
@@ -4831,6 +4855,317 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_conversations: {
+        Row: {
+          connection_id: string
+          contact_name: string | null
+          created_at: string
+          id: string
+          last_inbound_at: string | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          lead_id: string | null
+          opt_in_at: string | null
+          opt_in_status: string
+          unread_count: number
+          updated_at: string
+          wa_id: string
+        }
+        Insert: {
+          connection_id: string
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opt_in_at?: string | null
+          opt_in_status?: string
+          unread_count?: number
+          updated_at?: string
+          wa_id: string
+        }
+        Update: {
+          connection_id?: string
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opt_in_at?: string | null
+          opt_in_status?: string
+          unread_count?: number
+          updated_at?: string
+          wa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "agent_whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_message_media: {
+        Row: {
+          caption: string | null
+          created_at: string
+          download_error: string | null
+          download_status: string
+          filename: string | null
+          id: string
+          media_id: string | null
+          media_kind: string
+          message_id: string
+          mime_type: string | null
+          sha256: string | null
+          size_bytes: number | null
+          source_upload_id: string | null
+          storage_key: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          download_error?: string | null
+          download_status?: string
+          filename?: string | null
+          id?: string
+          media_id?: string | null
+          media_kind: string
+          message_id: string
+          mime_type?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          source_upload_id?: string | null
+          storage_key?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          download_error?: string | null
+          download_status?: string
+          filename?: string | null
+          id?: string
+          media_id?: string | null
+          media_kind?: string
+          message_id?: string
+          mime_type?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          source_upload_id?: string | null
+          storage_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_media_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_message_media_source_upload_id_fkey"
+            columns: ["source_upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          client_request_id: string | null
+          connection_id: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          error_code: string | null
+          error_text: string | null
+          id: string
+          interaction_id: string | null
+          message_type: string
+          reply_to_wa_message_id: string | null
+          sent_by: string | null
+          status: string
+          status_updated_at: string | null
+          template_language: string | null
+          template_name: string | null
+          template_params: Json | null
+          wa_message_id: string | null
+          wa_timestamp: string | null
+        }
+        Insert: {
+          body?: string | null
+          client_request_id?: string | null
+          connection_id: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          error_code?: string | null
+          error_text?: string | null
+          id?: string
+          interaction_id?: string | null
+          message_type?: string
+          reply_to_wa_message_id?: string | null
+          sent_by?: string | null
+          status?: string
+          status_updated_at?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          template_params?: Json | null
+          wa_message_id?: string | null
+          wa_timestamp?: string | null
+        }
+        Update: {
+          body?: string | null
+          client_request_id?: string | null
+          connection_id?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          error_code?: string | null
+          error_text?: string | null
+          id?: string
+          interaction_id?: string | null
+          message_type?: string
+          reply_to_wa_message_id?: string | null
+          sent_by?: string | null
+          status?: string
+          status_updated_at?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          template_params?: Json | null
+          wa_message_id?: string | null
+          wa_timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "agent_whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body_text: string | null
+          category: string | null
+          components: Json
+          created_at: string
+          id: string
+          language: string
+          name: string
+          param_count: number
+          source: string
+          status: string
+          synced_at: string | null
+          updated_at: string
+          waba_id: string
+        }
+        Insert: {
+          body_text?: string | null
+          category?: string | null
+          components?: Json
+          created_at?: string
+          id?: string
+          language: string
+          name: string
+          param_count?: number
+          source?: string
+          status?: string
+          synced_at?: string | null
+          updated_at?: string
+          waba_id: string
+        }
+        Update: {
+          body_text?: string | null
+          category?: string | null
+          components?: Json
+          created_at?: string
+          id?: string
+          language?: string
+          name?: string
+          param_count?: number
+          source?: string
+          status?: string
+          synced_at?: string | null
+          updated_at?: string
+          waba_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_webhook_events: {
+        Row: {
+          detail: string | null
+          event_kind: string
+          id: string
+          outcome: string
+          payload: Json | null
+          phone_number_id: string | null
+          received_at: string
+          wa_id: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          detail?: string | null
+          event_kind: string
+          id?: string
+          outcome: string
+          payload?: Json | null
+          phone_number_id?: string | null
+          received_at?: string
+          wa_id?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          detail?: string | null
+          event_kind?: string
+          id?: string
+          outcome?: string
+          payload?: Json | null
+          phone_number_id?: string | null
+          received_at?: string
+          wa_id?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_webhook_routes: {
         Row: {
           created_at: string
@@ -5452,6 +5787,73 @@ export type Database = {
       vault_update_secret: {
         Args: { _id: string; _secret: string }
         Returns: undefined
+      }
+      whatsapp_apply_status: {
+        Args: {
+          _error_code?: string
+          _error_text?: string
+          _phone_number_id: string
+          _status: string
+          _ts?: string
+          _wa_message_id: string
+        }
+        Returns: Json
+      }
+      whatsapp_begin_outbound: {
+        Args: {
+          _body: string
+          _client_request_id: string
+          _connection_id: string
+          _lead_id: string
+          _opt_in_confirmed?: boolean
+          _sent_by: string
+          _template_language: string
+          _template_name: string
+          _template_params: Json
+          _type: string
+          _wa_id: string
+        }
+        Returns: Json
+      }
+      whatsapp_can_read_lead: { Args: { _lead_id: string }; Returns: boolean }
+      whatsapp_can_send_lead: { Args: { _lead_id: string }; Returns: boolean }
+      whatsapp_digits: { Args: { _v: string }; Returns: string }
+      whatsapp_finish_outbound: {
+        Args: {
+          _error_code?: string
+          _error_text?: string
+          _message_id: string
+          _sent_by_user?: string
+          _wa_message_id: string
+        }
+        Returns: Json
+      }
+      whatsapp_ingest_inbound: {
+        Args: {
+          _body: string
+          _contact_name: string
+          _media?: Json
+          _phone_number_id: string
+          _reply_to?: string
+          _type: string
+          _wa_id: string
+          _wa_message_id: string
+          _wa_timestamp: string
+        }
+        Returns: Json
+      }
+      whatsapp_link_conversation: {
+        Args: { _conversation_id: string; _lead_id: string }
+        Returns: undefined
+      }
+      whatsapp_mark_conversation_read: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
+      whatsapp_status_rank: { Args: { _status: string }; Returns: number }
+      whatsapp_window_open: {
+        Args: { _last_inbound_at: string }
+        Returns: boolean
       }
     }
     Enums: {

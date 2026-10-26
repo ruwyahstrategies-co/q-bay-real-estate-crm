@@ -11,6 +11,7 @@ type MarketingRequestRow = MarketingRequest & {
     id: string;
     title: string;
     reference_code: string | null;
+    property_number_label?: string | null;
     property_type: string | null;
     status: string;
     development_id: string | null;
@@ -28,7 +29,7 @@ export function useMarketingRequests(status?: "pending" | "in_progress" | "compl
     queryFn: async (): Promise<MarketingRequestRow[]> => {
       let q = sb
         .from("marketing_requests")
-        .select("*, properties(id, title, reference_code, property_type, status, development_id, area_id, assigned_agent_id, developments(name), areas(name)), team_members(full_name)")
+        .select("*, properties(id, title, reference_code, property_number_label, property_type, status, development_id, area_id, assigned_agent_id, developments(name), areas(name)), team_members(full_name)")
         .order("created_at", { ascending: false });
       if (status) q = q.eq("status", status);
       const { data, error } = await q;
